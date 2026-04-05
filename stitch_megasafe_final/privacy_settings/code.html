@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Privacy Settings | MegaSafe</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "inverse-primary": "#ffb95c",
+                        "surface-container-highest": "#d3e4fe",
+                        "tertiary-container": "#9ab7ff",
+                        "surface-bright": "#f8f9ff",
+                        "on-primary-container": "#684000",
+                        "outline": "#867461",
+                        "on-primary": "#ffffff",
+                        "inverse-on-surface": "#eaf1ff",
+                        "secondary-fixed": "#dfe0ff",
+                        "primary-container": "#ffa500",
+                        "on-secondary-fixed-variant": "#2d3c9e",
+                        "primary-fixed": "#ffddb7",
+                        "tertiary-fixed": "#d9e2ff",
+                        "primary-fixed-dim": "#ffb95c",
+                        "on-surface": "#0b1c30",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#00429b",
+                        "on-secondary-container": "#1a2a8e",
+                        "on-primary-fixed": "#2a1700",
+                        "tertiary": "#215abd",
+                        "primary": "#855400",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed-dim": "#b0c6ff",
+                        "secondary": "#4655b7",
+                        "secondary-container": "#8a99ff",
+                        "on-background": "#0b1c30",
+                        "inverse-surface": "#213145",
+                        "on-tertiary-fixed": "#001945",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#eff4ff",
+                        "surface-dim": "#cbdbf5",
+                        "secondary-fixed-dim": "#bbc3ff",
+                        "outline-variant": "#d9c3ac",
+                        "on-tertiary-container": "#0044a0",
+                        "surface-variant": "#d3e4fe",
+                        "surface-tint": "#855400",
+                        "on-secondary-fixed": "#000d5f",
+                        "error": "#ba1a1a",
+                        "surface-container-high": "#dce9ff",
+                        "surface-container": "#e5eeff",
+                        "on-surface-variant": "#534433",
+                        "surface": "#f8f9ff",
+                        "on-primary-fixed-variant": "#653e00",
+                        "background": "#f8f9ff",
+                        "on-error-container": "#93000a"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9ff;
+            color: #0b1c30;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface mb-24 md:mb-0">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#f8f9ff]/80 dark:bg-[#0b1c30]/80 backdrop-blur-xl shadow-[0_8px_32px_rgba(11,28,48,0.06)]">
+<div class="flex justify-between items-center px-6 py-4 w-full max-w-7xl mx-auto">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-orange-500 text-2xl" data-icon="shield">shield</span>
+<h1 class="text-xl font-black text-[#1a2a8e] dark:text-[#d3e4fe] tracking-tight">MegaSafe</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex gap-6">
+<a class="font-bold text-[#1a2a8e] dark:text-[#ffa500] hover:bg-[#eff4ff] transition-colors px-3 py-1 rounded-lg" href="#">Security</a>
+<a class="font-medium text-[#534433] dark:text-[#cbdbf5] hover:bg-[#eff4ff] transition-colors px-3 py-1 rounded-lg" href="#">Payments</a>
+<a class="font-medium text-[#534433] dark:text-[#cbdbf5] hover:bg-[#eff4ff] transition-colors px-3 py-1 rounded-lg" href="#">Alerts</a>
+<a class="font-medium text-[#1a2a8e] dark:text-[#ffa500] hover:bg-[#eff4ff] transition-colors px-3 py-1 rounded-lg" href="#">Privacy</a>
+</div>
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-container-highest border-2 border-primary-container">
+<img alt="User profile avatar" data-alt="close-up portrait of a professional man with a friendly expression in a modern office environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7iwcqxJS7__H4HKKpYAQY-F4VxKP2Q1Y72Be4v0BIuLUa7aFxcMhWfbAtWl8AzqlVi05zFXCGUXIeWrNo8Bo1NW2TzkJ8MxjZ91zfNQaCPa94MsVlVb8uAjDqXjcG8KdTZADshSw0gXd15D3QcNjA9t2lw5UgGM8IO6wbJaeaMuyusLhNqprBj3wXE9ae8eRpdQb2HC0vLx74hNFBn5rT206Ns0pfFaK2uPytkUUgvYhU69x6yeryIfM3Xoqyo9VhJ8RfTyf3AUc"/>
+</div>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-6 pt-28 pb-12">
+<!-- Hero Section -->
+<section class="mb-12">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+<div class="max-w-2xl">
+<span class="text-primary font-bold tracking-widest uppercase text-xs mb-2 block">Privacy Shield Active</span>
+<h2 class="text-4xl md:text-5xl font-black text-on-secondary-container leading-tight mb-4">Your data, your rules.</h2>
+<p class="text-on-surface-variant text-lg leading-relaxed">Manage how your information is accessed and control the security of your account across all authorized devices.</p>
+</div>
+<div class="bg-primary-container text-on-primary-container px-6 py-4 rounded-xl flex items-center gap-4 shadow-sm">
+<span class="material-symbols-outlined text-3xl" data-icon="verified_user">verified_user</span>
+<div>
+<div class="text-sm font-bold">Privacy Health</div>
+<div class="text-2xl font-black">98%</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Data Permissions Section -->
+<div class="md:col-span-7 space-y-6">
+<div class="bg-surface-container-low rounded-[2rem] p-8">
+<div class="flex items-center gap-3 mb-8">
+<div class="w-10 h-10 bg-on-secondary-container rounded-xl flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="folder_shared">folder_shared</span>
+</div>
+<h3 class="text-2xl font-bold text-on-secondary-container">Data Permissions</h3>
+</div>
+<div class="space-y-4">
+<!-- Permission Item -->
+<div class="bg-surface-container-lowest p-6 rounded-2xl flex items-center justify-between transition-all hover:shadow-md">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined" data-icon="contacts">contacts</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Contacts Access</h4>
+<p class="text-sm text-on-surface-variant">Sync contacts for secure transfers</p>
+</div>
+</div>
+<div class="flex items-center">
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-dim peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+</div>
+<!-- Permission Item -->
+<div class="bg-surface-container-lowest p-6 rounded-2xl flex items-center justify-between transition-all hover:shadow-md">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined" data-icon="storage">storage</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Storage Permissions</h4>
+<p class="text-sm text-on-surface-variant">Used for encrypted backup storage</p>
+</div>
+</div>
+<div class="flex items-center">
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-dim peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+</div>
+<!-- Permission Item -->
+<div class="bg-surface-container-lowest p-6 rounded-2xl flex items-center justify-between transition-all hover:shadow-md">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Location Tracking</h4>
+<p class="text-sm text-on-surface-variant">Required for fraud detection</p>
+</div>
+</div>
+<div class="flex items-center">
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-dim peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+</div>
+</div>
+</div>
+<!-- Ad Hoc Notice -->
+<div class="bg-tertiary-fixed p-6 rounded-[2rem] flex items-center gap-6">
+<div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary text-3xl" data-icon="vpn_key">vpn_key</span>
+</div>
+<div>
+<h4 class="font-bold text-on-tertiary-fixed mb-1">Advanced Encryption Standard</h4>
+<p class="text-sm text-on-tertiary-fixed-variant">All your data permissions are protected with AES-256 bit encryption before leaving your device.</p>
+</div>
+</div>
+</div>
+<!-- Security Controls Section -->
+<div class="md:col-span-5 space-y-6">
+<div class="bg-on-secondary-container rounded-[2rem] p-8 text-white relative overflow-hidden">
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-8">
+<span class="material-symbols-outlined text-primary-container" data-icon="admin_panel_settings">admin_panel_settings</span>
+<h3 class="text-2xl font-bold">Security Controls</h3>
+</div>
+<div class="space-y-6">
+<div>
+<h4 class="text-surface-dim text-xs font-bold uppercase tracking-widest mb-4">Active Sessions</h4>
+<div class="space-y-3">
+<!-- Session Card -->
+<div class="bg-white/10 backdrop-blur-md p-4 rounded-xl flex items-center justify-between border border-white/5">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-surface-dim" data-icon="laptop_mac">laptop_mac</span>
+<div>
+<div class="text-sm font-bold">MacBook Pro M2</div>
+<div class="text-xs text-surface-dim">London, UK • Active Now</div>
+</div>
+</div>
+<button class="text-xs font-bold text-primary-container hover:underline">Log Out</button>
+</div>
+<!-- Session Card -->
+<div class="bg-white/10 backdrop-blur-md p-4 rounded-xl flex items-center justify-between border border-white/5">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-surface-dim" data-icon="smartphone">smartphone</span>
+<div>
+<div class="text-sm font-bold">iPhone 15 Pro</div>
+<div class="text-xs text-surface-dim">Manchester, UK • 2h ago</div>
+</div>
+</div>
+<button class="text-xs font-bold text-primary-container hover:underline">Log Out</button>
+</div>
+</div>
+</div>
+<div>
+<h4 class="text-surface-dim text-xs font-bold uppercase tracking-widest mb-4">Device Authorization</h4>
+<button class="w-full bg-primary-container text-on-primary-container font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-primary-fixed-dim transition-colors">
+<span class="material-symbols-outlined" data-icon="add_moderator">add_moderator</span>
+                                    Authorize New Device
+                                </button>
+<p class="text-xs text-surface-dim text-center mt-4">Authorized devices can bypass 2FA for faster logins.</p>
+</div>
+</div>
+</div>
+<!-- Decorative Background Element -->
+<div class="absolute -bottom-10 -right-10 w-40 h-40 bg-primary-container opacity-10 rounded-full blur-3xl"></div>
+</div>
+<!-- Quick Actions -->
+<div class="bg-surface-container-high rounded-[2rem] p-8">
+<h3 class="font-bold text-on-secondary-container mb-6">Quick Privacy Actions</h3>
+<div class="grid grid-cols-2 gap-4">
+<button class="bg-white p-4 rounded-2xl flex flex-col items-center gap-2 hover:bg-primary-container/10 transition-colors text-center">
+<span class="material-symbols-outlined text-primary" data-icon="history">history</span>
+<span class="text-xs font-bold text-on-surface">Privacy Audit</span>
+</button>
+<button class="bg-white p-4 rounded-2xl flex flex-col items-center gap-2 hover:bg-primary-container/10 transition-colors text-center">
+<span class="material-symbols-outlined text-primary" data-icon="delete_sweep">delete_sweep</span>
+<span class="text-xs font-bold text-on-surface">Clear Data</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-white/90 dark:bg-[#0b1c30]/90 backdrop-blur-2xl shadow-[0_-8px_32px_rgba(11,28,48,0.06)] rounded-t-[2rem] z-50 flex justify-around items-center px-4 pb-6 pt-3">
+<a class="flex flex-col items-center justify-center text-[#1a2a8e]/60 dark:text-[#cbdbf5]/60 px-5 py-2" href="#">
+<span class="material-symbols-outlined" data-icon="verified_user">verified_user</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase mt-1">Security</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1a2a8e]/60 dark:text-[#cbdbf5]/60 px-5 py-2" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase mt-1">Payments</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1a2a8e]/60 dark:text-[#cbdbf5]/60 px-5 py-2" href="#">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase mt-1">Alerts</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-[#ffa500] text-white rounded-2xl px-5 py-2 scale-110 transition-transform shadow-lg shadow-orange-500/30" href="#">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase mt-1">Privacy</span>
+</a>
+</nav>
+</body></html>

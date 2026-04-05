@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MegaSafe | Payout History</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "outline": "#867461",
+                        "secondary-container": "#8a99ff",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed-variant": "#2d3c9e",
+                        "surface-variant": "#d3e4fe",
+                        "on-secondary-fixed": "#000d5f",
+                        "surface-tint": "#855400",
+                        "on-tertiary-container": "#0044a0",
+                        "surface-container-highest": "#d3e4fe",
+                        "primary-container": "#ffa500",
+                        "on-surface": "#0b1c30",
+                        "surface-container-high": "#dce9ff",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#f8f9ff",
+                        "tertiary": "#215abd",
+                        "primary-fixed-dim": "#ffb95c",
+                        "secondary-fixed-dim": "#bbc3ff",
+                        "on-tertiary-fixed-variant": "#00429b",
+                        "surface-container": "#e5eeff",
+                        "on-background": "#0b1c30",
+                        "on-tertiary-fixed": "#001945",
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#ffb95c",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed": "#dfe0ff",
+                        "on-surface-variant": "#534433",
+                        "surface-container-low": "#eff4ff",
+                        "primary-fixed": "#ffddb7",
+                        "tertiary-container": "#9ab7ff",
+                        "secondary": "#4655b7",
+                        "tertiary-fixed-dim": "#b0c6ff",
+                        "outline-variant": "#d9c3ac",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed": "#d9e2ff",
+                        "surface-dim": "#cbdbf5",
+                        "on-primary-fixed-variant": "#653e00",
+                        "inverse-on-surface": "#eaf1ff",
+                        "on-primary-container": "#684000",
+                        "surface": "#f8f9ff",
+                        "primary": "#855400",
+                        "on-error": "#ffffff",
+                        "background": "#f8f9ff",
+                        "on-primary-fixed": "#2a1700",
+                        "inverse-surface": "#213145",
+                        "on-secondary-container": "#1a2a8e",
+                        "on-primary": "#ffffff"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#f8f9ff]/80 backdrop-blur-xl shadow-[0_8px_32px_rgba(11,28,48,0.06)]">
+<div class="flex items-center justify-between px-6 py-4 w-full max-w-none">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#ffa500]" data-icon="shield">shield</span>
+<span class="text-xl font-black text-[#1a2a8e] tracking-tight">Vault</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</span>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border-2 border-primary-container">
+<img alt="User Profile" data-alt="Close-up portrait of a professional man in a clean studio setting with soft lighting and neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAZYD4go5Ed8dCXrGl7Az-6HXtJGL2uFoBp4Co4QVsTLVAy-3gcvFFMYKxhuVH5BM0ezTG5DvMuHQC6WYZph3YHoWhkDyORIfY6GGCrEXKjYXFWPVQ7QOWNdDE1MK4jUqs4uaVrT5q395RlJYUR-wkmjSoQK-_WNehpwgj-PNP7A9QtwM-CXNikG002XKuNio73bTlKn8HkikhqX85xBMox0Ltabb9bqALlgehGrww90d5lcU-cPEsdsaTYRXUOahu3wg4W1yRYnE"/>
+</div>
+</div>
+</div>
+</header>
+<main class="pt-24 px-6 max-w-5xl mx-auto">
+<!-- Hero Section: Payout Summary -->
+<section class="mb-10 mt-6">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<h1 class="text-on-secondary-container font-extrabold text-4xl tracking-tighter mb-2">Payout History</h1>
+<p class="text-on-surface-variant max-w-md">Transparent record of all secured transfers and biometric-verified settlements within your MegaSafe ecosystem.</p>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-[0_8px_32px_rgba(11,28,48,0.04)] flex flex-col items-end">
+<span class="text-label-sm uppercase tracking-widest text-[#ffa500] font-bold mb-1">Total Received</span>
+<span class="text-3xl font-black text-on-secondary-container">NLe 142,500.00</span>
+</div>
+</div>
+</section>
+<!-- Bento Grid Insights -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+<!-- Active Beneficiaries Card -->
+<div class="md:col-span-2 bg-surface-container-low rounded-xl p-8 flex flex-col justify-between relative overflow-hidden group">
+<div class="relative z-10">
+<h3 class="text-on-secondary-container font-bold text-xl mb-4">Top Beneficiaries</h3>
+<div class="flex -space-x-4 mb-6">
+<img class="w-14 h-14 rounded-full border-4 border-surface-container-low shadow-sm" data-alt="Portrait of a young woman with a friendly smile, natural lighting, soft outdoor background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCw_rCdxCErS69E2RP5_lALI_dkuUQWSl8WFkMGwKk2zyoitWSZuPCfvrd7hNQTlkIMWcaPUyRTpLEbHRru4KrV4G0F3GKX3QsV64lucqkePggilGp6I81VkTR59dDTG4VZsxHsqXyoRSPNuVxW00eavXzamzeT4-4p75dKlqj_HUzrtnROLdZgxMo_1pnU7mGZHT_davt2hUqvv96YOFfLAfhJRV1XpzYusAjVsqqHGsaKMh_QtlFXEBl1-b9fEb_JKf4oQzkpZDk"/>
+<img class="w-14 h-14 rounded-full border-4 border-surface-container-low shadow-sm" data-alt="Portrait of a man with spectacles, professional attire, soft indoor lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCiN5kp6m_k1r_rMztZ97mY6QU3WklCHPPBY_7g4oaoK7ZV6m6akoUxVX_5LeQ2WxGhBQnecTAE-ae1eTrIB-x7T4mdw0FZc0KgEC7ThvephaudBQiHhaPCejO9zMGK8owevQyGFL_YzHQeOcpv1kWOhOTw3J9VbksU6smT_ZOnqLtEE8Pwg5jJItx6acmA49xw-9Dj_vwWZ-0I279OQN_WDoslrC1oQ4nqhmoKbuj67coLsX0nabRBvxQShGtO-ol0Ly_MYOUh4wQ"/>
+<img class="w-14 h-14 rounded-full border-4 border-surface-container-low shadow-sm" data-alt="Business professional woman looking confident, office environment in soft focus background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSLfAd764PKEWa0wH7X4kORQy4LaMVStQ68kaBTSH7VpiryGcT_PQnSYk62wC9ni2XGkUQylnzDitBYMelQDBSVDa9rWW9vnocL4YSPAPhIxkMZFcyLDmpq0pO3iIvppvAFOUN_txABzIQ6HY1mxVx_-rkx-eqrgz7gaz6fsFuXrV62wyx_dGBXtCRVmPs1BFSISmsFelzhneREVKsS4hjPcXBeTJRpoHco5h9pi5XtLKhOA99dl2Ec2ypzOmoMkWTF2NZIEWnp-Q"/>
+<div class="w-14 h-14 rounded-full border-4 border-surface-container-low bg-surface-container-highest flex items-center justify-center text-on-secondary-container font-bold shadow-sm">+12</div>
+</div>
+<p class="text-on-surface-variant body-md">Direct settlements sent to verified biometric vaults across the network.</p>
+</div>
+<div class="absolute -right-8 -bottom-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
+<span class="material-symbols-outlined text-[160px]" data-icon="groups">groups</span>
+</div>
+</div>
+<!-- Security Status Card -->
+<div class="bg-primary-container rounded-xl p-8 flex flex-col justify-center items-center text-center shadow-lg">
+<div class="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-white text-3xl" data-icon="verified_user" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</div>
+<h3 class="text-on-primary-container font-black text-xl leading-tight">100% Secure Verification</h3>
+<p class="text-on-primary-container/80 text-sm mt-2">Every payout is cryptographically signed and stored.</p>
+</div>
+</div>
+<!-- Transaction List Section -->
+<section class="bg-surface-container-lowest rounded-xl shadow-[0_8px_32px_rgba(11,28,48,0.04)] overflow-hidden">
+<div class="px-8 py-6 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-low/50">
+<h2 class="text-on-secondary-container font-bold text-lg">Detailed Payout Log</h2>
+<button class="flex items-center gap-2 text-primary font-bold text-sm hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-sm" data-icon="filter_list">filter_list</span>
+                    Filter Records
+                </button>
+</div>
+<div class="divide-y divide-outline-variant/5">
+<!-- Transaction 1 -->
+<div class="px-8 py-5 flex items-center justify-between hover:bg-surface-container-low transition-colors group">
+<div class="flex items-center gap-5">
+<div class="relative">
+<img class="w-12 h-12 rounded-xl object-cover" data-alt="Portrait of a person with a warm expression, modern studio lighting, neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXe0Baczc-Y-aBr9JYa18G-00OJIVFwbLpYU1hGN2l8HjxFSoDboCbr64vRH393dzPGOlCuYmKyNsSOhsyNaT5FSRtBCh2PRsKgsxLt2FDRYi6OsvyHHVGLRuR5lIrIDy8bmWfp5B28aTG1c9PlCKT5U2xBqE3oLFTmmrlIVOmJC0ob1ZAiV1RMXs8WUVB7SV_gfTjUVUIblJ9X3mtCZ9k570ANkTXXhbIFag1cZYIAfRbyZhp16eUB4d8rlTYfAvYHuKX0PlRnoY"/>
+<div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
+</div>
+<div>
+<p class="text-on-secondary-container font-bold">Aruna Kamara</p>
+<p class="text-on-surface-variant text-xs">Biometric Vault ID: #MS-9921</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-on-secondary-container font-black text-lg">NLe 12,450.00</p>
+<p class="text-on-surface-variant text-xs font-medium uppercase tracking-tighter">Oct 24, 2023 • 14:32</p>
+</div>
+</div>
+<!-- Transaction 2 -->
+<div class="px-8 py-5 flex items-center justify-between hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-5">
+<div class="relative">
+<img class="w-12 h-12 rounded-xl object-cover" data-alt="Portrait of a creative professional woman, artistic lighting, soft focus background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsYyr4fTZA81XEH8ZGAKXBDFfge8XIlnWjTw3AMac-82J6DUBmcumqtFp9BQgP-OyQqIp_UuJ8fiuHqscXVIDNy8FARF6eWuQ695d1RCLRZV9m7G9sZjO9MY66m15qCoS7X3W4B4cdGplgMQcaTZSjE3oTxMivvyu1w5VIQwSsMg8H6dtmu0YCskctlBMWT-rD-jY2IDjxinv-QEGrKEIN3EHA-JAaQyYJqQyoIImnBzIG19aAyAsPydAjwAGWANhZ3otwiHLyA-U"/>
+<div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
+</div>
+<div>
+<p class="text-on-secondary-container font-bold">Isatu Mansaray</p>
+<p class="text-on-surface-variant text-xs">Biometric Vault ID: #MS-7742</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-on-secondary-container font-black text-lg">NLe 8,200.00</p>
+<p class="text-on-surface-variant text-xs font-medium uppercase tracking-tighter">Oct 22, 2023 • 09:15</p>
+</div>
+</div>
+<!-- Transaction 3 -->
+<div class="px-8 py-5 flex items-center justify-between hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-5">
+<div class="relative">
+<img class="w-12 h-12 rounded-xl object-cover" data-alt="Portrait of a smiling young man, natural sunlight, park setting blurred background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2PuGrrDkmfyJV-1a2l12EVy1CajrKxpMQuEz3G-9_JTUro7ouaPaZM5NzIWPAB8xrWtG1NJF4E9qExiV5JUVEL3ilXJt5bVVRDwdN_-sPjESoPZqutOsLN8artsu-nM09d1CXTVffl6UMPrHggB3yoODt_uVeVqkuhDcvOwMBC4oXdFtPZBrpYJaMXs8WDnO2mCk8LYUQFwlMvpWyw1RPwAZcZirEoSkJecgGhc9AadsSsu7z-nS1Ppe1bXBDEUmVwyvQvmzzvWU"/>
+<div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
+</div>
+<div>
+<p class="text-on-secondary-container font-bold">Musa Bangura</p>
+<p class="text-on-surface-variant text-xs">Biometric Vault ID: #MS-1104</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-on-secondary-container font-black text-lg">NLe 25,000.00</p>
+<p class="text-on-surface-variant text-xs font-medium uppercase tracking-tighter">Oct 20, 2023 • 17:55</p>
+</div>
+</div>
+<!-- Transaction 4 -->
+<div class="px-8 py-5 flex items-center justify-between hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-5">
+<div class="relative">
+<img class="w-12 h-12 rounded-xl object-cover" data-alt="Portrait of a young person with vibrant energy, clean aesthetic background, professional lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAKB0nU4nYhKPfavXla7Pfkpd6R6HLo_ZtCqDe_CSpX1i1ZDpelIBShqnEC9245uUsoOSx686EHObYDUslYkIlXbbXsmDSReeuSnrdYzsQzp4ZKX52H-GDdtI5lKv432Y3RnHOd7MdWHztUlZvtO0wk0lfR5oi7CKgxg5S5ueshW-SiDqnI4wfLOCp56ONHHT_NlzeuULNFQcUBsGPq9vl0TgOl6HQnM78wB7B1a5BPElaj6f5cAI4TSij2BB6jObZJQBDPAj-tiU"/>
+<div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
+</div>
+<div>
+<p class="text-on-secondary-container font-bold">Fatmata Turay</p>
+<p class="text-on-surface-variant text-xs">Biometric Vault ID: #MS-3390</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-on-secondary-container font-black text-lg">NLe 4,120.50</p>
+<p class="text-on-surface-variant text-xs font-medium uppercase tracking-tighter">Oct 18, 2023 • 11:02</p>
+</div>
+</div>
+</div>
+<!-- Empty Space / Footer of list -->
+<div class="px-8 py-8 bg-surface-container-low/20 text-center">
+<button class="bg-secondary-fixed text-on-secondary-fixed font-bold py-3 px-8 rounded-xl shadow-sm hover:bg-secondary-fixed-dim transition-all active:scale-95 duration-200">
+                    Load Archive Records
+                </button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full h-20 bg-white/90 backdrop-blur-2xl flex justify-around items-center px-4 pb-2 rounded-t-[2rem] z-50 shadow-[0_-8px_32px_rgba(11,28,48,0.06)]">
+<div class="flex flex-col items-center justify-center text-[#1a2a8e] opacity-60 hover:opacity-100 transition-all active:scale-90 duration-300 ease-out cursor-pointer">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-[11px] font-semibold tracking-wide uppercase">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-[#ffa500] text-white rounded-xl py-2 px-4 scale-110 active:scale-90 duration-300 ease-out cursor-pointer">
+<span class="material-symbols-outlined" data-icon="payments" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="text-[11px] font-semibold tracking-wide uppercase">Payouts</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#1a2a8e] opacity-60 hover:opacity-100 transition-all active:scale-90 duration-300 ease-out cursor-pointer">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="text-[11px] font-semibold tracking-wide uppercase">Savings</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#1a2a8e] opacity-60 hover:opacity-100 transition-all active:scale-90 duration-300 ease-out cursor-pointer">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="text-[11px] font-semibold tracking-wide uppercase">Profile</span>
+</div>
+</nav>
+</body></html>

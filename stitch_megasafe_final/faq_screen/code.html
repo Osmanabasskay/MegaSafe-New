@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-container": "#8a99ff",
+              "primary-fixed-dim": "#ffb95c",
+              "on-primary-fixed": "#2a1700",
+              "tertiary-container": "#9ab7ff",
+              "surface-bright": "#f8f9ff",
+              "on-secondary-fixed-variant": "#2d3c9e",
+              "surface-container-high": "#dce9ff",
+              "secondary-fixed": "#dfe0ff",
+              "on-tertiary-fixed": "#001945",
+              "on-secondary-container": "#1a2a8e",
+              "on-error": "#ffffff",
+              "error-container": "#ffdad6",
+              "on-secondary-fixed": "#000d5f",
+              "tertiary": "#215abd",
+              "surface-container-highest": "#d3e4fe",
+              "surface-container-low": "#eff4ff",
+              "inverse-surface": "#213145",
+              "secondary-fixed-dim": "#bbc3ff",
+              "secondary": "#4655b7",
+              "on-tertiary": "#ffffff",
+              "on-surface": "#0b1c30",
+              "on-error-container": "#93000a",
+              "on-primary": "#ffffff",
+              "on-secondary": "#ffffff",
+              "primary": "#855400",
+              "primary-fixed": "#ffddb7",
+              "primary-container": "#ffa500",
+              "outline-variant": "#d9c3ac",
+              "on-primary-container": "#684000",
+              "tertiary-fixed-dim": "#b0c6ff",
+              "background": "#f8f9ff",
+              "on-tertiary-fixed-variant": "#00429b",
+              "surface": "#f8f9ff",
+              "surface-container-lowest": "#ffffff",
+              "error": "#ba1a1a",
+              "on-primary-fixed-variant": "#653e00",
+              "surface-dim": "#cbdbf5",
+              "inverse-primary": "#ffb95c",
+              "tertiary-fixed": "#d9e2ff",
+              "surface-variant": "#d3e4fe",
+              "outline": "#867461",
+              "surface-container": "#e5eeff",
+              "surface-tint": "#855400",
+              "on-surface-variant": "#534433",
+              "on-tertiary-container": "#0044a0",
+              "on-background": "#0b1c30",
+              "inverse-on-surface": "#eaf1ff"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#f8f9ff]/80 backdrop-blur-xl shadow-[0_8px_32px_rgba(11,28,48,0.06)]">
+<div class="flex items-center justify-between px-6 h-16 w-full">
+<div class="flex items-center gap-4">
+<button class="text-[#ffa500] hover:bg-[#eff4ff] transition-colors p-2 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-['Inter'] font-bold text-lg tracking-tight text-[#1a2a8e]">Help &amp; Support</h1>
+</div>
+<button class="text-[#ffa500] hover:bg-[#eff4ff] transition-colors p-2 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<main class="pt-24 px-6 max-w-4xl mx-auto">
+<!-- Hero Search Section -->
+<section class="mb-12">
+<div class="mb-8">
+<h2 class="text-4xl font-extrabold text-on-secondary-container tracking-tight mb-2">How can we help?</h2>
+<p class="text-on-surface-variant body-md">Search our knowledge base or browse categories below.</p>
+</div>
+<div class="relative group">
+<div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-on-surface-variant group-focus-within:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</div>
+<input class="w-full pl-12 pr-4 py-4 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all text-on-surface placeholder:text-outline shadow-sm" placeholder="Search for questions (e.g. 'biometric login')" type="text"/>
+</div>
+</section>
+<!-- Categories Grid -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+<button class="flex flex-col items-center p-6 bg-surface-container-lowest rounded-xl hover:bg-surface-container-high transition-all active:scale-95 group">
+<div class="w-12 h-12 bg-primary-fixed rounded-full flex items-center justify-center mb-3 group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-on-primary-fixed" data-icon="security">security</span>
+</div>
+<span class="text-xs font-bold text-on-surface uppercase tracking-widest">Security</span>
+</button>
+<button class="flex flex-col items-center p-6 bg-surface-container-lowest rounded-xl hover:bg-surface-container-high transition-all active:scale-95 group border-2 border-primary-container">
+<div class="w-12 h-12 bg-primary-container rounded-full flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="account_balance_wallet">account_balance_wallet</span>
+</div>
+<span class="text-xs font-bold text-on-surface uppercase tracking-widest">Account</span>
+</button>
+<button class="flex flex-col items-center p-6 bg-surface-container-lowest rounded-xl hover:bg-surface-container-high transition-all active:scale-95 group">
+<div class="w-12 h-12 bg-primary-fixed rounded-full flex items-center justify-center mb-3 group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-on-primary-fixed" data-icon="payments">payments</span>
+</div>
+<span class="text-xs font-bold text-on-surface uppercase tracking-widest">Billing</span>
+</button>
+<button class="flex flex-col items-center p-6 bg-surface-container-lowest rounded-xl hover:bg-surface-container-high transition-all active:scale-95 group">
+<div class="w-12 h-12 bg-primary-fixed rounded-full flex items-center justify-center mb-3 group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-on-primary-fixed" data-icon="devices">devices</span>
+</div>
+<span class="text-xs font-bold text-on-surface uppercase tracking-widest">Devices</span>
+</button>
+</section>
+<!-- FAQ Accordion -->
+<section class="space-y-4 mb-16">
+<h3 class="text-xl font-bold text-on-secondary-container mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+                Popular Questions
+            </h3>
+<!-- Question 1 -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+<details class="group" open="">
+<summary class="flex items-center justify-between p-6 cursor-pointer list-none">
+<span class="font-semibold text-on-surface">How do I enable two-factor authentication?</span>
+<span class="material-symbols-outlined transition-transform group-open:rotate-180" data-icon="expand_more">expand_more</span>
+</summary>
+<div class="px-6 pb-6 pt-0 text-on-surface-variant leading-relaxed">
+                        To enable 2FA, navigate to <span class="text-on-secondary-container font-medium">Security Settings &gt; Authentication</span>. You can choose between SMS codes or an authenticator app. We highly recommend using an authenticator app like Google Authenticator or Authy for maximum protection.
+                        <div class="mt-4 pt-4 border-t border-surface-container-low flex items-center justify-between">
+<span class="text-xs font-medium italic">Was this helpful?</span>
+<div class="flex gap-4">
+<button class="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="thumb_up">thumb_up</span> Yes
+                                </button>
+<button class="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-error-container transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="thumb_down">thumb_down</span> No
+                                </button>
+</div>
+</div>
+</div>
+</details>
+</div>
+<!-- Question 2 -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden">
+<details class="group">
+<summary class="flex items-center justify-between p-6 cursor-pointer list-none">
+<span class="font-semibold text-on-surface">What happens if I lose my recovery phrase?</span>
+<span class="material-symbols-outlined transition-transform group-open:rotate-180" data-icon="expand_more">expand_more</span>
+</summary>
+<div class="px-6 pb-6 pt-0 text-on-surface-variant leading-relaxed">
+                        Your recovery phrase is the only way to access your vault if you lose your password. MegaSafe does not store these phrases for your security. If you lose it, we cannot recover your data. We recommend storing it in a physical fireproof safe or a safety deposit box.
+                    </div>
+</details>
+</div>
+<!-- Question 3 -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+<details class="group">
+<summary class="flex items-center justify-between p-6 cursor-pointer list-none">
+<span class="font-semibold text-on-surface">Can I share my vault with family members?</span>
+<span class="material-symbols-outlined transition-transform group-open:rotate-180" data-icon="expand_more">expand_more</span>
+</summary>
+<div class="px-6 pb-6 pt-0 text-on-surface-variant leading-relaxed">
+                        Yes, our Family Plan allows you to share specific folders with up to 5 family members. Each member maintains their own private vault while having access to shared resources.
+                    </div>
+</details>
+</div>
+<!-- Question 4 -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden">
+<details class="group">
+<summary class="flex items-center justify-between p-6 cursor-pointer list-none">
+<span class="font-semibold text-on-surface">Is my data encrypted locally or on your servers?</span>
+<span class="material-symbols-outlined transition-transform group-open:rotate-180" data-icon="expand_more">expand_more</span>
+</summary>
+<div class="px-6 pb-6 pt-0 text-on-surface-variant leading-relaxed">
+                        MegaSafe uses zero-knowledge architecture. This means your data is encrypted locally on your device before it ever reaches our servers. We never have access to your unencrypted files or your master password.
+                    </div>
+</details>
+</div>
+</section>
+<!-- CTA Section -->
+<section class="bg-on-secondary-container rounded-2xl p-8 text-on-secondary relative overflow-hidden mb-12">
+<div class="relative z-10">
+<h4 class="text-2xl font-bold mb-2">Still need help?</h4>
+<p class="opacity-80 mb-6 max-w-md">Our support team is available 24/7 for premium members to help with any security concerns.</p>
+<div class="flex flex-wrap gap-4">
+<button class="bg-primary-container text-on-primary-container px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-primary-fixed-dim transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+                        Live Chat
+                    </button>
+<button class="bg-secondary-fixed text-on-secondary-fixed px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-secondary-fixed-dim transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+                        Email Support
+                    </button>
+</div>
+</div>
+<!-- Decorative element -->
+<div class="absolute -right-12 -bottom-12 w-64 h-64 bg-primary/20 rounded-full blur-3xl"></div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full rounded-t-[2rem] z-50 bg-[#ffffff]/90 backdrop-blur-2xl shadow-[0_-8px_32px_rgba(11,28,48,0.06)]">
+<div class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 py-3 pb-safe">
+<button class="flex flex-col items-center justify-center text-[#534433] opacity-70 hover:opacity-100 transition-opacity active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Inter'] text-[11px] font-semibold tracking-wide">Dashboard</span>
+</button>
+<button class="flex flex-col items-center justify-center text-[#534433] opacity-70 hover:opacity-100 transition-opacity active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="shield">shield</span>
+<span class="font-['Inter'] text-[11px] font-semibold tracking-wide">Security</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-[#ffa500] text-[#684000] rounded-xl px-5 py-1.5 active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="help_center">help_center</span>
+<span class="font-['Inter'] text-[11px] font-semibold tracking-wide">Support</span>
+</button>
+<button class="flex flex-col items-center justify-center text-[#534433] opacity-70 hover:opacity-100 transition-opacity active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-['Inter'] text-[11px] font-semibold tracking-wide">Settings</span>
+</button>
+</div>
+</nav>
+</body></html>

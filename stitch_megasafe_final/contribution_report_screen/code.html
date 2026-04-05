@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MegaSafe | Contribution Report</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-secondary-container": "#1a2a8e",
+              "surface-dim": "#cbdbf5",
+              "secondary-fixed": "#dfe0ff",
+              "on-tertiary-fixed": "#001945",
+              "inverse-on-surface": "#eaf1ff",
+              "on-primary-fixed-variant": "#653e00",
+              "surface-bright": "#f8f9ff",
+              "on-error": "#ffffff",
+              "surface-variant": "#d3e4fe",
+              "primary-container": "#ffa500",
+              "on-surface-variant": "#534433",
+              "surface-container-highest": "#d3e4fe",
+              "outline-variant": "#d9c3ac",
+              "on-surface": "#0b1c30",
+              "surface-container": "#e5eeff",
+              "inverse-primary": "#ffb95c",
+              "surface": "#f8f9ff",
+              "primary": "#855400",
+              "on-tertiary-container": "#0044a0",
+              "on-error-container": "#93000a",
+              "error": "#ba1a1a",
+              "surface-tint": "#855400",
+              "on-primary-container": "#684000",
+              "tertiary": "#215abd",
+              "surface-container-low": "#eff4ff",
+              "secondary": "#4655b7",
+              "error-container": "#ffdad6",
+              "surface-container-lowest": "#ffffff",
+              "secondary-fixed-dim": "#bbc3ff",
+              "primary-fixed": "#ffddb7",
+              "on-secondary-fixed": "#000d5f",
+              "on-background": "#0b1c30",
+              "inverse-surface": "#213145",
+              "on-secondary": "#ffffff",
+              "outline": "#867461",
+              "on-tertiary": "#ffffff",
+              "primary-fixed-dim": "#ffb95c",
+              "surface-container-high": "#dce9ff",
+              "tertiary-fixed": "#d9e2ff",
+              "tertiary-container": "#9ab7ff",
+              "on-secondary-fixed-variant": "#2d3c9e",
+              "tertiary-fixed-dim": "#b0c6ff",
+              "secondary-container": "#8a99ff",
+              "on-tertiary-fixed-variant": "#00429b",
+              "on-primary-fixed": "#2a1700",
+              "background": "#f8f9ff",
+              "on-primary": "#ffffff"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .glass-header {
+            background: rgba(248, 249, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex items-center justify-between px-6 h-16 bg-slate-50/80 backdrop-blur-xl shadow-sm shadow-blue-900/5">
+<div class="flex items-center gap-3">
+<div class="text-orange-500">
+<span class="material-symbols-outlined text-2xl" data-icon="shield">shield</span>
+</div>
+<h1 class="text-xl font-black tracking-tight text-blue-900">MegaSafe</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex items-center gap-8 mr-6">
+<span class="text-blue-800/60 font-semibold text-sm cursor-pointer hover:bg-blue-100/50 transition-colors px-3 py-2 rounded-lg">Activity</span>
+<span class="text-blue-800/60 font-semibold text-sm cursor-pointer hover:bg-blue-100/50 transition-colors px-3 py-2 rounded-lg">Members</span>
+<span class="text-blue-800/60 font-semibold text-sm cursor-pointer hover:bg-blue-100/50 transition-colors px-3 py-2 rounded-lg">Disputes</span>
+<span class="text-orange-600 font-semibold text-sm cursor-pointer px-3 py-2 rounded-lg bg-orange-100">Reports</span>
+</div>
+<img alt="Admin Profile" class="w-8 h-8 rounded-full border-2 border-primary-container" data-alt="professional portrait of a financial administrator in a modern office setting with soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCN1QjX0R28DSTOInkOZz-BiFW8f5zjeKHiedLYonAlFCbx_U6CxGM1afsomaNgJe3gJLjNtPvk7KGg_PbVQDQSShx1jNHkvoamzniWlekjZ0hcd3m5Wa9olMrmvg3gzi9wWRRSDQMa5gd3djlGeNh3oehuBAYNktvcTKQGZj4jiSkgaGKPrTvBVM9mFqjGbxe_qdYMvegOU1ASU2H_rnwGee0bHDoV-CLih-BVG_y4qWkGedF-SZQCWlZZOXdWbq0t5Xi0HIREGs"/>
+</div>
+</header>
+<main class="pt-24 px-6 max-w-7xl mx-auto space-y-10">
+<!-- Hero Summary Section (Asymmetric Layout) -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<div class="lg:col-span-8 flex flex-col justify-end p-8 rounded-3xl bg-gradient-to-br from-on-secondary-container to-secondary text-white relative overflow-hidden h-[320px]">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-3xl -mr-20 -mt-20"></div>
+<div class="relative z-10">
+<p class="text-primary-container font-bold tracking-widest uppercase text-xs mb-2">Quarterly Summary</p>
+<h2 class="text-4xl md:text-5xl font-black mb-6">Cycle Contribution Report</h2>
+<div class="flex flex-wrap gap-8">
+<div>
+<p class="text-white/60 text-sm font-medium">Total Collected</p>
+<p class="text-3xl font-bold">NLe 142,500.00</p>
+</div>
+<div class="h-12 w-px bg-white/20 hidden sm:block"></div>
+<div>
+<p class="text-white/60 text-sm font-medium">Active Members</p>
+<p class="text-3xl font-bold">482</p>
+</div>
+<div class="h-12 w-px bg-white/20 hidden sm:block"></div>
+<div>
+<p class="text-white/60 text-sm font-medium">Target Met</p>
+<p class="text-3xl font-bold text-primary-container">94%</p>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-4 bg-surface-container-low rounded-3xl p-8 flex flex-col justify-between">
+<div>
+<span class="material-symbols-outlined text-primary text-4xl mb-4" data-icon="verified_user">verified_user</span>
+<h3 class="text-xl font-bold text-on-secondary-container leading-tight">Your vault is secure and audit-ready.</h3>
+<p class="text-on-surface-variant text-sm mt-2">All contributions for this cycle have been cryptographically verified.</p>
+</div>
+<button class="w-full bg-primary-container text-on-primary-container font-bold py-4 rounded-xl hover:shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 mt-6">
+<span class="material-symbols-outlined" data-icon="download">download</span>
+                    Export Full Audit
+                </button>
+</div>
+</section>
+<!-- Contribution Trends (Bento Style) -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="md:col-span-2 bg-surface-container-lowest rounded-3xl p-8 shadow-sm">
+<div class="flex items-center justify-between mb-8">
+<h3 class="text-lg font-bold text-on-secondary-container">Contribution Trends</h3>
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-surface-container-high rounded-full text-xs font-bold text-on-secondary-container">Weekly</span>
+<span class="px-3 py-1 bg-primary-container text-on-primary-container rounded-full text-xs font-bold">Monthly</span>
+</div>
+</div>
+<!-- Simulated Bar Chart -->
+<div class="flex items-end justify-between h-48 gap-2">
+<div class="w-full bg-surface-container rounded-t-lg relative group h-[40%]">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-secondary-container text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">NLe 12k</div>
+</div>
+<div class="w-full bg-surface-container rounded-t-lg relative group h-[65%]"></div>
+<div class="w-full bg-surface-container rounded-t-lg relative group h-[55%]"></div>
+<div class="w-full bg-primary rounded-t-lg relative group h-[85%]">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-secondary-container text-white text-[10px] px-2 py-1 rounded opacity-100 transition-opacity">NLe 28k</div>
+</div>
+<div class="w-full bg-surface-container rounded-t-lg relative group h-[75%]"></div>
+<div class="w-full bg-surface-container rounded-t-lg relative group h-[95%]"></div>
+<div class="w-full bg-surface-container rounded-t-lg relative group h-[60%]"></div>
+<div class="w-full bg-surface-container rounded-t-lg relative group h-[45%]"></div>
+</div>
+<div class="flex justify-between mt-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest px-1">
+<span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span>
+</div>
+</div>
+<div class="bg-primary-container rounded-3xl p-8 text-on-primary-container flex flex-col items-center justify-center text-center space-y-4">
+<div class="w-20 h-20 rounded-full border-4 border-white/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl" data-icon="trending_up">trending_up</span>
+</div>
+<div>
+<h4 class="text-3xl font-black">+12.4%</h4>
+<p class="font-bold text-sm uppercase tracking-wider opacity-80">Growth vs Last Cycle</p>
+</div>
+<p class="text-xs leading-relaxed opacity-90">The community has expanded significantly since the integration of decentralized smart-vaults.</p>
+</div>
+</section>
+<!-- Members Summary List (Editorial Table) -->
+<section class="space-y-6">
+<div class="flex items-center justify-between">
+<h3 class="text-2xl font-black text-on-secondary-container">Member Payment Summary</h3>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 w-64" placeholder="Search members..." type="text"/>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-3xl overflow-hidden shadow-sm">
+<div class="grid grid-cols-12 px-8 py-5 border-b border-surface-container text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+<div class="col-span-5">Member Identity</div>
+<div class="col-span-3 text-right">Last Payment</div>
+<div class="col-span-4 text-right">Total Contributed (NLe)</div>
+</div>
+<!-- Member Row 1 -->
+<div class="grid grid-cols-12 px-8 py-6 items-center hover:bg-surface-container-low transition-colors group cursor-pointer">
+<div class="col-span-5 flex items-center gap-4">
+<img class="w-10 h-10 rounded-xl" data-alt="close-up portrait of a middle-aged businessman with a warm smile wearing a blue suit" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDV-RLHFtr4qOk7ibkv4tE5BdC6Co2yHy60UhPRdq1BJwBcK5M0G2hoDOUw3rVh8joQXfovjm51y3TbvTvz0s6_zYGPEiN_700_b1L4tuEa6HwF-vQywy4EREBd8V1VDiCAIC1-bENJ1ab01p2rQ3H8OyAbame2qSkH0MV4idcwDskqE3YJik8R3HOGRxgIzduLqZEe-HcceD86yS0z85M9aY_nWOi7mwJYs-aeHzUDsR0cwc0AU2iEbzd8ouiFAnh8O6jzEjB6-ec"/>
+<div>
+<p class="font-bold text-on-surface">Alhaji Mansaray</p>
+<p class="text-xs text-on-surface-variant">ID: MS-0982</p>
+</div>
+</div>
+<div class="col-span-3 text-right">
+<p class="text-sm font-medium">Oct 12, 2023</p>
+<p class="text-[10px] text-primary font-bold">SUCCESS</p>
+</div>
+<div class="col-span-4 text-right">
+<p class="text-lg font-black text-on-secondary-container">12,450.00</p>
+</div>
+</div>
+<!-- Member Row 2 -->
+<div class="grid grid-cols-12 px-8 py-6 items-center hover:bg-surface-container-low transition-colors group cursor-pointer">
+<div class="col-span-5 flex items-center gap-4">
+<img class="w-10 h-10 rounded-xl" data-alt="portrait of a young female professional with braided hair in a vibrant yellow top" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDICN8ADZTaEsZgCUp9SbbjBmrCJqemHb-eSyP7Ygwgbw_vhpD8jC3KzPorfQ1VrpR95z6bTWd4wXnFqXQLfTqGRRpWPDolmM59NZjb9UlkTjaCk9dws-K7jfGWIbPVgwDy2GrRilq9mDO722RLw2nO0mBrALtWEGIhBEp-mHGnpL2EhZaSG5T2kSqQQAoTaKSn82CqttANLeFPHn2ef-slwRFs37nW6ivAaT0xc9-EmDjq9mND_WU-LouSGFMJ7crwoXxGJadFrVU"/>
+<div>
+<p class="font-bold text-on-surface">Fatu Kamara</p>
+<p class="text-xs text-on-surface-variant">ID: MS-1142</p>
+</div>
+</div>
+<div class="col-span-3 text-right">
+<p class="text-sm font-medium">Oct 10, 2023</p>
+<p class="text-[10px] text-primary font-bold">SUCCESS</p>
+</div>
+<div class="col-span-4 text-right">
+<p class="text-lg font-black text-on-secondary-container">8,200.00</p>
+</div>
+</div>
+<!-- Member Row 3 -->
+<div class="grid grid-cols-12 px-8 py-6 items-center hover:bg-surface-container-low transition-colors group cursor-pointer">
+<div class="col-span-5 flex items-center gap-4">
+<img class="w-10 h-10 rounded-xl" data-alt="headshot of a mature man with glasses and a friendly demeanor in an office" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1px4-CqErmtZ375PK11XGLnGwn3mJH1TQezJzDulsyhbXuvOb02RI66TrPackb6_4PmjQXR8XY3e1Z2t8TCNdPtocrsQmMPrcERanLbOdju1Bw07PHpA_ii9-27JoioeOt9PrA1m7AKD91okkdQCRpybN8cx5_fMNOrbPE_LMzdVyYcc7JqwdIQ9_7KsypyK3LD8WjLp4V54R9Bu1YgILMbVKbZjLeABkzwaGPNR4JDj8Hb_TWRSA6hbvBWvzAftFyfw1I3Vgmq8"/>
+<div>
+<p class="font-bold text-on-surface">Samuel Turay</p>
+<p class="text-xs text-on-surface-variant">ID: MS-0551</p>
+</div>
+</div>
+<div class="col-span-3 text-right">
+<p class="text-sm font-medium">Oct 08, 2023</p>
+<p class="text-[10px] text-error font-bold uppercase">Pending Audit</p>
+</div>
+<div class="col-span-4 text-right">
+<p class="text-lg font-black text-on-secondary-container">15,000.00</p>
+</div>
+</div>
+<!-- Member Row 4 -->
+<div class="grid grid-cols-12 px-8 py-6 items-center hover:bg-surface-container-low transition-colors group cursor-pointer">
+<div class="col-span-5 flex items-center gap-4">
+<img class="w-10 h-10 rounded-xl" data-alt="modern close-up portrait of a woman with a confident expression in a bright workspace" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAercdYpbrYyRICC8db8bCMLGs6Hbee1C9A8KSuFtrSJX-XyFeFuCXUrn3bg5-pr3GmghyAGKWZIlGzU8T6FCh5EvTS9sIUOfpK7nG-lHlXAQ8tjit3pqPSt-tFZ_YlEdGsY9vrtaX5kGyOQgZVFEMGEsiz6dA9RAmFn47nLpTeCq0qCh-yVICvvQHN-wGgbrwzG3GkpFqjLu1YO3DMe6-A-Q4wHyGaYnp6dEVqz8BYrniCm0BMa_Bt40YPfAxH6WSi7PppJBmhL0"/>
+<div>
+<p class="font-bold text-on-surface">Jeneba Bangura</p>
+<p class="text-xs text-on-surface-variant">ID: MS-2311</p>
+</div>
+</div>
+<div class="col-span-3 text-right">
+<p class="text-sm font-medium">Oct 05, 2023</p>
+<p class="text-[10px] text-primary font-bold">SUCCESS</p>
+</div>
+<div class="col-span-4 text-right">
+<p class="text-lg font-black text-on-secondary-container">5,100.00</p>
+</div>
+</div>
+<div class="p-8 bg-surface-container-low flex justify-center">
+<button class="text-primary font-bold text-sm hover:underline">View All 482 Members</button>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-white/90 backdrop-blur-lg rounded-t-2xl z-50 shadow-[0_-8px_32px_rgba(11,28,48,0.06)]">
+<div class="flex flex-col items-center justify-center text-blue-900/50 px-3 py-1.5 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-inter text-[11px] font-semibold tracking-wide uppercase mt-1">Activity</span>
+</div>
+<div class="flex flex-col items-center justify-center text-blue-900/50 px-3 py-1.5 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-inter text-[11px] font-semibold tracking-wide uppercase mt-1">Members</span>
+</div>
+<div class="flex flex-col items-center justify-center text-blue-900/50 px-3 py-1.5 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+<span class="font-inter text-[11px] font-semibold tracking-wide uppercase mt-1">Disputes</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-orange-100 text-orange-700 rounded-xl px-3 py-1.5 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="payments" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="font-inter text-[11px] font-semibold tracking-wide uppercase mt-1">Reports</span>
+</div>
+</nav>
+</body></html>

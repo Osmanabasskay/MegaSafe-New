@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary-container": "#ffa500",
+                        "surface-container": "#e5eeff",
+                        "on-primary-container": "#684000",
+                        "on-secondary-container": "#1a2a8e",
+                        "tertiary-fixed": "#d9e2ff",
+                        "primary-fixed-dim": "#ffb95c",
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#213145",
+                        "tertiary-container": "#9ab7ff",
+                        "outline": "#867461",
+                        "tertiary": "#215abd",
+                        "surface-variant": "#d3e4fe",
+                        "surface-container-low": "#eff4ff",
+                        "on-tertiary-fixed-variant": "#00429b",
+                        "inverse-primary": "#ffb95c",
+                        "secondary-fixed-dim": "#bbc3ff",
+                        "error-container": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "on-background": "#0b1c30",
+                        "on-surface-variant": "#534433",
+                        "primary": "#855400",
+                        "tertiary-fixed-dim": "#b0c6ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed": "#000d5f",
+                        "on-primary-fixed-variant": "#653e00",
+                        "surface-container-highest": "#d3e4fe",
+                        "surface-tint": "#855400",
+                        "secondary": "#4655b7",
+                        "on-tertiary-fixed": "#001945",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "error": "#ba1a1a",
+                        "primary-fixed": "#ffddb7",
+                        "on-tertiary-container": "#0044a0",
+                        "on-surface": "#0b1c30",
+                        "surface": "#f8f9ff",
+                        "secondary-fixed": "#dfe0ff",
+                        "outline-variant": "#d9c3ac",
+                        "on-primary-fixed": "#2a1700",
+                        "secondary-container": "#8a99ff",
+                        "on-secondary-fixed-variant": "#2d3c9e",
+                        "surface-container-high": "#dce9ff",
+                        "on-error": "#ffffff",
+                        "background": "#f8f9ff",
+                        "surface-dim": "#cbdbf5",
+                        "surface-bright": "#f8f9ff",
+                        "inverse-on-surface": "#eaf1ff"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+        }
+        .active-tab-indicator {
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background-color: #ffa500;
+            border-radius: 999px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-3 bg-white/80 dark:bg-blue-950/80 backdrop-blur-lg shadow-[0_8px_32px_0_rgba(11,28,48,0.06)]">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-orange-500 dark:text-orange-400" data-icon="shield">shield</span>
+<h1 class="text-xl font-black tracking-tighter text-blue-900 dark:text-white uppercase font-headline">MegaSafe</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-blue-400" data-icon="search">search</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden ring-2 ring-primary-container/20">
+<img alt="User Profile" data-alt="high-quality studio portrait of a professional business person with soft lighting and a clean neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAk9agamjPT-VJg7KGNVFpRgeUL9ODReFri2Mv7ijyJ4rxANKtEbkKk1Y_odme2LQ1M8BVmoAW95D87accJnnIQIF2zfMFaQRpoD-qIZxRmYgAqZENlwkVWgDlUiXWv5g3V67h6dt5MFKFbLRj-Z3dXakP7WKJ7Q0KY2V33UqV5wMkfKzMlPRZJovoWLDTm7nez_DGdfLHdpZ8zvRo8YXFb362EMsAjeZKCQKfWTi5Nd9mXlC-Nt6szqu__KC_pSPbXe7b9wE4Kpk8"/>
+</div>
+</div>
+</header>
+<main class="pt-24 px-6 max-w-5xl mx-auto">
+<!-- Breadcrumb / Context -->
+<div class="flex items-center gap-2 mb-8">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="arrow_back">arrow_back</span>
+<span class="text-on-surface-variant font-label text-sm uppercase tracking-widest">Global Asset Group</span>
+</div>
+<!-- Hero Section: Group Governance -->
+<section class="mb-12">
+<h2 class="text-4xl font-bold tracking-tight text-on-secondary-container mb-4">Group Governance &amp; Rules</h2>
+<p class="text-on-surface-variant max-w-2xl leading-relaxed">
+                Review the foundational agreements and automated enforcement protocols for the <span class="text-on-secondary-container font-semibold">Global Asset Group</span> vault. All rules are cryptographically bound.
+            </p>
+</section>
+<!-- Bento Grid Rules -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Contribution Policies -->
+<div class="md:col-span-8 bg-surface-container-lowest rounded-xl p-8 shadow-[0_8px_32px_0_rgba(11,28,48,0.04)]">
+<div class="flex items-center justify-between mb-8">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-primary-container/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="account_balance">account_balance</span>
+</div>
+<div>
+<h3 class="text-xl font-bold text-on-secondary-container">Contribution Policies</h3>
+<p class="text-sm text-on-surface-variant">Standard Operating Procedures</p>
+</div>
+</div>
+<span class="bg-primary-container text-on-primary-container text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter">Active Protocol</span>
+</div>
+<div class="space-y-6">
+<div class="flex items-start gap-4 p-4 rounded-lg bg-surface-container-low">
+<span class="material-symbols-outlined text-primary mt-1" data-icon="schedule">schedule</span>
+<div>
+<p class="font-bold text-on-secondary-container">Monthly Maturity Window</p>
+<p class="text-sm text-on-surface-variant">All contributions must be finalized between the 1st and 5th of every month (GMT+0).</p>
+</div>
+</div>
+<div class="flex items-start gap-4 p-4 rounded-lg bg-surface-container-low">
+<span class="material-symbols-outlined text-primary mt-1" data-icon="payments">payments</span>
+<div>
+<p class="font-bold text-on-secondary-container">Minimum Threshold</p>
+<p class="text-sm text-on-surface-variant">Mandatory minimum contribution of <span class="font-bold text-on-secondary-container">NLe 5,000</span> per cycle to maintain voting rights.</p>
+</div>
+</div>
+<div class="flex items-start gap-4 p-4 rounded-lg bg-surface-container-low">
+<span class="material-symbols-outlined text-primary mt-1" data-icon="verified_user">verified_user</span>
+<div>
+<p class="font-bold text-on-secondary-container">Auto-Escrow Logic</p>
+<p class="text-sm text-on-surface-variant">Funds are automatically held in the MegaSafe Multi-Sig vault upon receipt.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Penalty Summary Card -->
+<div class="md:col-span-4 bg-on-secondary-container text-white rounded-xl p-8 flex flex-col justify-between">
+<div>
+<span class="material-symbols-outlined text-primary-container text-4xl mb-4" data-icon="gavel">gavel</span>
+<h3 class="text-2xl font-bold mb-2">Penalty Protocols</h3>
+<p class="text-blue-200 text-sm leading-relaxed mb-8">Automated smart-contract enforcement for non-compliance.</p>
+</div>
+<div class="space-y-4">
+<div class="border-b border-blue-800 pb-3">
+<div class="flex justify-between items-center">
+<span class="text-xs uppercase tracking-widest text-blue-300">Late Fee</span>
+<span class="font-bold text-primary-container">NLe 250 / Day</span>
+</div>
+</div>
+<div class="border-b border-blue-800 pb-3">
+<div class="flex justify-between items-center">
+<span class="text-xs uppercase tracking-widest text-blue-300">Missed Cycle</span>
+<span class="font-bold text-primary-container">NLe 1,500</span>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-center">
+<span class="text-xs uppercase tracking-widest text-blue-300">Grace Period</span>
+<span class="font-bold text-blue-100">48 Hours</span>
+</div>
+</div>
+</div>
+<button class="mt-8 w-full py-4 bg-primary-container text-on-primary-container rounded-lg font-bold hover:bg-primary-fixed-dim transition-all active:scale-95">
+                    View Ledger
+                </button>
+</div>
+<!-- Asymmetric Rule Details -->
+<div class="md:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Agreement 1 -->
+<div class="bg-surface-container-low p-6 rounded-xl">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-secondary" data-icon="history_edu">history_edu</span>
+<h4 class="font-bold text-on-secondary-container uppercase text-xs tracking-widest">Withdrawal Terms</h4>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-4">Withdrawals require 75% consensus from Tier 1 members and a 14-day cooling-off period.</p>
+<div class="h-1 w-12 bg-primary-container rounded-full"></div>
+</div>
+<!-- Agreement 2 -->
+<div class="bg-surface-container-low p-6 rounded-xl">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-secondary" data-icon="group_add">group_add</span>
+<h4 class="font-bold text-on-secondary-container uppercase text-xs tracking-widest">New Member Entry</h4>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-4">Onboarding fee of NLe 2,000 + unanimous board approval for all external applicants.</p>
+<div class="h-1 w-12 bg-primary-container rounded-full"></div>
+</div>
+<!-- Agreement 3 -->
+<div class="bg-surface-container-low p-6 rounded-xl border-l-4 border-primary-container">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-secondary" data-icon="security">security</span>
+<h4 class="font-bold text-on-secondary-container uppercase text-xs tracking-widest">Emergency Freeze</h4>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed mb-4">Any member can trigger a 24h asset freeze if a security breach is suspected (Subject to audit).</p>
+<div class="h-1 w-12 bg-primary-container rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Signing Section -->
+<section class="mt-12 p-8 rounded-2xl bg-surface-container shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] border border-white">
+<div class="flex flex-col md:flex-row items-center justify-between gap-8">
+<div class="max-w-md">
+<h3 class="text-xl font-bold text-on-secondary-container mb-2">Policy Confirmation</h3>
+<p class="text-sm text-on-surface-variant">By remaining in this group, you acknowledge and agree to the smart-contract protocols listed above. Last updated: Oct 24, 2023.</p>
+</div>
+<div class="flex gap-4">
+<button class="px-8 py-3 bg-white text-on-secondary-container rounded-lg font-bold shadow-sm hover:bg-surface-container-lowest transition-all">
+                        Download PDF
+                    </button>
+<button class="px-8 py-3 bg-secondary text-white rounded-lg font-bold hover:bg-on-secondary-container transition-all shadow-md">
+                        Accept Rules
+                    </button>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-6 bg-white dark:bg-blue-950 border-t border-blue-50 dark:border-blue-900 shadow-[0_-4px_20px_0_rgba(11,28,48,0.04)] rounded-t-2xl">
+<a class="flex flex-col items-center justify-center text-blue-400 dark:text-blue-300 px-5 py-2 hover:text-orange-400 transition-colors active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase mt-1">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-orange-500 text-white rounded-xl px-5 py-2 active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase mt-1">Groups</span>
+</a>
+<a class="flex flex-col items-center justify-center text-blue-400 dark:text-blue-300 px-5 py-2 hover:text-orange-400 transition-colors active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase mt-1">Payments</span>
+</a>
+<a class="flex flex-col items-center justify-center text-blue-400 dark:text-blue-300 px-5 py-2 hover:text-orange-400 transition-colors active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="enhanced_encryption">enhanced_encryption</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase mt-1">Vault</span>
+</a>
+</nav>
+</body></html>

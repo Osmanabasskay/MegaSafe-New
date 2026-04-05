@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Payment Confirmation - MegaSafe</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "surface-bright": "#f8f9ff",
+                "error": "#ba1a1a",
+                "outline": "#867461",
+                "on-secondary-fixed": "#000d5f",
+                "on-error": "#ffffff",
+                "tertiary-container": "#9ab7ff",
+                "surface-variant": "#d3e4fe",
+                "inverse-primary": "#ffb95c",
+                "surface-container-low": "#eff4ff",
+                "surface-dim": "#cbdbf5",
+                "on-error-container": "#93000a",
+                "secondary": "#4655b7",
+                "inverse-on-surface": "#eaf1ff",
+                "on-tertiary-fixed": "#001945",
+                "outline-variant": "#d9c3ac",
+                "secondary-fixed": "#dfe0ff",
+                "on-primary": "#ffffff",
+                "tertiary": "#215abd",
+                "on-background": "#0b1c30",
+                "surface-container-high": "#dce9ff",
+                "on-secondary": "#ffffff",
+                "surface-container-highest": "#d3e4fe",
+                "surface-container-lowest": "#ffffff",
+                "on-surface-variant": "#534433",
+                "surface-container": "#e5eeff",
+                "primary-container": "#ffa500",
+                "secondary-container": "#8a99ff",
+                "secondary-fixed-dim": "#bbc3ff",
+                "on-primary-fixed-variant": "#653e00",
+                "background": "#f8f9ff",
+                "on-tertiary-container": "#0044a0",
+                "on-surface": "#0b1c30",
+                "tertiary-fixed-dim": "#b0c6ff",
+                "on-tertiary": "#ffffff",
+                "primary-fixed-dim": "#ffb95c",
+                "tertiary-fixed": "#d9e2ff",
+                "on-secondary-container": "#1a2a8e",
+                "on-secondary-fixed-variant": "#2d3c9e",
+                "on-primary-container": "#684000",
+                "on-tertiary-fixed-variant": "#00429b",
+                "on-primary-fixed": "#2a1700",
+                "surface-tint": "#855400",
+                "surface": "#f8f9ff",
+                "primary": "#855400",
+                "error-container": "#ffdad6",
+                "primary-fixed": "#ffddb7",
+                "inverse-surface": "#213145"
+              },
+              fontFamily: {
+                "headline": ["Inter"],
+                "body": ["Inter"],
+                "label": ["Inter"]
+              },
+              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface selection:bg-primary-container/30">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex items-center justify-between px-6 h-16 bg-white/80 backdrop-blur-md shadow-[0_8px_32px_rgba(11,28,48,0.06)]">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 flex items-center justify-center rounded-xl bg-primary-container text-on-primary-container shadow-sm">
+<span class="material-symbols-outlined" data-icon="shield">shield</span>
+</div>
+<span class="font-black text-indigo-950 italic text-lg tracking-tight">MegaSafe</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center hover:bg-indigo-50/50 transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+</button>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-container/20">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="professional headshot of a confident executive in a tailored suit with soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1sBnKqeKrDJvOkQS5aYQocFo_7iyCbfey7u3QqW2kWM9Tj9wZOP1vI7FyZKF4vPHiI2VY-9k1W3wBwml6ZffDJW76AR_1f0AfYJj5iqNcnDwVBaQoEGV24HjlchdFWqviU1zLowTWi0YCnUzE7IkZlX9-M2bsO8EKssEoKgLkW3pK1hcthduDDUP04xLOdh-ew2nPtO1cv_L0fgEH3nM2VttBNl9CgIfihET-mqAJ2KKDPEciu-ftRHdcATFW8fQ3h-4_04JRSZE"/>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-6 max-w-2xl mx-auto">
+<!-- Transaction Header -->
+<div class="text-center mb-10">
+<div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-surface-container-high mb-6 relative">
+<div class="absolute inset-0 rounded-full border-4 border-primary-container border-t-transparent animate-spin duration-[3000ms]"></div>
+<span class="material-symbols-outlined text-primary text-4xl" data-icon="hourglass_empty">hourglass_empty</span>
+</div>
+<h1 class="text-3xl font-bold text-on-secondary-container tracking-tight mb-2">Processing Payment</h1>
+<p class="text-on-surface-variant body-md">We're verifying your transaction with the Citadel network.</p>
+</div>
+<!-- Asymmetric Bento Summary -->
+<div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-8">
+<!-- Amount Card -->
+<div class="md:col-span-4 bg-surface-container-lowest p-8 rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.02)] relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-8xl" data-icon="payments">payments</span>
+</div>
+<label class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 block">Amount in NLe</label>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-black text-on-secondary-container">2,450.00</span>
+<span class="text-xl font-bold text-primary">NLe</span>
+</div>
+<div class="mt-6 flex items-center gap-2 text-sm font-medium text-emerald-600 bg-emerald-50 w-fit px-3 py-1 rounded-full">
+<span class="material-symbols-outlined text-sm" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+                    Secured by MegaSafe
+                </div>
+</div>
+<!-- Group Card -->
+<div class="md:col-span-2 bg-on-secondary-container p-6 rounded-3xl text-white flex flex-col justify-between shadow-xl">
+<div>
+<label class="text-[10px] font-bold uppercase tracking-widest text-secondary-container mb-1 block">Group Name</label>
+<p class="text-xl font-bold leading-tight">Elite Vault Collective</p>
+</div>
+<div class="mt-4 flex -space-x-2">
+<div class="w-8 h-8 rounded-full border-2 border-on-secondary-container bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="close up portrait of a smiling man with glasses" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA23n_x1AhA_WMCynOTJlOZbTANq5cJGjfqYppgMxbaGVoUNZZy4Du36t86rpFrRbMRIahXxBeqbnDGYbFlfKoV9IvNYtGPaJ_HPjyB_6XoHpE2Gh-05O_SjXZCNesQcwAA2Uw7Itx8KIq1b6eO1trWmvMoxW9T9l9Cd5lv6V_HLrjPNtIEn7geuxVNp012lVn19Zz2Yj9Sxb2njL5IkDPisHXhTA6noOfSrvSfI3ytslXRxq7AAFjNRu99vLK2CdKcaxppb3QQKik"/>
+</div>
+<div class="w-8 h-8 rounded-full border-2 border-on-secondary-container bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="close up portrait of a young woman smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWvMNNDLOZx8NNTABhKF99BPtqwvQmgAYFGgcRFod7CsubIJu_R_24DUMONDhj1ONOwwp1d-Xn7TrElfwFvGl7fnsO3iabyRhK_K5S9CHzk2SYKlEJ_QPXmqWwBQrclziQehc1yxY0ZtkxHjulL0kTOreTWHz0igIloPgrYIjaOfNvfUrMgcZmaZybcp4kSw20HnAognWe-ar_a4qOBC6s9VYDA2Ofy3CK9K-9Dr56YNzPuokmg0RZH5077WBi74OyXcQZHS1NiLo"/>
+</div>
+<div class="w-8 h-8 rounded-full border-2 border-on-secondary-container bg-surface-container-high flex items-center justify-center text-[10px] font-bold text-on-secondary-container">
+                        +12
+                    </div>
+</div>
+</div>
+<!-- Details Card -->
+<div class="md:col-span-6 bg-surface-container-low p-6 rounded-3xl flex flex-wrap items-center justify-between gap-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container" data-icon="calendar_today">calendar_today</span>
+</div>
+<div>
+<label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block">Transaction Date</label>
+<p class="text-sm font-bold text-on-surface">October 24, 2023 • 14:32 GMT</p>
+</div>
+</div>
+<div class="h-10 w-px bg-outline-variant/30 hidden md:block"></div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container" data-icon="receipt_long">receipt_long</span>
+</div>
+<div>
+<label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block">Reference ID</label>
+<p class="text-sm font-bold text-on-surface">MS-TX-99021-XQ</p>
+</div>
+</div>
+<div class="h-10 w-px bg-outline-variant/30 hidden md:block"></div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="error" style="font-variation-settings: 'FILL' 1;">error</span>
+</div>
+<div>
+<label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block">Status</label>
+<p class="text-sm font-bold text-primary">Pending Approval</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Security Badge -->
+<div class="bg-surface-container-lowest p-6 rounded-3xl mb-10 flex items-start gap-5 border border-outline-variant/10">
+<div class="bg-primary/10 p-4 rounded-full">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="verified_user" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</div>
+<div>
+<h4 class="font-bold text-on-secondary-container">Fortified Protection Active</h4>
+<p class="text-sm text-on-surface-variant mt-1 leading-relaxed">
+                    This transaction is being routed through our Citadel-class multi-signature nodes. Your funds are protected by end-to-end hardware encryption.
+                </p>
+</div>
+</div>
+<!-- Action Area -->
+<div class="flex flex-col gap-4">
+<button class="w-full bg-primary-container text-on-primary-container h-16 rounded-2xl font-bold text-lg shadow-lg shadow-primary/20 hover:scale-[0.98] active:scale-95 transition-transform flex items-center justify-center gap-3">
+<span class="material-symbols-outlined" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                Confirm &amp; Authorize
+            </button>
+<button class="w-full bg-surface-container-low text-on-surface h-14 rounded-2xl font-semibold hover:bg-surface-container-high transition-colors">
+                Cancel Transaction
+            </button>
+</div>
+</main>
+<!-- BottomNavBar (Hidden on desktop, shown on mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 bg-surface-container-low rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
+<a class="flex flex-col items-center justify-center text-slate-400 px-5 py-2 duration-300 ease-out active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="lock">lock</span>
+<span class="text-[11px] font-semibold tracking-wide uppercase mt-1">Vault</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-orange-100 text-orange-700 rounded-xl px-5 py-2 duration-300 ease-out active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="payments" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="text-[11px] font-semibold tracking-wide uppercase mt-1">Payments</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 px-5 py-2 duration-300 ease-out active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="verified_user">verified_user</span>
+<span class="text-[11px] font-semibold tracking-wide uppercase mt-1">Security</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 px-5 py-2 duration-300 ease-out active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="text-[11px] font-semibold tracking-wide uppercase mt-1">Activity</span>
+</a>
+</nav>
+<!-- Map Background / Contextual Visual -->
+<div class="fixed inset-0 -z-10 opacity-30 pointer-events-none">
+<div class="absolute inset-0 bg-gradient-to-b from-surface via-transparent to-surface"></div>
+<img class="w-full h-full object-cover grayscale" data-alt="abstract tech mesh pattern with flowing data lines in shades of deep blue and amber against a light background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwW-R7dZ7bn_vZk_YMU5Dsnujs-F3goic5a6J5Iu4m0FEUEdydRoQw_x2u_UaJ6RwZDJqwi0C-TsfGZhQuOHk1amKfigfRcTo39y-BpHuCHYOX2td_7cGP_MS3Qibaty9OPo781F59HrDiO2dZaw6JOSIg66mkxao6k5hiO2GSMxkEIXUQiuIvOxknVFg-vyRrS2SCtwcSi20pbozCpSeWve-7H9qWqcpNiQH3rjKhQAbI8JJbal5G7dY50t6URE4uxxw9z0RWp0g"/>
+</div>
+</body></html>

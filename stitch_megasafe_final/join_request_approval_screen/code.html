@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MegaSafe | Join Requests</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-high": "#dce9ff",
+              "surface-container": "#e5eeff",
+              "on-secondary": "#ffffff",
+              "error": "#ba1a1a",
+              "primary-fixed-dim": "#ffb95c",
+              "surface-container-lowest": "#ffffff",
+              "outline": "#867461",
+              "on-error-container": "#93000a",
+              "surface-variant": "#d3e4fe",
+              "surface-bright": "#f8f9ff",
+              "on-error": "#ffffff",
+              "inverse-surface": "#213145",
+              "on-tertiary-fixed": "#001945",
+              "on-background": "#0b1c30",
+              "on-surface": "#0b1c30",
+              "on-primary-container": "#684000",
+              "on-surface-variant": "#534433",
+              "secondary-fixed-dim": "#bbc3ff",
+              "primary": "#855400",
+              "on-tertiary": "#ffffff",
+              "background": "#f8f9ff",
+              "surface-tint": "#855400",
+              "inverse-primary": "#ffb95c",
+              "surface-container-highest": "#d3e4fe",
+              "tertiary-fixed": "#d9e2ff",
+              "primary-container": "#ffa500",
+              "secondary": "#4655b7",
+              "on-tertiary-container": "#0044a0",
+              "secondary-container": "#8a99ff",
+              "outline-variant": "#d9c3ac",
+              "on-tertiary-fixed-variant": "#00429b",
+              "error-container": "#ffdad6",
+              "on-secondary-fixed-variant": "#2d3c9e",
+              "on-secondary-container": "#1a2a8e",
+              "surface-container-low": "#eff4ff",
+              "tertiary-container": "#9ab7ff",
+              "on-primary": "#ffffff",
+              "surface-dim": "#cbdbf5",
+              "inverse-on-surface": "#eaf1ff",
+              "on-secondary-fixed": "#000d5f",
+              "tertiary": "#215abd",
+              "surface": "#f8f9ff",
+              "on-primary-fixed-variant": "#653e00",
+              "on-primary-fixed": "#2a1700",
+              "tertiary-fixed-dim": "#b0c6ff",
+              "primary-fixed": "#ffddb7",
+              "secondary-fixed": "#dfe0ff"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      body { font-family: 'Inter', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#f8f9ff]/80 dark:bg-[#00157f]/80 backdrop-blur-2xl shadow-[0_8px_32px_rgba(11,28,48,0.06)]">
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-[#ffa500] hover:bg-[#eff4ff] p-2 rounded-full transition-colors active:scale-95 duration-200">arrow_back</button>
+<h1 class="text-xl font-bold text-[#1a2a8e] dark:text-[#d3e4fe] font-['Inter'] leading-tight tracking-tight">MegaSafe</h1>
+</div>
+<div class="flex items-center">
+<img alt="User profile photo" class="w-8 h-8 rounded-full border-2 border-primary-container" data-alt="close-up portrait of a professional administrator in a clean modern office setting with soft natural light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDe0cZFwVU5dDUt51FRXj9fjdO61oqkjcUNsB1HDtBPE-Vb5AJNTe9ye7H1cGCDHBffXzQeKNnMHBeUnZUYOI49JOeSCFsigyFqeH61iWgRkynkfFEqNbtfUhKNjdIOo9mWwu-72QLh4UYz6YhwsZAGe-zlu9hlAYrRmNLMI24r-01UhGW568Yy1Scwfu64P28QZBymlNq3xYPl0tvF4T0Eptudp34Z5fl5SFV65nVLJsfRE0QagBoLHuZ61oraZrPec2AsS-umKs8"/>
+</div>
+</header>
+<main class="pt-24 pb-32 px-6 max-w-4xl mx-auto">
+<!-- Section Header -->
+<div class="mb-10">
+<h2 class="text-3xl font-extrabold text-on-secondary-container tracking-tight mb-2">Pending Requests</h2>
+<p class="text-on-surface-variant font-medium">Manage administrative access for the "Global Vault" group.</p>
+</div>
+<!-- Bento Grid Layout for Requests -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Request Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-[0_4px_20px_rgba(11,28,48,0.04)] flex flex-col justify-between">
+<div class="flex items-start justify-between mb-6">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img class="w-14 h-14 rounded-xl object-cover" data-alt="headshot of a young professional man with a friendly expression in a brightly lit studio environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZ-RSxbU6MvZptR7yM2z5LaYv0oSN0QsNNIxqpG5AF8vr2-Gpm6b_8TMgTwYPgXaU6WJUWUM2_IHzKGC4yMHp_XHuj0LXC7RqR4_38OkO2BXfJ6hf7dlCHrlEqQ1Gn7012P5oqA0vMIGjDlCxx0JiIzCPpr3WoMJX3_WSyQlBcGXhOxRehB5LG8p86TxKuHpiCYCKdenQt2w2U0M_Bihb61fDL8FVBk17Gh4Ml5Lrfo69whylk8OHJt3FgdIKBnNLrhB7KCOFXF6E"/>
+<span class="absolute -bottom-1 -right-1 bg-primary p-1 rounded-md">
+<span class="material-symbols-outlined text-[12px] text-white" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</span>
+</div>
+<div>
+<h3 class="font-bold text-lg text-on-surface leading-tight">Julian Dax</h3>
+<p class="text-sm text-on-surface-variant">julian.dax@security.io</p>
+</div>
+</div>
+<span class="bg-surface-container-high px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-on-secondary-container">Level 2</span>
+</div>
+<div class="bg-surface-container-low p-4 rounded-lg mb-6">
+<p class="text-xs text-on-surface-variant leading-relaxed">"Requesting access to the main asset vault for the upcoming Q3 security audit."</p>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary-container text-on-primary-container font-bold py-3 rounded-lg hover:opacity-90 active:scale-95 transition-all text-sm uppercase tracking-wider">Approve</button>
+<button class="flex-1 bg-surface-container text-on-surface font-bold py-3 rounded-lg hover:bg-error-container hover:text-on-error-container active:scale-95 transition-all text-sm uppercase tracking-wider">Reject</button>
+</div>
+</div>
+<!-- Request Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-[0_4px_20px_rgba(11,28,48,0.04)] flex flex-col justify-between border-l-4 border-primary">
+<div class="flex items-start justify-between mb-6">
+<div class="flex items-center gap-4">
+<img class="w-14 h-14 rounded-xl object-cover" data-alt="professional headshot of a middle-aged woman with glasses and a confident smile in a modern architectural setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMYZKOBkR0C7JBJgjEjPFCX0-4fhr_XK_lZUGmzE8Ht5Zubv4M3znuzz0VMzVQeBlqUwspm3_UX3MBzCHFcr2LEHvYHZvmsu_UVYQDBZ4On2hzCQqSaBGDgWiC1DOdxDvXlyYLFbMloM-X0TEbZi2MmEqoc1dlyq6SWk1yTt6AUsRXNyTRspLi80-7gn70sjgVVPr-PXGuiANdzPl3XFbMlppE9_pl0P30FEnJ6XzLHYCspJMHH2XA7gKBOLqKxbO8PghxKVC4gq8"/>
+<div>
+<h3 class="font-bold text-lg text-on-surface leading-tight">Sarah Miller</h3>
+<p class="text-sm text-on-surface-variant">s.miller@vault.co</p>
+</div>
+</div>
+<span class="bg-primary-container px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-on-primary-container">Priority</span>
+</div>
+<div class="bg-surface-container-low p-4 rounded-lg mb-6">
+<p class="text-xs text-on-surface-variant leading-relaxed">"Emergency access required for recovery protocol synchronization."</p>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary-container text-on-primary-container font-bold py-3 rounded-lg hover:opacity-90 active:scale-95 transition-all text-sm uppercase tracking-wider">Approve</button>
+<button class="flex-1 bg-surface-container text-on-surface font-bold py-3 rounded-lg hover:bg-error-container hover:text-on-error-container active:scale-95 transition-all text-sm uppercase tracking-wider">Reject</button>
+</div>
+</div>
+<!-- Request Card 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-[0_4px_20px_rgba(11,28,48,0.04)] flex flex-col justify-between">
+<div class="flex items-start justify-between mb-6">
+<div class="flex items-center gap-4">
+<img class="w-14 h-14 rounded-xl object-cover" data-alt="portrait of a focused software engineer with headphones around his neck in a dark moody office with blue glowing lights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-4gCYBlBqDKx_3jeLXa29TyBl1uy3jWyE2Pqw7VFRoJP437NZRk8fRxJkPSYFHvbTxf_tpTfbVm1GWoQoULUtJSXNeF6B-rbnaErnP-e-uTCfsGSh1Yozkl_eKfD16cxtUJH-DBlH4HeQNl_yIgFinNHPGROa0BgbsvvdIfaczwZFvYehOpK4e30XcXKZTv6dDxR16y1T8bp8CZ27D6-g3VfRHhY3HdJwFwzgxKylW8sOimAMEecH5xTimpwVDPFNJZUjuuZUbbc"/>
+<div>
+<h3 class="font-bold text-lg text-on-surface leading-tight">Ray Kendrick</h3>
+<p class="text-sm text-on-surface-variant">ray.k@dev.mesh</p>
+</div>
+</div>
+<span class="bg-surface-container-high px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-on-secondary-container">Level 1</span>
+</div>
+<div class="bg-surface-container-low p-4 rounded-lg mb-6">
+<p class="text-xs text-on-surface-variant leading-relaxed">"New hire onboarding. Need access to internal documentation group."</p>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary-container text-on-primary-container font-bold py-3 rounded-lg hover:opacity-90 active:scale-95 transition-all text-sm uppercase tracking-wider">Approve</button>
+<button class="flex-1 bg-surface-container text-on-surface font-bold py-3 rounded-lg hover:bg-error-container hover:text-on-error-container active:scale-95 transition-all text-sm uppercase tracking-wider">Reject</button>
+</div>
+</div>
+<!-- Confirmation Feedback State (Simulated) -->
+<div class="bg-surface-container-highest/30 p-6 rounded-xl border border-dashed border-outline-variant/30 flex flex-col items-center justify-center text-center">
+<div class="w-12 h-12 bg-on-tertiary-container/10 rounded-full flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-on-tertiary-container" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<p class="text-sm font-bold text-on-secondary-container mb-1">Request Processed</p>
+<p class="text-xs text-on-surface-variant">Marcus Thorne was successfully rejected.</p>
+<button class="mt-4 text-xs font-bold text-primary underline decoration-2 underline-offset-4">Undo Action</button>
+</div>
+</div>
+<!-- Empty State (Hidden by default, shown when no requests) -->
+<div class="hidden mt-12 flex flex-col items-center justify-center py-20 px-6 bg-surface-container-low rounded-[2rem] text-center">
+<div class="w-20 h-20 bg-surface-container-highest rounded-full flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-4xl text-outline-variant">safety_check</span>
+</div>
+<h3 class="text-xl font-bold text-on-surface mb-2">The Vault is Secure</h3>
+<p class="text-on-surface-variant max-w-xs mx-auto">All join requests have been processed. You're up to date with your administrative duties.</p>
+</div>
+<!-- Security Control Summary Card -->
+<div class="mt-12 bg-secondary text-on-secondary p-8 rounded-[2rem] relative overflow-hidden">
+<div class="relative z-10">
+<h4 class="text-xs font-bold uppercase tracking-[0.2em] opacity-80 mb-2">Admin Dashboard</h4>
+<p class="text-2xl font-bold mb-6">Security Posture: High</p>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-white/10 backdrop-blur-md p-4 rounded-xl">
+<p class="text-[10px] uppercase opacity-60 font-bold mb-1">Total Members</p>
+<p class="text-xl font-bold">1,284</p>
+</div>
+<div class="bg-white/10 backdrop-blur-md p-4 rounded-xl">
+<p class="text-[10px] uppercase opacity-60 font-bold mb-1">Pending Audit</p>
+<p class="text-xl font-bold">3</p>
+</div>
+</div>
+</div>
+<!-- Decorative Shield Element -->
+<div class="absolute -right-10 -bottom-10 opacity-10">
+<span class="material-symbols-outlined text-[12rem]">shield</span>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/90 dark:bg-[#00157f]/90 backdrop-blur-xl shadow-[0_-8px_32px_rgba(11,28,48,0.08)] rounded-t-[2rem]">
+<div class="flex flex-col items-center justify-center text-[#534433] dark:text-[#dfe0ff] opacity-60 hover:opacity-100 transition-opacity active:scale-90 duration-300">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase mt-1">Vault</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-[#ffa500]/10 text-[#684000] dark:text-[#ffa500] rounded-2xl px-5 py-2 active:scale-90 transition-all duration-300">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase mt-1">Groups</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#534433] dark:text-[#dfe0ff] opacity-60 hover:opacity-100 transition-opacity active:scale-90 duration-300">
+<span class="material-symbols-outlined">timeline</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase mt-1">History</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#534433] dark:text-[#dfe0ff] opacity-60 hover:opacity-100 transition-opacity active:scale-90 duration-300">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase mt-1">Settings</span>
+</div>
+</nav>
+</body></html>

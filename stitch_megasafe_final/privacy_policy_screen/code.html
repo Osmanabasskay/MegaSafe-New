@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#855400",
+              "surface-container": "#e5eeff",
+              "outline": "#867461",
+              "on-tertiary-container": "#0044a0",
+              "on-secondary-container": "#1a2a8e",
+              "surface-bright": "#f8f9ff",
+              "inverse-on-surface": "#eaf1ff",
+              "on-error": "#ffffff",
+              "surface-container-lowest": "#ffffff",
+              "on-tertiary-fixed": "#001945",
+              "inverse-surface": "#213145",
+              "on-secondary-fixed": "#000d5f",
+              "background": "#f8f9ff",
+              "on-primary-fixed": "#2a1700",
+              "primary-fixed-dim": "#ffb95c",
+              "on-primary-container": "#684000",
+              "surface-container-low": "#eff4ff",
+              "secondary-fixed": "#dfe0ff",
+              "on-error-container": "#93000a",
+              "on-tertiary-fixed-variant": "#00429b",
+              "on-secondary": "#ffffff",
+              "tertiary-container": "#9ab7ff",
+              "surface-tint": "#855400",
+              "surface-dim": "#cbdbf5",
+              "tertiary": "#215abd",
+              "on-background": "#0b1c30",
+              "primary-fixed": "#ffddb7",
+              "tertiary-fixed": "#d9e2ff",
+              "surface-container-highest": "#d3e4fe",
+              "on-secondary-fixed-variant": "#2d3c9e",
+              "secondary": "#4655b7",
+              "on-surface": "#0b1c30",
+              "surface-container-high": "#dce9ff",
+              "inverse-primary": "#ffb95c",
+              "secondary-fixed-dim": "#bbc3ff",
+              "on-primary": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "surface-variant": "#d3e4fe",
+              "on-primary-fixed-variant": "#653e00",
+              "error": "#ba1a1a",
+              "error-container": "#ffdad6",
+              "tertiary-fixed-dim": "#b0c6ff",
+              "surface": "#f8f9ff",
+              "secondary-container": "#8a99ff",
+              "primary-container": "#ffa500",
+              "on-surface-variant": "#534433",
+              "outline-variant": "#d9c3ac"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .glass-header {
+            background: rgba(248, 249, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex items-center justify-between px-6 h-16 bg-slate-50/80 backdrop-blur-xl shadow-[0_8px_32px_rgba(11,28,48,0.06)]">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-blue-100/50 active:scale-95 transition-all duration-200 text-slate-500">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-inter headline-sm font-bold tracking-tight text-blue-900">Privacy Policy</h1>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-xl font-black text-blue-900 tracking-tighter">MegaSafe</span>
+</div>
+</header>
+<main class="pt-24 pb-12 px-6 max-w-4xl mx-auto">
+<!-- Hero Section -->
+<section class="mb-12">
+<div class="bg-surface-container-low rounded-xl p-8 mb-8 relative overflow-hidden">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+<h2 class="text-4xl font-extrabold text-on-secondary-container mb-4 tracking-tight">Privacy Policy</h2>
+<p class="text-lg text-on-surface-variant max-w-2xl leading-relaxed">
+                    Your data security is our top priority. This document outlines how we protect your digital footprint with institutional-grade protocols.
+                </p>
+</div>
+</section>
+<!-- Bento Grid Content -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Data Usage Section -->
+<div class="md:col-span-7 bg-surface-container-lowest p-8 rounded-xl shadow-[0_8px_32px_rgba(11,28,48,0.04)] border border-outline-variant/10">
+<div class="flex items-center gap-4 mb-6">
+<div class="w-12 h-12 bg-secondary-fixed flex items-center justify-center rounded-lg text-on-secondary-fixed">
+<span class="material-symbols-outlined text-3xl" data-icon="data_usage">data_usage</span>
+</div>
+<h3 class="text-xl font-bold text-on-secondary-container">Data Usage</h3>
+</div>
+<p class="text-on-surface-variant leading-relaxed mb-4">
+                    MegaSafe processes information solely to provide security monitoring and real-time threat detection. We utilize anonymized metadata to improve our defensive algorithms without compromising your individual identity.
+                </p>
+<ul class="space-y-3">
+<li class="flex items-start gap-3 text-body-md text-on-surface">
+<span class="material-symbols-outlined text-primary mt-0.5" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        Authentication and account verification
+                    </li>
+<li class="flex items-start gap-3 text-body-md text-on-surface">
+<span class="material-symbols-outlined text-primary mt-0.5" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        Predictive threat analysis
+                    </li>
+<li class="flex items-start gap-3 text-body-md text-on-surface">
+<span class="material-symbols-outlined text-primary mt-0.5" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        Encrypted log synchronization
+                    </li>
+</ul>
+</div>
+<!-- Visual Accent Card -->
+<div class="md:col-span-5 relative group h-full min-h-[240px] rounded-xl overflow-hidden bg-secondary">
+<img class="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-overlay group-hover:scale-110 transition-transform duration-700" data-alt="Abstract digital visualization of glowing blue and gold network nodes representing secure data architecture and interconnected protection layers" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPhu5Lndhr1iqg-BT61ISrwgPXhRRElh4ySEQRrPLZ1I-PW0Zs5MjCjGRXnChDdaK-N9GVbx8oKRidYTjHn7bpwF3a97572WlpxLpGA0w7fAImftvuuuLa1XT9a1FsqEXTpFsJedqAedgQc-W9kda00QIutnD4-_0FIHlSmDWVwcWhEnfQH0BJiDWF7Sf09CYC3ggFlMgHnDW-AjvgVmp87DOYRhCAr-M_bYBIYJvR0SjHOYuwu246j4cbi58x0Xkh2LySObPGxFw"/>
+<div class="absolute inset-0 p-8 flex flex-col justify-end bg-gradient-to-t from-secondary via-secondary/40 to-transparent">
+<p class="text-white font-semibold text-lg leading-tight">Securing 2.4 Billion data points daily across the globe.</p>
+</div>
+</div>
+<!-- Data Protection Section -->
+<div class="md:col-span-12 bg-on-secondary-container p-10 rounded-xl text-white relative overflow-hidden">
+<div class="absolute -right-16 -bottom-16 opacity-10">
+<span class="material-symbols-outlined text-[240px]" data-icon="shield">shield</span>
+</div>
+<div class="relative z-10 flex flex-col md:flex-row gap-8 items-start">
+<div class="w-16 h-16 bg-primary-container flex items-center justify-center rounded-xl text-on-primary-container shrink-0">
+<span class="material-symbols-outlined text-4xl" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+</div>
+<div>
+<h3 class="text-2xl font-bold mb-4">Data Protection (AES-256)</h3>
+<p class="text-blue-100 text-lg leading-relaxed max-w-3xl">
+                            All your data is encrypted at rest and in transit using military-grade AES-256 encryption. We employ a Zero-Knowledge architecture, meaning even our engineers cannot access your raw data files. Your keys stay on your device.
+                        </p>
+</div>
+</div>
+</div>
+<!-- Third-party Sharing Section -->
+<div class="md:col-span-6 bg-surface-container-low p-8 rounded-xl">
+<div class="flex items-center gap-4 mb-6">
+<div class="w-12 h-12 bg-tertiary-fixed flex items-center justify-center rounded-lg text-on-tertiary-fixed">
+<span class="material-symbols-outlined text-3xl" data-icon="share_off">share_off</span>
+</div>
+<h3 class="text-xl font-bold text-on-secondary-container">Third-party Sharing</h3>
+</div>
+<p class="text-on-surface-variant leading-relaxed">
+                    We maintain a strict **None-to-Third-Party** policy. Your data is never sold, traded, or shared with advertisers or external marketers. We believe your digital life should remain exclusively yours.
+                </p>
+</div>
+<!-- Support/Back Section -->
+<div class="md:col-span-6 bg-surface-container-high p-8 rounded-xl flex flex-col justify-between">
+<div>
+<h3 class="text-xl font-bold text-on-secondary-container mb-2">Have Questions?</h3>
+<p class="text-on-surface-variant mb-6">Our security experts are available 24/7 to clarify any privacy concerns you may have.</p>
+</div>
+<button class="w-full py-4 bg-primary-container text-on-primary-container font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-primary transition-colors active:scale-[0.98] duration-150 shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+                    Back to Security
+                </button>
+</div>
+</div>
+<!-- Footer Fine Print -->
+<footer class="mt-16 text-center text-on-surface-variant">
+<p class="text-sm font-label tracking-wide uppercase opacity-60">Last Updated: October 2023</p>
+<div class="mt-4 flex justify-center gap-6 text-xs font-semibold">
+<a class="hover:text-primary" href="#">TERMS OF SERVICE</a>
+<a class="hover:text-primary" href="#">COMPLIANCE HUB</a>
+<a class="hover:text-primary" href="#">GDPR RIGHTS</a>
+</div>
+</footer>
+</main>
+<!-- Bottom Navigation Shell (Desktop Hidden) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-2xl flex justify-around items-center px-4 pb-6 pt-3 z-50 rounded-t-2xl shadow-[0_-8px_32px_rgba(11,28,48,0.08)] border-t border-blue-100/10">
+<a class="flex flex-col items-center justify-center text-slate-400" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-inter text-[11px] font-semibold tracking-wide uppercase mt-1">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-orange-100 text-orange-700 rounded-xl px-4 py-1.5" href="#">
+<span class="material-symbols-outlined" data-icon="shield" style="font-variation-settings: 'FILL' 1;">shield</span>
+<span class="font-inter text-[11px] font-semibold tracking-wide uppercase mt-1">Security</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400" href="#">
+<span class="material-symbols-outlined" data-icon="contact_support">contact_support</span>
+<span class="font-inter text-[11px] font-semibold tracking-wide uppercase mt-1">Support</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-inter text-[11px] font-semibold tracking-wide uppercase mt-1">Settings</span>
+</a>
+</nav>
+</body></html>

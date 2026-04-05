@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Member Contribution Status - MegaSafe</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "background": "#f8f9ff",
+              "surface-tint": "#855400",
+              "inverse-primary": "#ffb95c",
+              "on-surface": "#0b1c30",
+              "on-primary-container": "#684000",
+              "on-surface-variant": "#534433",
+              "secondary-fixed-dim": "#bbc3ff",
+              "primary": "#855400",
+              "on-tertiary": "#ffffff",
+              "surface-container-lowest": "#ffffff",
+              "outline": "#867461",
+              "on-error-container": "#93000a",
+              "surface-variant": "#d3e4fe",
+              "surface-bright": "#f8f9ff",
+              "on-error": "#ffffff",
+              "inverse-surface": "#213145",
+              "on-tertiary-fixed": "#001945",
+              "on-background": "#0b1c30",
+              "surface-container-high": "#dce9ff",
+              "surface-container": "#e5eeff",
+              "on-secondary": "#ffffff",
+              "error": "#ba1a1a",
+              "primary-fixed-dim": "#ffb95c",
+              "surface": "#f8f9ff",
+              "on-primary-fixed-variant": "#653e00",
+              "on-primary-fixed": "#2a1700",
+              "tertiary-fixed-dim": "#b0c6ff",
+              "primary-fixed": "#ffddb7",
+              "secondary-fixed": "#dfe0ff",
+              "on-secondary-fixed-variant": "#2d3c9e",
+              "on-secondary-container": "#1a2a8e",
+              "surface-container-low": "#eff4ff",
+              "tertiary-container": "#9ab7ff",
+              "on-primary": "#ffffff",
+              "surface-dim": "#cbdbf5",
+              "inverse-on-surface": "#eaf1ff",
+              "on-secondary-fixed": "#000d5f",
+              "tertiary": "#215abd",
+              "on-tertiary-fixed-variant": "#00429b",
+              "error-container": "#ffdad6",
+              "surface-container-highest": "#d3e4fe",
+              "tertiary-fixed": "#d9e2ff",
+              "primary-container": "#ffa500",
+              "secondary": "#4655b7",
+              "on-tertiary-container": "#0044a0",
+              "secondary-container": "#8a99ff",
+              "outline-variant": "#d9c3ac"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-32">
+<!-- TopAppBar Execution -->
+<header class="fixed top-0 w-full z-50 bg-[#f8f9ff] dark:bg-slate-900/80 backdrop-blur-xl shadow-[0_8px_32px_rgba(11,28,48,0.06)]">
+<div class="flex justify-between items-center px-6 h-16 w-full">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-orange-500" data-icon="shield">shield</span>
+<span class="text-xl font-black text-[#1a2a8e] dark:text-blue-400 tracking-tight">MegaSafe</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#534433]" data-icon="notifications">notifications</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/20">
+<img class="w-full h-full object-cover" data-alt="close up professional portrait of a confident man with a warm smile in a modern office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCf2WagePBiPLeS9DqDPyxMNRHalbP4KT7XFZu1yk2a6t5skZ_17Tpj8eZiBiGpBKdr6StWO1gvV1Ddc0C_FhDvbkw8N4cPMQ_F4Cbmv5yaxxSdx_7YK34asNfe9JH8s5-Zg-tdWNgM0wVq-9YqS1w_zkZf-A9TaI-qi6tazpJTY2vVEL2q-ckFRAIU2LT9oLG_2A6Ydnm76nbRQ-Ttyq2kgof14eB552JXWOMCSshKaW3Rkfu4dqcCHxc2jU0U_gnA6q6cEqFhIyE"/>
+</div>
+</div>
+</div>
+</header>
+<main class="pt-24 px-6 max-w-5xl mx-auto">
+<!-- Header Section -->
+<section class="mb-10">
+<p class="text-primary font-semibold tracking-wider text-xs uppercase mb-2">Cycle Dashboard</p>
+<h1 class="text-4xl font-extrabold text-on-secondary-container tracking-tight mb-4 leading-tight">Osusu Contribution Status</h1>
+<div class="bg-surface-container-low p-6 rounded-2xl flex flex-wrap items-center justify-between gap-6">
+<div>
+<p class="text-on-surface-variant text-sm font-medium">Current Group Pot</p>
+<p class="text-3xl font-bold text-on-surface">NLe 45,500.00</p>
+</div>
+<div class="flex gap-4">
+<div class="text-center px-4 py-2 bg-surface-container-lowest rounded-xl">
+<p class="text-[10px] uppercase font-bold text-on-surface-variant tracking-widest">Target</p>
+<p class="font-bold text-on-secondary-container">NLe 60k</p>
+</div>
+<div class="text-center px-4 py-2 bg-primary-container/20 rounded-xl">
+<p class="text-[10px] uppercase font-bold text-primary tracking-widest">Progress</p>
+<p class="font-bold text-on-primary-container">75%</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Tabs Navigation -->
+<nav class="flex space-x-2 mb-8 p-1 bg-surface-container-low rounded-xl w-fit">
+<button class="px-6 py-2.5 rounded-lg bg-surface-container-lowest text-on-secondary-container font-bold shadow-sm transition-all text-sm">Paid (14)</button>
+<button class="px-6 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-semibold transition-all text-sm">Pending (4)</button>
+<button class="px-6 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-semibold transition-all text-sm text-error">Late (2)</button>
+</nav>
+<!-- Bento Grid Layout for Status Sections -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Paid Members Column -->
+<div class="lg:col-span-8 space-y-4">
+<div class="flex items-center justify-between px-2">
+<h2 class="text-xl font-bold text-on-secondary-container">Paid Members</h2>
+<span class="text-xs font-bold text-primary bg-primary-container/10 px-3 py-1 rounded-full">Completed Early</span>
+</div>
+<!-- Member Row: 01 -->
+<div class="group bg-surface-container-lowest p-5 rounded-2xl flex items-center gap-4 transition-all hover:translate-x-1 border-l-4 border-emerald-500">
+<div class="w-12 h-12 rounded-xl overflow-hidden shadow-sm">
+<img class="w-full h-full object-cover" data-alt="headshot of a man with spectacles smiling softly against a neutral background with natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTYKaiSnUSIi0FDG7r_oYrR37YIcUc7gI35Z5g57-KskeVaM7hI_BbJwrbH2rnkjEevR-9PMNk-3kW-s6taUxNyXyz_inH8Hv5RHI11uUQE9g7jI9C1gMjp2qEUa0rxSd5JC2uIQFrpPDvaY3t3J-7B3WEUQceNoU-Sx_uRbKPHxzuZ-1Tw1JAObdEzo0kpSpWv5iiRYy-BwE8nkpnNW0r5nzMaIDqZ_elj-_vg6xluC7uNc6ZME2YSguNRAawUi-TQWWPJtb_LTA"/>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-on-surface">Adekunle Johnson</h3>
+<p class="text-xs text-on-surface-variant font-medium">ID: MS-0982-A</p>
+</div>
+<div class="text-right">
+<p class="font-black text-on-secondary-container">NLe 2,500.00</p>
+<span class="inline-flex items-center gap-1 text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            Paid
+                        </span>
+</div>
+</div>
+<!-- Member Row: 02 -->
+<div class="group bg-surface-container-lowest p-5 rounded-2xl flex items-center gap-4 transition-all hover:translate-x-1 border-l-4 border-emerald-500">
+<div class="w-12 h-12 rounded-xl overflow-hidden shadow-sm">
+<img class="w-full h-full object-cover" data-alt="close-up portrait of a woman with braided hair and joyful expression in warm studio light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDp0wyrCWZfzyz111qfp86N9zGzm7RIaWeEoVQTcwgCrTu5ZDe5TYm0MbDN9xu724tkQg02fc1luLys6qiLcpgXaP1zVG6STGRnNt4B1jJ6oE6G6huu6cLUVXXQ23OWiiaAFerg_CK4IoO6zIuA2972IM3D5jXVjjHyjbDLScUwIsIlgqS7d_DNmBTK2jjYDJSF81a1mdN94YKDoGKLw3fMbXZujNW7052_AO03CSw8jWI2iVVGYf3VSh75hrfHiVKtMuKue1DCRAQ"/>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-on-surface">Zainab Sesay</h3>
+<p class="text-xs text-on-surface-variant font-medium">ID: MS-1120-C</p>
+</div>
+<div class="text-right">
+<p class="font-black text-on-secondary-container">NLe 2,500.00</p>
+<span class="inline-flex items-center gap-1 text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            Paid
+                        </span>
+</div>
+</div>
+<!-- Member Row: 03 -->
+<div class="group bg-surface-container-lowest p-5 rounded-2xl flex items-center gap-4 transition-all hover:translate-x-1 border-l-4 border-emerald-500">
+<div class="w-12 h-12 rounded-xl overflow-hidden shadow-sm">
+<img class="w-full h-full object-cover" data-alt="professional headshot of a smiling young man in a blue polo shirt against a bright outdoor background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHEpPaP6tVOdR5eDwFU9boLqa1A8_GLNkLhY4onej19L-I293-Em4h8v2kAJn1cO35ZI9kN89Qhm9um4u-2ljj3xnU2ozf4D7vpXE1S9munb0HgVSzTqEbJAq-P_5Ifv07u2iq706EMJhG6rbYn04i09Mrr2BgcbI4g8GzHLXSFUtaa1Dc781yLB7m3l_CatXalnVZZ0qUU_e2vvr3MyfpVstp7lNFron9rpGb0mo1gcRj7MOhLBisL6KlR0-6E5dNteLGQ_yKl4U"/>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-on-surface">Ibrahim Kamara</h3>
+<p class="text-xs text-on-surface-variant font-medium">ID: MS-0442-B</p>
+</div>
+<div class="text-right">
+<p class="font-black text-on-secondary-container">NLe 2,500.00</p>
+<span class="inline-flex items-center gap-1 text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            Paid
+                        </span>
+</div>
+</div>
+</div>
+<!-- Pending and Late Aside -->
+<div class="lg:col-span-4 space-y-8">
+<!-- Pending Section -->
+<div class="space-y-4">
+<h2 class="text-lg font-bold text-on-secondary-container px-2">Pending (Next 24h)</h2>
+<div class="bg-surface-container-low p-4 rounded-3xl space-y-3">
+<div class="bg-surface-container-lowest p-4 rounded-2xl flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="portrait of a confident woman with natural hair looking directly at the camera with soft window light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXeNfToQafDbZh7c1Ly5DoLhnQLJKQGVlsaoOhmTKAIBQA2K4fTBiQEcTTE-utYUxiYi8623mIVtIZVUxBlzROKeHr7H4-piWZCME-ZCnuK8ZstwZ2ZAjJg-om7T9RGteSd3VKSuy1tnbV1WiVPpj7orogzzRN6R5nYxHzpjCcs-aoWsX-ISO_qXzbE3aT-GTvmU-FUegBfG471sdwJoOB6QKzhKGUMON2QXp45wqjg7_NEMlqIvP22aibKgB8pL5tWomUNcY8l-w"/>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold">Mariama Turay</p>
+<p class="text-[10px] text-primary font-bold">Awaiting Bank Sync</p>
+</div>
+<span class="material-symbols-outlined text-outline text-lg" data-icon="schedule">schedule</span>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-2xl flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="smiling corporate man in suit against a modern city architectural background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQM5XxJTyQiq6bRVTIgU4PSdUtzMXuwJz5Lv7MKWY4CFGXLUf1XWiT8Tv8AtrEC1r2bo3W0lX0TerdMXPDmjlRpJy7wxyF_6GrUgRjR6UvmfsW7Znrw7s2VL90_Q_3aIPClV3LOQdUwY2kz3zraQHcE80m6pAlK7QyDmxJuVsrggfPDOV-1jATxK34PjhW5ZJ1FDpcI5MqQDXt-1nbe63IURq7G-zWLwgmzq85F-dRw2iiZkEHFAfz3NlDZgRCClGz3TrX9mObjsc"/>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold">Foday Bangura</p>
+<p class="text-[10px] text-on-surface-variant font-bold">Payment Initiated</p>
+</div>
+<span class="material-symbols-outlined text-outline text-lg" data-icon="history">history</span>
+</div>
+</div>
+</div>
+<!-- Late Contributors Section -->
+<div class="space-y-4">
+<div class="flex items-center justify-between px-2">
+<h2 class="text-lg font-bold text-error">Late Contributors</h2>
+<span class="w-2 h-2 rounded-full bg-error animate-pulse"></span>
+</div>
+<div class="bg-error-container/20 border border-error/10 p-5 rounded-3xl space-y-4">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl overflow-hidden grayscale">
+<img class="w-full h-full object-cover" data-alt="moody portrait of a man with beard in a dark setting with rim lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6nut6-e4ZEuFzG8igy40cAkmqW_JjXO_8HjxaeN6vv8XuYpv5JG7tB_VN5iuT2cPAVFt3Su3Xrp9d-rLbqskQ0oLILfV9ThyNI0so852JQ7o4mnoqBmkkwV5BF09_-xMgPFFmBAHTO33_GLS0wwLC4AzIwrT6DLf1k-OsHHEKTftfn90iIYtTDEDxj5r72ZaIbWbKyhEBhe6pi4NfAcfykM0Uskkuoijd9qfD2n0GOJN5lCB4o7kQ1trUr9XNMrAtKgu7_HggBV0"/>
+</div>
+<div class="flex-1">
+<p class="text-sm font-black text-on-error-container">Sahr Mattia</p>
+<p class="text-xs text-error font-medium">3 Days Overdue</p>
+</div>
+<button class="bg-error text-white text-[10px] font-black px-3 py-1.5 rounded-lg">REMIND</button>
+</div>
+<div class="pt-4 border-t border-error/10 flex items-center justify-between text-error font-bold text-xs">
+<span>Penalty accrued:</span>
+<span>NLe 125.00</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Asymmetric Detail Section -->
+<section class="mt-16 bg-on-secondary-container text-white p-8 rounded-[2.5rem] relative overflow-hidden">
+<div class="relative z-10 grid md:grid-cols-2 gap-8 items-center">
+<div>
+<h2 class="text-3xl font-bold mb-4">Payout Projection</h2>
+<p class="text-blue-200/80 mb-6 text-sm leading-relaxed">Based on current contribution velocity, the final pot distribution for Member #12 (Fatu Koroma) will be ready by Friday at 12:00 PM.</p>
+<div class="flex items-center gap-4">
+<div class="p-3 bg-white/10 rounded-2xl backdrop-blur-md">
+<p class="text-[10px] uppercase font-black text-orange-400 mb-1">Estimated Payout</p>
+<p class="text-2xl font-black">NLe 58,250</p>
+</div>
+<div class="p-3 bg-white/5 rounded-2xl backdrop-blur-md border border-white/10">
+<p class="text-[10px] uppercase font-black text-blue-300 mb-1">Next Recipient</p>
+<p class="text-lg font-bold">F. Koroma</p>
+</div>
+</div>
+</div>
+<div class="bg-white/5 rounded-3xl p-6 border border-white/10 backdrop-blur-sm">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-orange-400" data-icon="verified_user">verified_user</span>
+<p class="text-sm font-bold">Trust Score Integrity: 98.4%</p>
+</div>
+<div class="space-y-4">
+<div class="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-orange-500 w-[98%]"></div>
+</div>
+<p class="text-[10px] text-blue-200 font-medium">The group’s health remains excellent despite minor delays. All contributors are verified members.</p>
+</div>
+</div>
+</div>
+<!-- Decorative circle -->
+<div class="absolute -bottom-20 -right-20 w-64 h-64 bg-primary/20 rounded-full blur-3xl"></div>
+</section>
+</main>
+<!-- BottomNavBar Execution -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl shadow-[0_-8px_32px_rgba(11,28,48,0.04)] rounded-t-[2rem] border-t border-white/10">
+<!-- Vault -->
+<a class="flex flex-col items-center justify-center text-[#1a2a8e]/60 dark:text-slate-400 px-5 py-2 hover:text-orange-500 transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-['Inter'] text-[11px] font-semibold tracking-wide">Vault</span>
+</a>
+<!-- Groups (ACTIVE) -->
+<a class="flex flex-col items-center justify-center bg-[#ffa500] text-white rounded-xl px-5 py-2 active:scale-90 duration-200 shadow-lg shadow-orange-500/30" href="#">
+<span class="material-symbols-outlined" data-icon="groups" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="font-['Inter'] text-[11px] font-semibold tracking-wide">Groups</span>
+</a>
+<!-- Activity -->
+<a class="flex flex-col items-center justify-center text-[#1a2a8e]/60 dark:text-slate-400 px-5 py-2 hover:text-orange-500 transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-['Inter'] text-[11px] font-semibold tracking-wide">Activity</span>
+</a>
+<!-- Settings -->
+<a class="flex flex-col items-center justify-center text-[#1a2a8e]/60 dark:text-slate-400 px-5 py-2 hover:text-orange-500 transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-['Inter'] text-[11px] font-semibold tracking-wide">Settings</span>
+</a>
+</nav>
+</body></html>
