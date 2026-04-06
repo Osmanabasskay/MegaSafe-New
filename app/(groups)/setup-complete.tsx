@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { 
   ArrowLeft, 
   CheckCircle, 
@@ -21,49 +20,88 @@ import {
   List,
   Settings
 } from 'lucide-react-native';
+import { getGroupById } from '../../lib/groupService';
+import type { OsusuGroup } from '../../types/group';
 
 export default function SetupCompleteScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ groupId?: string }>();
+  const groupId = params.groupId != null ? String(params.groupId) : '';
+  const [groupData, setGroupData] = useState<OsusuGroup | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const groupData = {
-    name: 'Family Savings Circle',
-    members: 5,
-    contributionAmount: '100.00',
-    frequency: 'Weekly',
-    startDate: 'Dec 15, 2024',
-    inviteCode: 'MSF-ABC123',
-  };
+  useEffect(() => {
+    let mounted = true;
+
+    const run = async () => {
+      if (!groupId) {
+        setIsLoading(false);
+        return;
+      }
+      const { group } = await getGroupById(groupId);
+      if (mounted) {
+        setGroupData(group);
+        setIsLoading(false);
+      }
+    };
+
+    void run();
+    return () => {
+      mounted = false;
+    };
+  }, [groupId]);
+
+  const resolvedGroup = useMemo(
+    () =>
+      groupData ?? {
+        id: groupId || 'local-unknown',
+        created_at: new Date().toISOString(),
+        name: 'Your New Group',
+        description: null,
+        avatar_url: null,
+        contribution_amount: 0,
+        frequency: 'weekly' as const,
+        max_members: 0,
+        cycle_start_date: new Date().toISOString().slice(0, 10),
+        total_cycles: 0,
+        payout_order: 'sequential' as const,
+        is_public: true,
+        join_requires_approval: true,
+        custom_rules: null,
+        status: 'active' as const,
+        created_by: '',
+        invite_code: '',
+      },
+    [groupData, groupId]
+  );
 
   const handleGoToDashboard = () => {
-    // TODO: Navigate to group dashboard
-    router.replace('/(groups)/manage/1');
+    router.replace(`/(groups)/manage/${resolvedGroup.id}`);
   };
 
   const handleViewGroup = () => {
-    // TODO: Navigate to group details
-    router.replace('/(groups)/manage/1');
+    router.replace(`/(groups)/manage/${resolvedGroup.id}`);
   };
 
   const handleInviteMore = () => {
-    // TODO: Navigate back to invite screen
     router.push('/(groups)/invite');
   };
 
   const features = [
     {
       icon: <Users size={24} color="#F97316" />,
-      title: '5 Members',
-      description: 'All members have joined the group',
+      title: `${resolvedGroup.max_members} Members`,
+      description: 'Maximum members configured for this group',
     },
     {
       icon: <DollarSign size={24} color="#F97316" />,
-      title: 'NLe 100.00',
-      description: 'Weekly contribution amount',
+      title: `NLe ${resolvedGroup.contribution_amount.toFixed(2)}`,
+      description: `${resolvedGroup.frequency} contribution amount`,
     },
     {
       icon: <Calendar size={24} color="#F97316" />,
-      title: 'Weekly Schedule',
-      description: 'Contributions due every Friday',
+      title: `${resolvedGroup.frequency.charAt(0).toUpperCase()}${resolvedGroup.frequency.slice(1)} Schedule`,
+      description: `Starts ${resolvedGroup.cycle_start_date}`,
     },
     {
       icon: <Shield size={24} color="#F97316" />,
@@ -87,6 +125,10 @@ export default function SetupCompleteScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {isLoading ? (
+          <Text style={styles.loadingText}>Loading group summary...</Text>
+        ) : null}
+
         {/* Success Message */}
         <View style={styles.successContainer}>
           <View style={styles.successIcon}>
@@ -94,7 +136,7 @@ export default function SetupCompleteScreen() {
           </View>
           <Text style={styles.successTitle}>Group Created Successfully!</Text>
           <Text style={styles.successMessage}>
-            Your Osusu group "{groupData.name}" is now ready. Members can start contributing according to the schedule.
+            Your Osusu group "{resolvedGroup.name}" is now ready. Members can start contributing according to the schedule.
           </Text>
         </View>
 
@@ -102,23 +144,23 @@ export default function SetupCompleteScreen() {
         <View style={styles.summaryContainer}>
           <Text style={styles.summaryTitle}>Group Summary</Text>
           
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Group Name</Text>
-            <Text style={styles.summaryValue}>{groupData.name}</Text>
-          </View>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Group Name</Text>
+              <Text style={styles.summaryValue}>{resolvedGroup.name}</Text>
+            </View>
 
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Invite Code</Text>
-            <View style={styles.codeContainer}>
-              <Text style={styles.codeText}>{groupData.inviteCode}</Text>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Invite Code</Text>
+              <View style={styles.codeContainer}>
+                <Text style={styles.codeText}>{resolvedGroup.invite_code || 'Pending'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>Start Date</Text>
+              <Text style={styles.summaryValue}>{resolvedGroup.cycle_start_date}</Text>
             </View>
           </View>
-
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Start Date</Text>
-            <Text style={styles.summaryValue}>{groupData.startDate}</Text>
-          </View>
-        </View>
 
         {/* Features Grid */}
         <View style={styles.featuresContainer}>
@@ -217,7 +259,7 @@ export default function SetupCompleteScreen() {
 
           <TouchableOpacity 
             style={styles.navItem}
-            onPress={() => router.replace('/(main)/profile')}
+            onPress={() => router.replace('/components/profile')}
           >
             <Settings size={20} color="#6B7280" />
             <Text style={styles.navText}>Profile</Text>
@@ -231,7 +273,7 @@ export default function SetupCompleteScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -240,8 +282,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   backButton: {
     marginRight: 16,
@@ -310,8 +350,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   summaryLabel: {
     fontSize: 16,
@@ -328,8 +366,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#F97316',
   },
   codeText: {
     fontSize: 16,
@@ -418,8 +454,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     width: '48%',
   },
   secondaryButtonText: {
@@ -474,8 +508,6 @@ const styles = StyleSheet.create({
   bottomNav: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
     paddingVertical: 8,
   },
   navItem: {
@@ -484,8 +516,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   navItemActive: {
-    borderTopWidth: 2,
-    borderTopColor: '#F97316',
   },
   navText: {
     fontSize: 12,
@@ -496,4 +526,11 @@ const styles = StyleSheet.create({
   navTextActive: {
     color: '#F97316',
   },
+  loadingText: {
+    textAlign: 'center',
+    color: '#6B7280',
+    marginBottom: 12,
+    fontSize: 14,
+  },
 });
+

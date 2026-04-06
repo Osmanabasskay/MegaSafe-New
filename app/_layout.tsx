@@ -24,13 +24,15 @@ export default function RootLayout() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+    const currentPath = segments.join('/');
+    const inAuthGroup = currentPath.startsWith('(auth)');
+    const inPublicWelcome = currentPath === 'welcome' || currentPath === '';
+    const inPublicLegalScreen =
+      currentPath === '(settings)/terms' || currentPath === '(settings)/privacy';
 
-    // Give router time to mount if needed, but usually replace works
-    if (!session && !inAuthGroup) {
+    // Keep auth screens accessible even if a stale session appears briefly.
+    if (!session && !inAuthGroup && !inPublicLegalScreen && !inPublicWelcome) {
       router.replace('/(auth)/login');
-    } else if (session && inAuthGroup) {
-      router.replace('/(main)/home');
     }
   }, [session, isLoading, segments]);
 

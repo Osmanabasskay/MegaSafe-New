@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as ImagePicker from 'expo-image-picker';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
 import { getKycDraftSnapshot, useKycDraftStore } from '../../stores/kycDraftStore';
 import { KycProgress } from '../../components/kyc/KycProgress';
@@ -100,7 +101,7 @@ export default function GuarantorScreen() {
   };
 
   return (
-    <View className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white">
       <KycProgress currentStep={4} label="Guarantor" />
       <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled">
         <Text className="text-3xl font-bold text-secondary mb-2">Guarantor</Text>
@@ -114,7 +115,7 @@ export default function GuarantorScreen() {
             name="guarantorName"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -130,7 +131,7 @@ export default function GuarantorScreen() {
             name="guarantorPhone"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -147,7 +148,7 @@ export default function GuarantorScreen() {
             name="guarantorEmail"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -165,7 +166,7 @@ export default function GuarantorScreen() {
             name="guarantorAddress"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -182,7 +183,7 @@ export default function GuarantorScreen() {
             name="relationship"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -194,7 +195,7 @@ export default function GuarantorScreen() {
 
         <Text className="text-sm font-semibold text-gray-700 mb-2">Guarantor ID type</Text>
         <TouchableOpacity
-          className="border border-gray-300 rounded-lg p-3 flex-row justify-between items-center mb-4"
+          className="bg-gray-100 rounded-lg p-3 flex-row justify-between items-center mb-4"
           onPress={() => setIdTypeModal(true)}
         >
           <Text className="text-gray-900">{selectedIdLabel}</Text>
@@ -207,7 +208,7 @@ export default function GuarantorScreen() {
             name="nationalIdNumber"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -218,7 +219,7 @@ export default function GuarantorScreen() {
 
         <Text className="text-sm font-semibold text-gray-700 mb-2">Guarantor ID document</Text>
         <TouchableOpacity
-          className="border-2 border-dashed border-gray-300 rounded-xl h-40 items-center justify-center bg-gray-50 mb-6"
+          className="bg-gray-100 rounded-xl h-40 items-center justify-center bg-gray-50 mb-6"
           onPress={pickGuarantorDoc}
           disabled={picking}
         >
@@ -251,7 +252,7 @@ export default function GuarantorScreen() {
             {nationalIdTypes.map((t) => (
               <TouchableOpacity
                 key={t.value}
-                className="py-3 border-b border-gray-100"
+                className="py-3 "
                 onPress={() => {
                   setValue('nationalIdType', t.value, { shouldValidate: true });
                   setIdTypeModal(false);
@@ -266,7 +267,7 @@ export default function GuarantorScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -287,3 +288,4 @@ function Field({
     </View>
   );
 }
+

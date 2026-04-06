@@ -1,515 +1,312 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Image,
-  Alert,
-} from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   ArrowLeft,
-  User,
+  Calendar,
+  Camera,
+  Edit,
   Mail,
   Phone,
-  Calendar,
   Shield,
-  Edit,
-  Camera,
-  Award,
   TrendingUp,
   Users,
-  Clock,
 } from 'lucide-react-native';
+import { useAuthStore } from '../../stores/authStore';
+import { useAppDataStore } from '../../stores/appDataStore';
+import { listGroupsForUser } from '../../lib/groupService';
+import {
+  getCredentialDisplayName,
+  getProfileInitials,
+  isPlaceholderProfileName,
+  normalizeProfileName,
+} from '../../lib/profileName';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { user } = useAuthStore();
+  const { profile, savingsGoals, vaultTransactions, initializeForUser } = useAppDataStore();
+  const [groupCount, setGroupCount] = useState(0);
 
-  const userProfile = {
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '+232 76 123 456',
-    joinDate: 'January 15, 2024',
-    verificationStatus: 'Verified',
-    profileImage: null, // Would be actual image URL
-  };
+  useEffect(() => {
+    initializeForUser(user);
+  }, [initializeForUser, user]);
 
-  const stats = {
-    totalGroups: 12,
-    totalSaved: 'NLe 2,500',
-    activeGroups: 8,
-    completedGroups: 4,
-    memberSince: '15 months',
-    referralCount: 8,
-    totalEarnings: 'NLe 400',
-  };
-
-  const achievements = [
-    { id: '1', name: 'Early Adopter', description: 'Joined in the first month', icon: '🌟', earned: true },
-    { id: '2', name: 'Group Leader', description: 'Created 5+ groups', icon: '👥', earned: true },
-    { id: '3', name: 'Super Saver', description: 'Saved over NLe 2000', icon: '💰', earned: true },
-    { id: '4', name: 'Referral Master', description: 'Referred 10+ friends', icon: '🎯', earned: false },
-  ];
-
-  const recentActivity = [
-    { id: '1', type: 'group_join', title: 'Joined "Business Savings Group"', date: '2 days ago' },
-    { id: '2', type: 'contribution', title: 'Contributed NLe 100 to Family Circle', date: '3 days ago' },
-    { id: '3', type: 'achievement', title: 'Earned "Super Saver" badge', date: '1 week ago' },
-    { id: '4', type: 'referral', title: 'Friend joined using your code', date: '2 weeks ago' },
-  ];
-
-  const renderStatCard = (title: string, value: string, icon: any, color: string = '#F97316') => (
-    <View style={styles.statCard}>
-      <View style={[styles.statIcon, { backgroundColor: `${color}20` }]}>
-        {icon}
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
-    </View>
-  );
-
-  const renderAchievement = (achievement: any) => (
-    <View key={achievement.id} style={[styles.achievementCard, !achievement.earned && styles.achievementLocked]}>
-      <Text style={styles.achievementIcon}>{achievement.icon}</Text>
-      <View style={styles.achievementInfo}>
-        <Text style={styles.achievementName}>{achievement.name}</Text>
-        <Text style={styles.achievementDescription}>{achievement.description}</Text>
-      </View>
-      {achievement.earned ? (
-        <Award size={20} color="#10B981" />
-      ) : (
-        <Lock size={20} color="#9CA3AF" />
-      )}
-    </View>
-  );
-
-  const renderActivityItem = (activity: any) => {
-    const getIcon = () => {
-      switch (activity.type) {
-        case 'group_join':
-          return <Users size={16} color="#F97316" />;
-        case 'contribution':
-          return <TrendingUp size={16} color="#10B981" />;
-        case 'achievement':
-          return <Award size={16} color="#8B5CF6" />;
-        case 'referral':
-          return <Gift size={16} color="#F59E0B" />;
-        default:
-          return <Clock size={16} color="#6B7280" />;
-      }
+  useEffect(() => {
+    let mounted = true;
+    const run = async () => {
+      if (!user?.id) return;
+      const { groups } = await listGroupsForUser(user.id);
+      if (mounted) setGroupCount(groups.length);
     };
+    void run();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
 
-    return (
-      <View key={activity.id} style={styles.activityItem}>
-        <View style={styles.activityIcon}>
-          {getIcon()}
-        </View>
-        <View style={styles.activityContent}>
-          <Text style={styles.activityTitle}>{activity.title}</Text>
-          <Text style={styles.activityDate}>{activity.date}</Text>
-        </View>
-      </View>
-    );
-  };
+  const totalSaved = useMemo(
+    () =>
+      vaultTransactions
+        .filter((transaction) => transaction.status === 'completed')
+        .reduce((sum, transaction) => {
+          if (transaction.type === 'withdrawal') return sum - transaction.amount;
+          return sum + transaction.amount;
+        }, 0),
+    [vaultTransactions]
+  );
+
+  const activeGoals = useMemo(
+    () => savingsGoals.filter((goal) => goal.status === 'active').length,
+    [savingsGoals]
+  );
+
+  const profileStats = [
+    { label: 'Groups', value: String(groupCount), icon: <Users size={16} color="#F97316" /> },
+    { label: 'Active Goals', value: String(activeGoals), icon: <TrendingUp size={16} color="#1D4ED8" /> },
+    { label: 'Total Saved', value: `NLe ${Math.max(0, totalSaved).toFixed(2)}`, icon: <Shield size={16} color="#10B981" /> },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
           <ArrowLeft size={24} color="#F97316" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity style={styles.editButton}>
+        <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/components/profile-edit')}>
           <Edit size={20} color="#F97316" />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Profile Header */}
-        <View style={styles.profileHeader}>
-          <View style={styles.avatarContainer}>
-            {userProfile.profileImage ? (
-              <Image source={{ uri: userProfile.profileImage }} style={styles.avatar} />
+        <View style={styles.heroCard}>
+          <View style={styles.avatarWrap}>
+            {profile.avatarUrl ? (
+              <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
             ) : (
-              <View style={styles.avatarPlaceholder}>
-                <User size={40} color="#FFFFFF" />
+              <View style={styles.avatarFallback}>
+                <Text style={styles.avatarFallbackText}>
+                  {getProfileInitials(
+                    profile.fullName,
+                    getCredentialDisplayName(profile.email, profile.phone)
+                  )}
+                </Text>
               </View>
             )}
-            <TouchableOpacity style={styles.cameraButton}>
-              <Camera size={16} color="#FFFFFF" />
+            <TouchableOpacity style={styles.cameraButton} onPress={() => router.push('/components/profile-edit')}>
+              <Camera size={14} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.profileName}>{userProfile.name}</Text>
-          <View style={styles.verificationBadge}>
+
+          <Text style={styles.name}>
+            {isPlaceholderProfileName(profile.fullName)
+              ? getCredentialDisplayName(profile.email, profile.phone)
+              : normalizeProfileName(profile.fullName)}
+          </Text>
+          <View style={styles.verifyBadge}>
             <Shield size={12} color="#10B981" />
-            <Text style={styles.verificationText}>{userProfile.verificationStatus}</Text>
+            <Text style={styles.verifyText}>{profile.verificationStatus}</Text>
           </View>
-          <Text style={styles.memberSince}>Member since {userProfile.joinDate}</Text>
+          <Text style={styles.memberSince}>Member since {profile.memberSince}</Text>
         </View>
 
-        {/* Contact Information */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact Information</Text>
-          <View style={styles.infoCard}>
-            <View style={styles.infoItem}>
-              <Mail size={20} color="#6B7280" />
-              <Text style={styles.infoText}>{userProfile.email}</Text>
+          <Text style={styles.sectionTitle}>Contact</Text>
+          <View style={styles.card}>
+            <View style={styles.row}>
+              <Mail size={18} color="#6B7280" />
+              <Text style={styles.rowText}>{profile.email || 'No email available'}</Text>
             </View>
-            <View style={styles.infoItem}>
-              <Phone size={20} color="#6B7280" />
-              <Text style={styles.infoText}>{userProfile.phone}</Text>
+            <View style={styles.row}>
+              <Phone size={18} color="#6B7280" />
+              <Text style={styles.rowText}>{profile.phone || 'No phone number set'}</Text>
             </View>
-            <View style={styles.infoItem}>
-              <Calendar size={20} color="#6B7280" />
-              <Text style={styles.infoText}>Joined {userProfile.joinDate}</Text>
+            <View style={styles.row}>
+              <Calendar size={18} color="#6B7280" />
+              <Text style={styles.rowText}>Referral code: {profile.referralCode}</Text>
             </View>
           </View>
         </View>
 
-        {/* Statistics */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Statistics</Text>
+          <Text style={styles.sectionTitle}>Stats</Text>
           <View style={styles.statsGrid}>
-            {renderStatCard('Total Groups', stats.totalGroups.toString(), <Users size={20} color="#F97316" />)}
-            {renderStatCard('Total Saved', stats.totalSaved, <TrendingUp size={20} color="#10B981" />, '#10B981')}
-            {renderStatCard('Active Groups', stats.activeGroups.toString(), <Users size={20} color="#8B5CF6" />, '#8B5CF6')}
-            {renderStatCard('Referrals', stats.referralCount.toString(), <Gift size={20} color="#F59E0B" />, '#F59E0B')}
+            {profileStats.map((item) => (
+              <View style={styles.statCard} key={item.label}>
+                <View style={styles.statIcon}>{item.icon}</View>
+                <Text style={styles.statValue}>{item.value}</Text>
+                <Text style={styles.statLabel}>{item.label}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
-        {/* Achievements */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Achievements</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.achievementsContainer}>
-            {achievements.map(renderAchievement)}
-          </View>
-        </View>
-
-        {/* Recent Activity */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.activityContainer}>
-            {recentActivity.map(renderActivityItem)}
-          </View>
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.actionButton}>
-              <Edit size={20} color="#F97316" />
-              <Text style={styles.actionButtonText}>Edit Profile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
-              <Shield size={20} color="#10B981" />
-              <Text style={styles.actionButtonText}>Verification</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
-              <Gift size={20} color="#F59E0B" />
-              <Text style={styles.actionButtonText}>Referrals</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.ctaButton} onPress={() => router.push('/components/settings')}>
+            <Text style={styles.ctaText}>Manage Profile & Security</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const Lock = ({ size, color }: { size: number; color: string }) => (
-  <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-    <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>🔒</Text>
-  </View>
-);
-
-const Gift = ({ size, color }: { size: number; color: string }) => (
-  <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-    <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>🎁</Text>
-  </View>
-);
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: '#FFFFFF',
   },
   header: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    justifyContent: 'space-between',
   },
-  backButton: {
-    marginRight: 16,
+  iconButton: {
+    width: 36,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: '#1E2B5A',
-    flex: 1,
-  },
-  editButton: {
-    padding: 8,
   },
   scrollView: {
     flex: 1,
   },
-  profileHeader: {
-    alignItems: 'center',
-    padding: 24,
+  heroCard: {
+    marginHorizontal: 24,
+    marginTop: 20,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
-    marginBottom: 24,
+    alignItems: 'center',
+    padding: 20,
   },
-  avatarContainer: {
+  avatarWrap: {
     position: 'relative',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+  avatarImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
   },
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+  avatarFallback: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: '#F97316',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarFallbackText: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '700',
   },
   cameraButton: {
     position: 'absolute',
-    bottom: 0,
     right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F97316',
+    bottom: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#1E2B5A',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
   },
-  profileName: {
-    fontSize: 24,
+  name: {
+    fontSize: 22,
     fontWeight: '700',
     color: '#1E2B5A',
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  verificationBadge: {
+  verifyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#D1FAE5',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    marginBottom: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    marginBottom: 6,
   },
-  verificationText: {
-    fontSize: 12,
-    color: '#10B981',
-    fontWeight: '500',
+  verifyText: {
     marginLeft: 4,
+    color: '#10B981',
+    fontSize: 12,
+    fontWeight: '600',
   },
   memberSince: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
   },
   section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    marginBottom: 16,
+    marginTop: 20,
+    marginHorizontal: 24,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: '#1E2B5A',
+    marginBottom: 10,
   },
-  viewAllText: {
-    fontSize: 14,
-    color: '#F97316',
-    fontWeight: '500',
-  },
-  infoCard: {
+  card: {
     backgroundColor: '#FFFFFF',
-    marginHorizontal: 24,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    borderRadius: 14,
+    padding: 14,
   },
-  infoItem: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
   },
-  infoText: {
-    fontSize: 16,
+  rowText: {
+    marginLeft: 10,
     color: '#374151',
-    marginLeft: 12,
-    flex: 1,
+    fontSize: 14,
   },
   statsGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 24,
-    gap: 16,
+    gap: 10,
   },
   statCard: {
     flex: 1,
-    minWidth: '45%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 14,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
   },
   statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
     color: '#1E2B5A',
-    marginBottom: 4,
+    marginBottom: 3,
+    textAlign: 'center',
   },
-  statTitle: {
-    fontSize: 12,
+  statLabel: {
+    fontSize: 11,
     color: '#6B7280',
     textAlign: 'center',
   },
-  achievementsContainer: {
-    paddingHorizontal: 24,
-  },
-  achievementCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+  ctaButton: {
+    backgroundColor: '#F97316',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  achievementLocked: {
-    opacity: 0.6,
-  },
-  achievementIcon: {
-    fontSize: 24,
-    marginRight: 16,
-  },
-  achievementInfo: {
-    flex: 1,
-  },
-  achievementName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E2B5A',
-    marginBottom: 4,
-  },
-  achievementDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  activityContainer: {
-    paddingHorizontal: 24,
-  },
-  activityItem: {
-    flexDirection: 'row',
+    paddingVertical: 14,
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    marginBottom: 26,
   },
-  activityIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E2B5A',
-    marginBottom: 4,
-  },
-  activityDate: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    marginLeft: 8,
+  ctaText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
   },
 });
+

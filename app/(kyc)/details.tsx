@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
 import { useKycDraftStore } from '../../stores/kycDraftStore';
 import { KycProgress } from '../../components/kyc/KycProgress';
@@ -105,7 +106,7 @@ export default function KYCDetailsScreen() {
   };
 
   return (
-    <View className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white">
       <KycProgress currentStep={3} label="Address & ID details" />
       <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled">
         <Text className="text-3xl font-bold text-primary mb-2">Your details</Text>
@@ -125,7 +126,7 @@ export default function KYCDetailsScreen() {
             name="firstName"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -141,7 +142,7 @@ export default function KYCDetailsScreen() {
             name="lastName"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -157,7 +158,7 @@ export default function KYCDetailsScreen() {
             name="phone"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -174,7 +175,7 @@ export default function KYCDetailsScreen() {
             name="dateOfBirth"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -194,8 +195,8 @@ export default function KYCDetailsScreen() {
                 <TouchableOpacity
                   key={g}
                   onPress={() => onChange(g)}
-                  className={`flex-1 py-3 rounded-xl border ${
-                    value === g ? 'bg-primary border-primary' : 'border-gray-300 bg-white'
+                  className={`flex-1 py-3 rounded-xl ${
+                    value === g ? 'bg-primary' : 'bg-gray-100'
                   }`}
                 >
                   <Text
@@ -218,7 +219,7 @@ export default function KYCDetailsScreen() {
             name="addressLine1"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -234,7 +235,7 @@ export default function KYCDetailsScreen() {
             name="addressLine2"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -250,7 +251,7 @@ export default function KYCDetailsScreen() {
             name="city"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -266,7 +267,7 @@ export default function KYCDetailsScreen() {
             name="stateProvince"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -281,7 +282,7 @@ export default function KYCDetailsScreen() {
             name="postalCode"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -292,7 +293,7 @@ export default function KYCDetailsScreen() {
 
         <Text className="text-sm font-semibold text-gray-700 mb-2">Country</Text>
         <TouchableOpacity
-          className="border border-gray-300 rounded-lg p-3 flex-row justify-between items-center mb-1"
+          className="bg-gray-100 rounded-lg p-3 flex-row justify-between items-center mb-1"
           onPress={() => setCountryModal(true)}
         >
           <Text className={selectedCountry ? 'text-gray-900' : 'text-gray-400'}>
@@ -308,7 +309,7 @@ export default function KYCDetailsScreen() {
 
         <Text className="text-sm font-semibold text-gray-700 mb-2">ID document type</Text>
         <TouchableOpacity
-          className="border border-gray-300 rounded-lg p-3 flex-row justify-between items-center mb-1"
+          className="bg-gray-100 rounded-lg p-3 flex-row justify-between items-center mb-1"
           onPress={() => setIdTypeModal(true)}
         >
           <Text className="text-gray-900">{selectedIdLabel}</Text>
@@ -321,7 +322,7 @@ export default function KYCDetailsScreen() {
             name="nationalIdNumber"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className="border border-gray-300 rounded-lg p-3 text-base"
+                className="bg-gray-100 rounded-lg p-3 text-base"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -351,7 +352,7 @@ export default function KYCDetailsScreen() {
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    className="py-3 border-b border-gray-100"
+                    className="py-3 "
                     onPress={() => {
                       setValue('countryId', item.id, { shouldValidate: true });
                       setCountryModal(false);
@@ -376,7 +377,7 @@ export default function KYCDetailsScreen() {
             {nationalIdTypes.map((t) => (
               <TouchableOpacity
                 key={t.value}
-                className="py-3 border-b border-gray-100"
+                className="py-3 "
                 onPress={() => {
                   setValue('nationalIdType', t.value, { shouldValidate: true });
                   setIdTypeModal(false);
@@ -391,7 +392,7 @@ export default function KYCDetailsScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -412,3 +413,4 @@ function Field({
     </View>
   );
 }
+

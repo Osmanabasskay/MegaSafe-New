@@ -11,11 +11,18 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { User, Mail, Phone, Lock, Calendar, MapPin, Eye, EyeOff, ChevronRight } from 'lucide-react-native';
+import { supabase, supabaseConfigured } from '../../lib/supabase';
+import { isValidE164, normalizePhoneE164 } from '../../lib/auth/phone';
+import { useComplianceStore } from '../../stores/complianceStore';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ legalAcceptedAt?: string }>();
+  const termsAcceptedAt = useComplianceStore((state) => state.termsAcceptedAt);
+  const privacyAcceptedAt = useComplianceStore((state) => state.privacyAcceptedAt);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -57,32 +64,69 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!validateForm()) return;
+    const legalAcceptedAt = termsAcceptedAt || (params.legalAcceptedAt ? decodeURIComponent(String(params.legalAcceptedAt)) : '');
+    if (!termsAcceptedAt || !privacyAcceptedAt) {
+      setErrors((prev) => ({
+        ...prev,
+        confirmPassword: 'Accept Terms and Privacy Policy in onboarding before registration.',
+      }));
+      return;
+    }
+
+    const normalizedPhone = normalizePhoneE164(formData.phone);
+    if (!isValidE164(normalizedPhone)) {
+      setErrors((prev) => ({ ...prev, phone: 'Use full country code format, e.g. +23276123456' }));
+      return;
+    }
 
     setIsLoading(true);
     try {
-      // TODO: Implement actual registration logic with Supabase
-      // For now, navigate to OTP verification
+      if (supabaseConfigured) {
+        const { error } = await supabase.auth.signInWithOtp({
+          phone: normalizedPhone,
+          options: {
+            shouldCreateUser: true,
+            data: {
+              first_name: formData.firstName.trim(),
+              last_name: formData.lastName.trim(),
+              full_name: `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim(),
+              email: formData.email.trim().toLowerCase(),
+            },
+          },
+        });
+        if (error) {
+          setErrors((prev) => ({ ...prev, phone: error.message }));
+          setIsLoading(false);
+          return;
+        }
+      }
+
       router.push({
         pathname: '/(auth)/otp',
         params: { 
-          phone: encodeURIComponent(formData.phone),
-          email: encodeURIComponent(formData.email),
-          type: 'register'
+          phone: encodeURIComponent(normalizedPhone),
+          email: encodeURIComponent(formData.email.trim().toLowerCase()),
+          firstName: encodeURIComponent(formData.firstName.trim()),
+          lastName: encodeURIComponent(formData.lastName.trim()),
+          legalAcceptedAt: encodeURIComponent(legalAcceptedAt),
+          type: 'register',
         }
       });
     } catch (error) {
-      console.error('Registration error:', error);
+      const message = error instanceof Error ? error.message : 'Registration failed.';
+      setErrors((prev) => ({ ...prev, email: message }));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Logo */}
         <View style={styles.logoContainer}>
           <View style={styles.logoBackground}>
@@ -258,8 +302,9 @@ export default function RegisterScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -327,8 +372,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB' as const,
   },
   inputIcon: {
     marginRight: 12,

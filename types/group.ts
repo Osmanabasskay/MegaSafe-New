@@ -1,6 +1,6 @@
 export type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
 export type PayoutOrder = 'sequential' | 'random';
-export type GroupStatus = 'active' | 'completed' | 'pending';
+export type GroupStatus = 'active' | 'paused' | 'completed' | 'disbanded' | 'pending';
 
 export interface OsusuGroup {
   id: string;

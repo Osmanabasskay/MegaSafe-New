@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
   DollarSign,
@@ -20,6 +20,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from 'lucide-react-native';
+import { getGroupById } from '../../lib/groupService';
 
 interface PaymentMethod {
   id: string;
@@ -30,17 +31,37 @@ interface PaymentMethod {
 
 export default function ContributeScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ groupId?: string }>();
+  const groupId = params.groupId != null ? String(params.groupId) : '';
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [phoneNumber, setPhoneNumber] = useState('+232 76 123 456');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-
-  const groupData = {
+  const [groupData, setGroupData] = useState({
     name: 'Family Savings Circle',
     contributionAmount: '100.00',
-    dueDate: 'Dec 15, 2024',
-    memberName: 'John Doe',
-  };
+    dueDate: 'Pending',
+  });
+
+  useEffect(() => {
+    let mounted = true;
+
+    const run = async () => {
+      if (!groupId) return;
+      const { group } = await getGroupById(groupId);
+      if (!mounted || !group) return;
+      setGroupData({
+        name: group.name,
+        contributionAmount: group.contribution_amount.toFixed(2),
+        dueDate: group.cycle_start_date,
+      });
+    };
+
+    void run();
+    return () => {
+      mounted = false;
+    };
+  }, [groupId]);
 
   const paymentMethods: PaymentMethod[] = [
     {
@@ -89,15 +110,7 @@ export default function ContributeScreen() {
     setIsProcessing(true);
 
     try {
-      // TODO: Call payment API
-      // const response = await initiatePayment({
-      //   groupId: '1',
-      //   amount: groupData.contributionAmount,
-      //   method: selectedMethod,
-      //   phoneNumber: phoneNumber,
-      // });
-
-      // Simulate payment processing
+      // Simulate a payment processing handoff until edge function wiring is added.
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       setIsProcessing(false);
@@ -105,7 +118,15 @@ export default function ContributeScreen() {
 
       // Navigate to success screen after 2 seconds
       setTimeout(() => {
-        router.push('/(groups)/payment-success');
+        router.push({
+          pathname: '/(groups)/payment-success',
+          params: {
+            groupId: groupId || '1',
+            method: selectedMethod,
+            phone: phoneNumber,
+            amount: groupData.contributionAmount,
+          },
+        });
       }, 2000);
 
     } catch (error) {
@@ -130,7 +151,7 @@ export default function ContributeScreen() {
           </Text>
           <TouchableOpacity
             style={styles.doneButton}
-            onPress={() => router.replace('/(groups)/manage/1')}
+            onPress={() => router.replace(`/(groups)/manage/${groupId || '1'}`)}
           >
             <Text style={styles.doneButtonText}>Done</Text>
           </TouchableOpacity>
@@ -251,7 +272,7 @@ export default function ContributeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -260,8 +281,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   backButton: {
     marginRight: 16,
@@ -344,8 +363,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -354,7 +371,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   selectedMethodCard: {
-    borderWidth: 2,
     backgroundColor: '#F9FAFB',
   },
   methodIcon: {
@@ -381,8 +397,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   phoneInput: {
     fontSize: 16,
@@ -487,3 +501,4 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+

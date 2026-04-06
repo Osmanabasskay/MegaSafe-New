@@ -8,6 +8,7 @@ import {
   Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useKycDraftStore } from '../../stores/kycDraftStore';
 import { KycProgress } from '../../components/kyc/KycProgress';
 
@@ -21,19 +22,21 @@ export default function SelfieScreen() {
   const setDraft = useKycDraftStore((s) => s.setDraft);
 
   if (!permission) {
-    return <View className="flex-1 bg-white" />;
+    return <SafeAreaView className="flex-1 bg-white" />;
   }
 
   if (!permission.granted) {
     return (
-      <View className="flex-1 items-center justify-center bg-white p-6">
-        <Text className="text-xl text-center mb-6 text-gray-800">
-          Camera access is required for a live selfie (gallery is not allowed for this step).
-        </Text>
-        <TouchableOpacity className="bg-primary px-6 py-3 rounded-xl" onPress={requestPermission}>
-          <Text className="text-white font-bold">Grant permission</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView className="flex-1 bg-white">
+        <View className="flex-1 items-center justify-center p-6">
+          <Text className="text-xl text-center mb-6 text-gray-800">
+            Camera access is required for a live selfie (gallery is not allowed for this step).
+          </Text>
+          <TouchableOpacity className="bg-primary px-6 py-3 rounded-xl" onPress={requestPermission}>
+            <Text className="text-white font-bold">Grant permission</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -60,14 +63,14 @@ export default function SelfieScreen() {
 
   if (previewUri) {
     return (
-      <View className="flex-1 bg-white">
+      <SafeAreaView className="flex-1 bg-white">
         <KycProgress currentStep={2} label="Live selfie" />
         <View className="flex-1 px-6 pt-4">
           <Text className="text-2xl font-bold text-primary mb-2">Review selfie</Text>
           <Text className="text-gray-500 mb-4">Make sure your face is clearly visible.</Text>
           <Image source={{ uri: previewUri }} className="flex-1 rounded-2xl bg-gray-100" resizeMode="contain" />
           <View className="flex-row gap-3 py-6">
-            <TouchableOpacity className="flex-1 border border-gray-300 py-4 rounded-xl items-center" onPress={retake}>
+            <TouchableOpacity className="flex-1 bg-gray-100 py-4 rounded-xl items-center" onPress={retake}>
               <Text className="font-bold text-gray-700">Retake</Text>
             </TouchableOpacity>
             <TouchableOpacity className="flex-1 bg-primary py-4 rounded-xl items-center" onPress={confirm}>
@@ -75,12 +78,12 @@ export default function SelfieScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View className="flex-1 bg-black">
+    <SafeAreaView className="flex-1 bg-black">
       <KycProgress currentStep={2} label="Live selfie" />
       <CameraView
         ref={cameraRef}
@@ -94,13 +97,14 @@ export default function SelfieScreen() {
           Position your face in the frame, then capture. This step uses the camera only.
         </Text>
         <TouchableOpacity
-          className="self-center bg-secondary w-20 h-20 rounded-full items-center justify-center border-4 border-white"
+          className="self-center bg-secondary w-20 h-20 rounded-full items-center justify-center"
           onPress={takeSelfie}
           disabled={!cameraReady || capturing}
         >
           {capturing ? <ActivityIndicator color="#fff" /> : <View className="w-14 h-14 rounded-full bg-white/30" />}
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
+

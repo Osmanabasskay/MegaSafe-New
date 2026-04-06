@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
   CheckCircle,
@@ -20,24 +20,87 @@ import {
   User,
   Home,
 } from 'lucide-react-native';
+import { getGroupById } from '../../lib/groupService';
+import { useAppDataStore } from '../../stores/appDataStore';
+
+interface PaymentData {
+  transactionId: string;
+  amount: string;
+  groupName: string;
+  paymentMethod: string;
+  phoneNumber: string;
+  timestamp: string;
+  status: 'verified' | 'pending' | 'failed';
+  receiptNumber: string;
+}
 
 export default function PaymentSuccessScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    groupId?: string;
+    method?: string;
+    phone?: string;
+    amount?: string;
+  }>();
+  const groupId = params.groupId != null ? String(params.groupId) : '1';
+  const { recordPaymentReceipt } = useAppDataStore();
+  const hasRecordedReceipt = useRef(false);
 
-  const paymentData = {
+  const paymentMethodParam = params.method != null ? String(params.method) : '';
+  const phoneParam = params.phone != null ? String(params.phone) : '';
+  const amountParam = params.amount != null ? String(params.amount) : '';
+  const normalizedMethod = paymentMethodParam
+    ? paymentMethodParam.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+    : 'Orange Money';
+  const normalizedPhone = phoneParam || '+232 76 123 456';
+  const normalizedAmount = amountParam || '100.00';
+
+  const [paymentData, setPaymentData] = useState<PaymentData>({
     transactionId: 'TXN-2024-1215-001',
-    amount: '100.00',
+    amount: normalizedAmount,
     groupName: 'Family Savings Circle',
-    paymentMethod: 'Orange Money',
-    phoneNumber: '+232 76 123 456',
+    paymentMethod: normalizedMethod,
+    phoneNumber: normalizedPhone,
     timestamp: 'Dec 15, 2024 at 10:30 AM',
     status: 'verified',
     receiptNumber: 'RCP-20241215-123456',
-  };
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    const run = async () => {
+      if (!groupId) return;
+      const { group } = await getGroupById(groupId);
+      if (!mounted || !group) return;
+      setPaymentData((prev) => ({
+        ...prev,
+        amount: group.contribution_amount.toFixed(2),
+        groupName: group.name,
+      }));
+    };
+    void run();
+    return () => {
+      mounted = false;
+    };
+  }, [groupId]);
+
+  useEffect(() => {
+    if (hasRecordedReceipt.current) return;
+    hasRecordedReceipt.current = true;
+    recordPaymentReceipt({
+      amount: Number.parseFloat(paymentData.amount) || 0,
+      groupName: paymentData.groupName,
+      paymentMethod: paymentData.paymentMethod,
+      phoneNumber: paymentData.phoneNumber,
+      status: paymentData.status,
+    });
+  }, [paymentData.amount, paymentData.groupName, paymentData.paymentMethod, paymentData.phoneNumber, paymentData.status, recordPaymentReceipt]);
 
   const handleDownloadReceipt = () => {
-    // TODO: Download PDF receipt
-    Alert.alert('Download', 'Receipt will be downloaded to your device.');
+    Alert.alert('Receipt ready', `Receipt ${paymentData.receiptNumber} was saved.`, [
+      { text: 'Close', style: 'cancel' },
+      { text: 'Open Receipts', onPress: () => router.push('/components/receipts') },
+    ]);
   };
 
   const handleShareReceipt = async () => {
@@ -58,7 +121,7 @@ export default function PaymentSuccessScreen() {
   };
 
   const handleViewGroup = () => {
-    router.replace('/(groups)/manage/1');
+    router.replace(`/(groups)/manage/${groupId}`);
   };
 
   return (
@@ -198,7 +261,7 @@ export default function PaymentSuccessScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -207,8 +270,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   backButton: {
     marginRight: 16,
@@ -258,8 +319,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   receiptTitle: {
     fontSize: 18,
@@ -275,8 +334,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F9FAFB',
   },
   receiptLabel: {
     fontSize: 14,
@@ -318,8 +375,6 @@ const styles = StyleSheet.create({
   qrContainer: {
     alignItems: 'center',
     paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
   },
   qrPlaceholder: {
     width: 120,
@@ -328,8 +383,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
     borderStyle: 'dashed',
   },
   qrText: {
@@ -355,8 +408,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     width: '48%',
   },
   actionButtonText: {
@@ -378,13 +429,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     width: '48%',
   },
   primaryNavButton: {
     backgroundColor: '#F97316',
-    borderWidth: 0,
   },
   navButtonText: {
     fontSize: 14,
@@ -411,3 +459,4 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+

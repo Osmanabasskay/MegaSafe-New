@@ -1,432 +1,321 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
+  RefreshControl,
   ScrollView,
   StyleSheet,
-  RefreshControl,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   ArrowLeft,
   Bell,
-  CheckCircle,
-  AlertTriangle,
-  Info,
-  Users,
-  TrendingUp,
-  Gift,
-  Shield,
   Calendar,
-  DollarSign,
-  X,
   Check,
+  DollarSign,
+  Info,
+  ShieldAlert,
+  Trash2,
+  Users,
 } from 'lucide-react-native';
+import { useAppDataStore, type NotificationType } from '../../stores/appDataStore';
 
-interface Notification {
-  id: string;
-  type: 'payment' | 'group' | 'referral' | 'system' | 'achievement' | 'reminder';
-  title: string;
-  message: string;
-  timestamp: string;
-  read: boolean;
-  action?: string;
-  data?: any;
-}
+type NotificationFilter = 'all' | 'unread' | NotificationType;
+
+const iconByType: Record<NotificationType, React.ReactNode> = {
+  collection_reminder: <Calendar size={18} color="#F59E0B" />,
+  payment_received: <DollarSign size={18} color="#10B981" />,
+  group_invite: <Users size={18} color="#F97316" />,
+  join_approved: <Users size={18} color="#10B981" />,
+  dispute_update: <ShieldAlert size={18} color="#EF4444" />,
+  payout_scheduled: <Calendar size={18} color="#1D4ED8" />,
+  system_alert: <Info size={18} color="#6B7280" />,
+  savings_update: <DollarSign size={18} color="#1D4ED8" />,
+  achievement: <Check size={18} color="#8B5CF6" />,
+};
+
+const colorByType: Record<NotificationType, string> = {
+  collection_reminder: '#F59E0B',
+  payment_received: '#10B981',
+  group_invite: '#F97316',
+  join_approved: '#10B981',
+  dispute_update: '#EF4444',
+  payout_scheduled: '#1D4ED8',
+  system_alert: '#6B7280',
+  savings_update: '#1D4ED8',
+  achievement: '#8B5CF6',
+};
+
+const toRelativeTime = (iso: string): string => {
+  const created = new Date(iso).getTime();
+  const diffMs = Date.now() - created;
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+};
 
 export default function NotificationsScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'payment',
-      title: 'Payment Received',
-      message: 'Your contribution of NLe 100 to Family Savings Circle has been verified',
-      timestamp: '2 hours ago',
-      read: false,
-      action: 'view_ledger',
-      data: { groupId: '1' },
-    },
-    {
-      id: '2',
-      type: 'group',
-      title: 'New Group Invitation',
-      message: 'Sarah Miller invited you to join "Business Savings Group"',
-      timestamp: '5 hours ago',
-      read: false,
-      action: 'view_invitation',
-      data: { groupId: '2' },
-    },
-    {
-      id: '3',
-      type: 'referral',
-      title: 'Referral Success!',
-      message: 'Your friend James joined MegaSafe. You earned NLe 50!',
-      timestamp: '1 day ago',
-      read: true,
-      action: 'view_earnings',
-    },
-    {
-      id: '4',
-      type: 'achievement',
-      title: 'Achievement Unlocked!',
-      message: 'Congratulations! You earned the "Super Saver" badge',
-      timestamp: '2 days ago',
-      read: true,
-      action: 'view_profile',
-    },
-    {
-      id: '5',
-      type: 'reminder',
-      title: 'Payment Reminder',
-      message: 'Your weekly contribution to Family Savings Circle is due tomorrow',
-      timestamp: '3 days ago',
-      read: true,
-      action: 'make_payment',
-      data: { groupId: '1' },
-    },
-    {
-      id: '6',
-      type: 'system',
-      title: 'System Update',
-      message: 'MegaSafe has been updated with new features and improvements',
-      timestamp: '1 week ago',
-      read: true,
-    },
-  ]);
+  const [filter, setFilter] = useState<NotificationFilter>('all');
+  const {
+    notifications,
+    markNotificationRead,
+    markAllNotificationsRead,
+    removeNotification,
+  } = useAppDataStore();
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
-  };
-
-  const markAsRead = (notificationId: string) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === notificationId ? { ...notification, read: true } : notification
-      )
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, read: true }))
-    );
-  };
-
-  const deleteNotification = (notificationId: string) => {
-    setNotifications(prev =>
-      prev.filter(notification => notification.id !== notificationId)
-    );
-  };
-
-  const handleNotificationPress = (notification: Notification) => {
-    markAsRead(notification.id);
-    
-    switch (notification.action) {
-      case 'view_ledger':
-        router.push(`/groups/manage/${notification.data?.groupId}`);
-        break;
-      case 'view_invitation':
-        router.push(`/groups/invite/${notification.data?.groupId}`);
-        break;
-      case 'view_earnings':
-        router.push('/settings/referral-history');
-        break;
-      case 'view_profile':
-        router.push('/components/profile');
-        break;
-      case 'make_payment':
-        router.push(`/groups/contribute/${notification.data?.groupId}`);
-        break;
-      default:
-        // Handle other actions or do nothing
-        break;
-    }
-  };
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'payment':
-        return <DollarSign size={20} color="#10B981" />;
-      case 'group':
-        return <Users size={20} color="#F97316" />;
-      case 'referral':
-        return <Gift size={20} color="#8B5CF6" />;
-      case 'achievement':
-        return <Award size={20} color="#F59E0B" />;
-      case 'reminder':
-        return <Calendar size={20} color="#EF4444" />;
-      case 'system':
-        return <Info size={20} color="#6B7280" />;
-      default:
-        return <Bell size={20} color="#6B7280" />;
-    }
-  };
-
-  const getNotificationColor = (type: string) => {
-    switch (type) {
-      case 'payment':
-        return '#10B981';
-      case 'group':
-        return '#F97316';
-      case 'referral':
-        return '#8B5CF6';
-      case 'achievement':
-        return '#F59E0B';
-      case 'reminder':
-        return '#EF4444';
-      case 'system':
-        return '#6B7280';
-      default:
-        return '#6B7280';
-    }
-  };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const renderNotification = (notification: Notification) => {
-    const icon = getNotificationIcon(notification.type);
-    const color = getNotificationColor(notification.type);
-
-    return (
-      <View key={notification.id} style={[styles.notificationCard, !notification.read && styles.unreadCard]}>
-        <TouchableOpacity
-          style={styles.notificationContent}
-          onPress={() => handleNotificationPress(notification)}
-        >
-          <View style={[styles.notificationIcon, { backgroundColor: `${color}20` }]}>
-            {icon}
-          </View>
-          <View style={styles.notificationInfo}>
-            <View style={styles.notificationHeader}>
-              <Text style={[styles.notificationTitle, !notification.read && styles.unreadTitle]}>
-                {notification.title}
-              </Text>
-              {!notification.read && <View style={styles.unreadDot} />}
-            </View>
-            <Text style={styles.notificationMessage} numberOfLines={2}>
-              {notification.message}
-            </Text>
-            <Text style={styles.notificationTimestamp}>{notification.timestamp}</Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => deleteNotification(notification.id)}
-        >
-          <X size={16} color="#9CA3AF" />
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  const renderFilterButton = (filter: string, label: string, count: number) => (
-    <TouchableOpacity style={styles.filterButton}>
-      <Text style={styles.filterText}>{label}</Text>
-      <View style={styles.filterCount}>
-        <Text style={styles.filterCountText}>{count}</Text>
-      </View>
-    </TouchableOpacity>
+  const unreadCount = useMemo(
+    () => notifications.filter((item) => !item.read).length,
+    [notifications]
   );
+
+  const filtered = useMemo(() => {
+    if (filter === 'all') return notifications;
+    if (filter === 'unread') return notifications.filter((item) => !item.read);
+    return notifications.filter((item) => item.type === filter);
+  }, [filter, notifications]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    setRefreshing(false);
+  };
+
+  const handlePress = (notificationId: string, actionPath?: string) => {
+    markNotificationRead(notificationId);
+    if (actionPath) router.push(actionPath as never);
+  };
+
+  const filterPills: Array<{ id: NotificationFilter; label: string; count: number }> = [
+    { id: 'all', label: 'All', count: notifications.length },
+    { id: 'unread', label: 'Unread', count: unreadCount },
+    {
+      id: 'payment_received',
+      label: 'Payments',
+      count: notifications.filter((item) => item.type === 'payment_received').length,
+    },
+    {
+      id: 'dispute_update',
+      label: 'Disputes',
+      count: notifications.filter((item) => item.type === 'dispute_update').length,
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
           <ArrowLeft size={24} color="#F97316" />
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Notifications</Text>
-          {unreadCount > 0 && (
+        <View style={styles.headerCenter}>
+          <Text style={styles.title}>Notifications</Text>
+          {unreadCount > 0 ? (
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{unreadCount}</Text>
+              <Text style={styles.badgeText}>{Math.min(unreadCount, 99)}</Text>
             </View>
-          )}
+          ) : null}
         </View>
-        <TouchableOpacity onPress={markAllAsRead} style={styles.markAllButton}>
-          <Check size={20} color="#F97316" />
+        <TouchableOpacity style={styles.iconBtn} onPress={markAllNotificationsRead}>
+          <Check size={18} color="#F97316" />
         </TouchableOpacity>
       </View>
 
-      {/* Filters */}
-      <View style={styles.filtersContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {renderFilterButton('all', 'All', notifications.length)}
-          {renderFilterButton('unread', 'Unread', unreadCount)}
-          {renderFilterButton('payment', 'Payments', 1)}
-          {renderFilterButton('group', 'Groups', 1)}
-          {renderFilterButton('referral', 'Referrals', 1)}
-        </ScrollView>
-      </View>
+      <ScrollView horizontal style={styles.filterRow} showsHorizontalScrollIndicator={false}>
+        {filterPills.map((pill) => (
+          <TouchableOpacity
+            key={pill.id}
+            style={[styles.filterPill, filter === pill.id && styles.filterPillActive]}
+            onPress={() => setFilter(pill.id)}
+          >
+            <Text style={[styles.filterText, filter === pill.id && styles.filterTextActive]}>
+              {pill.label}
+            </Text>
+            <View style={styles.filterCount}>
+              <Text style={styles.filterCountText}>{pill.count}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
-      {/* Notifications List */}
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
-        {notifications.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Bell size={48} color="#9CA3AF" />
+        {filtered.length === 0 ? (
+          <View style={styles.emptyWrap}>
+            <Bell size={44} color="#9CA3AF" />
             <Text style={styles.emptyTitle}>No notifications</Text>
-            <Text style={styles.emptyMessage}>You're all caught up!</Text>
+            <Text style={styles.emptyText}>You are all caught up.</Text>
           </View>
         ) : (
-          notifications.map(renderNotification)
+          filtered.map((item) => {
+            const icon = iconByType[item.type] ?? <Info size={18} color="#6B7280" />;
+            const color = colorByType[item.type] ?? '#6B7280';
+            return (
+              <View key={item.id} style={[styles.card, !item.read && styles.unreadCard]}>
+                <TouchableOpacity
+                  style={styles.cardMain}
+                  onPress={() => handlePress(item.id, item.actionPath)}
+                >
+                  <View style={[styles.cardIcon, { backgroundColor: `${color}18` }]}>{icon}</View>
+                  <View style={styles.cardBody}>
+                    <View style={styles.cardTitleRow}>
+                      <Text style={styles.cardTitle}>{item.title}</Text>
+                      {!item.read ? <View style={styles.unreadDot} /> : null}
+                    </View>
+                    <Text style={styles.cardMessage}>{item.message}</Text>
+                    <Text style={styles.cardTime}>{toRelativeTime(item.createdAt)}</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => removeNotification(item.id)} style={styles.deleteBtn}>
+                  <Trash2 size={15} color="#9CA3AF" />
+                </TouchableOpacity>
+              </View>
+            );
+          })
         )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const Award = ({ size, color }: { size: number; color: string }) => (
-  <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-    <Text style={{ fontSize: size * 0.8, color, fontWeight: 'bold' }}>🏆</Text>
-  </View>
-);
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: '#FFFFFF',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  backButton: {
-    marginRight: 16,
+  iconBtn: {
+    width: 32,
+    alignItems: 'center',
   },
-  headerContent: {
-    flex: 1,
+  headerCenter: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 24,
+  title: {
+    fontSize: 21,
     fontWeight: '700',
     color: '#1E2B5A',
   },
   badge: {
+    marginLeft: 8,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: '#EF4444',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
+    paddingHorizontal: 4,
   },
   badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
     color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
-  markAllButton: {
-    padding: 8,
-  },
-  filtersContainer: {
+  filterRow: {
+    maxHeight: 58,
+    paddingVertical: 10,
+    paddingLeft: 16,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
-  filterButton: {
+  filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F3F4F6',
+    borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 12,
+    marginRight: 8,
+    height: 38,
+  },
+  filterPillActive: {
+    backgroundColor: '#F97316',
   },
   filterText: {
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '600',
     color: '#374151',
-    fontWeight: '500',
   },
-  filterCount: {
-    backgroundColor: '#F97316',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 6,
-  },
-  filterCountText: {
-    fontSize: 10,
-    fontWeight: '700',
+  filterTextActive: {
     color: '#FFFFFF',
   },
-  scrollView: {
+  filterCount: {
+    marginLeft: 7,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255,255,255,0.32)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  filterCountText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  list: {
     flex: 1,
   },
-  scrollContent: {
-    padding: 24,
+  listContent: {
+    padding: 18,
   },
-  notificationCard: {
-    flexDirection: 'row',
+  card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    padding: 12,
+    marginBottom: 10,
+    flexDirection: 'row',
   },
   unreadCard: {
     borderLeftWidth: 4,
     borderLeftColor: '#F97316',
   },
-  notificationContent: {
+  cardMain: {
     flex: 1,
     flexDirection: 'row',
   },
-  notificationIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  cardIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
-  notificationInfo: {
+  cardBody: {
     flex: 1,
   },
-  notificationHeader: {
+  cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 3,
   },
-  notificationTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
     color: '#1E2B5A',
     flex: 1,
-  },
-  unreadTitle: {
-    color: '#1E2B5A',
-    fontWeight: '700',
+    paddingRight: 8,
   },
   unreadDot: {
     width: 8,
@@ -434,36 +323,35 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#F97316',
   },
-  notificationMessage: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 8,
-    lineHeight: 20,
+  cardMessage: {
+    fontSize: 13,
+    color: '#4B5563',
+    lineHeight: 18,
+    marginBottom: 4,
   },
-  notificationTimestamp: {
-    fontSize: 12,
+  cardTime: {
+    fontSize: 11,
     color: '#9CA3AF',
   },
-  deleteButton: {
-    padding: 8,
-    marginLeft: 8,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
+  deleteBtn: {
+    paddingLeft: 8,
     justifyContent: 'center',
-    paddingVertical: 60,
+  },
+  emptyWrap: {
+    paddingVertical: 80,
+    alignItems: 'center',
   },
   emptyTitle: {
+    marginTop: 12,
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1E2B5A',
-    marginTop: 16,
-    marginBottom: 8,
   },
-  emptyMessage: {
-    fontSize: 14,
+  emptyText: {
+    marginTop: 5,
+    fontSize: 13,
     color: '#6B7280',
-    textAlign: 'center',
   },
 });
+
+

@@ -21,10 +21,6 @@ import {
   Shield,
   Award,
   Star,
-  Github,
-  Twitter,
-  Facebook,
-  Instagram,
 } from 'lucide-react-native';
 
 export default function AboutScreen() {
@@ -131,7 +127,7 @@ export default function AboutScreen() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={statNumber}>1K+</Text>
+              <Text style={styles.statNumber}>1K+</Text>
               <Text style={styles.statLabel}>Groups</Text>
             </View>
           </View>
@@ -205,25 +201,25 @@ export default function AboutScreen() {
               style={styles.socialButton}
               onPress={() => handleSocialPress('twitter')}
             >
-              <Twitter size={20} color="#FFFFFF" />
+              <Text style={styles.socialIconText}>X</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialPress('facebook')}
             >
-              <Facebook size={20} color="#FFFFFF" />
+              <Text style={styles.socialIconText}>f</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialPress('instagram')}
             >
-              <Instagram size={20} color="#FFFFFF" />
+              <Text style={styles.socialIconText}>IG</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.socialButton}
               onPress={() => handleSocialPress('github')}
             >
-              <Github size={20} color="#FFFFFF" />
+              <Text style={styles.socialIconText}>GH</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -267,7 +263,7 @@ export default function AboutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -276,8 +272,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     marginRight: 16,
@@ -362,8 +356,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   featureIcon: {
     marginRight: 12,
@@ -378,8 +370,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   statItem: {
     flex: 1,
@@ -411,8 +401,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   avatar: {
     width: 48,
@@ -448,8 +436,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   contactContent: {
     marginLeft: 16,
@@ -478,6 +464,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  socialIconText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   footer: {
     alignItems: 'center',
     paddingVertical: 32,
@@ -495,3 +486,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+

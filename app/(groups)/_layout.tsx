@@ -11,6 +11,7 @@ export default function GroupsLayout() {
       <Stack.Screen name="payment-success" />
       <Stack.Screen name="collector" />
       <Stack.Screen name="discover" />
+      <Stack.Screen name="creator-dashboard" />
       <Stack.Screen name="[id]" />
       <Stack.Screen name="manage/[id]" />
     </Stack>

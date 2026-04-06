@@ -69,27 +69,27 @@ export default function PrivacyPolicyScreen() {
           
           <Text style={styles.subsectionTitle}>Personal Information</Text>
           <View style={styles.listContainer}>
-            <Text style={styles.listItem}>• Full name and date of birth</Text>
-            <Text style={styles.listItem}>• Government-issued ID details</Text>
-            <Text style={styles.listItem}>• Phone number and email address</Text>
-            <Text style={styles.listItem}>• Residential address</Text>
-            <Text style={styles.listItem}>• Occupation and income information</Text>
+            <Text style={styles.listItem}>- Full name and date of birth</Text>
+            <Text style={styles.listItem}>- Government-issued ID details</Text>
+            <Text style={styles.listItem}>- Phone number and email address</Text>
+            <Text style={styles.listItem}>- Residential address</Text>
+            <Text style={styles.listItem}>- Occupation and income information</Text>
           </View>
 
           <Text style={styles.subsectionTitle}>Financial Information</Text>
           <View style={styles.listContainer}>
-            <Text style={styles.listItem}>• Bank account details</Text>
-            <Text style={styles.listItem}>• Mobile money account information</Text>
-            <Text style={styles.listItem}>• Transaction history and amounts</Text>
-            <Text style={styles.listItem}>• Credit and debit card information</Text>
+            <Text style={styles.listItem}>- Bank account details</Text>
+            <Text style={styles.listItem}>- Mobile money account information</Text>
+            <Text style={styles.listItem}>- Transaction history and amounts</Text>
+            <Text style={styles.listItem}>- Credit and debit card information</Text>
           </View>
 
           <Text style={styles.subsectionTitle}>Technical Information</Text>
           <View style={styles.listContainer}>
-            <Text style={styles.listItem}>• Device information and unique identifiers</Text>
-            <Text style={styles.listItem}>• IP address and location data</Text>
-            <Text style={styles.listItem}>• App usage patterns and session data</Text>
-            <Text style={styles.listItem}>• Biometric authentication data</Text>
+            <Text style={styles.listItem}>- Device information and unique identifiers</Text>
+            <Text style={styles.listItem}>- IP address and location data</Text>
+            <Text style={styles.listItem}>- App usage patterns and session data</Text>
+            <Text style={styles.listItem}>- Biometric authentication data</Text>
           </View>
         </View>
 
@@ -103,13 +103,13 @@ export default function PrivacyPolicyScreen() {
             We use your personal information to:
           </Text>
           <View style={styles.listContainer}>
-            <Text style={styles.listItem}>• Provide and maintain our financial services</Text>
-            <Text style={styles.listItem}>• Verify your identity and prevent fraud</Text>
-            <Text style={styles.listItem}>• Process transactions and manage your account</Text>
-            <Text style={styles.listItem}>• Comply with legal and regulatory requirements</Text>
-            <Text style={styles.listItem}>• Improve our services and user experience</Text>
-            <Text style={styles.listItem}>• Communicate with you about your account</Text>
-            <Text style={styles.listItem}>• Detect and prevent security threats</Text>
+            <Text style={styles.listItem}>- Provide and maintain our financial services</Text>
+            <Text style={styles.listItem}>- Verify your identity and prevent fraud</Text>
+            <Text style={styles.listItem}>- Process transactions and manage your account</Text>
+            <Text style={styles.listItem}>- Comply with legal and regulatory requirements</Text>
+            <Text style={styles.listItem}>- Improve our services and user experience</Text>
+            <Text style={styles.listItem}>- Communicate with you about your account</Text>
+            <Text style={styles.listItem}>- Detect and prevent security threats</Text>
           </View>
         </View>
 
@@ -149,12 +149,12 @@ export default function PrivacyPolicyScreen() {
             We implement industry-standard security measures to protect your information:
           </Text>
           <View style={styles.listContainer}>
-            <Text style={styles.listItem}>• End-to-end encryption for all transactions</Text>
-            <Text style={styles.listItem}>• Secure socket layer (SSL) technology</Text>
-            <Text style={styles.listItem}>• Multi-factor authentication requirements</Text>
-            <Text style={styles.listItem}>• Regular security audits and penetration testing</Text>
-            <Text style={styles.listItem}>• Employee background checks and training</Text>
-            <Text style={styles.listItem}>• Secure data centers with 24/7 monitoring</Text>
+            <Text style={styles.listItem}>- End-to-end encryption for all transactions</Text>
+            <Text style={styles.listItem}>- Secure socket layer (SSL) technology</Text>
+            <Text style={styles.listItem}>- Multi-factor authentication requirements</Text>
+            <Text style={styles.listItem}>- Regular security audits and penetration testing</Text>
+            <Text style={styles.listItem}>- Employee background checks and training</Text>
+            <Text style={styles.listItem}>- Secure data centers with 24/7 monitoring</Text>
           </View>
         </View>
 
@@ -168,10 +168,10 @@ export default function PrivacyPolicyScreen() {
             We use cookies and similar technologies to:
           </Text>
           <View style={styles.listContainer}>
-            <Text style={styles.listItem}>• Remember your preferences and settings</Text>
-            <Text style={styles.listItem}>• Analyze app usage and performance</Text>
-            <Text style={styles.listItem}>• Provide personalized experiences</Text>
-            <Text style={styles.listItem}>• Detect and prevent fraudulent activities</Text>
+            <Text style={styles.listItem}>- Remember your preferences and settings</Text>
+            <Text style={styles.listItem}>- Analyze app usage and performance</Text>
+            <Text style={styles.listItem}>- Provide personalized experiences</Text>
+            <Text style={styles.listItem}>- Detect and prevent fraudulent activities</Text>
           </View>
           <Text style={styles.sectionText}>
             You can control cookie settings through your device preferences.
@@ -279,7 +279,7 @@ export default function PrivacyPolicyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -288,8 +288,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     marginRight: 16,
@@ -360,3 +358,5 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
 });
+
+

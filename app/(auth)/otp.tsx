@@ -7,31 +7,51 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase, supabaseConfigured } from '../../lib/supabase';
-import { useAuthStore } from '../../stores/authStore';
 import { Shield } from 'lucide-react-native';
+import { supabase, supabaseConfigured } from '../../lib/supabase';
+import { normalizeProfileName } from '../../lib/profileName';
+import { logLegalAcceptance, upsertBasicProfile } from '../../lib/profileService';
+import { useAuthStore } from '../../stores/authStore';
+import { useAppDataStore } from '../../stores/appDataStore';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const COOLDOWN_SEC = 60;
 
+const decodeParam = (value: unknown): string => {
+  if (value == null) return '';
+  const raw = String(value);
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+};
+
 export default function OTPScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ phone?: string }>();
+  const params = useLocalSearchParams<{
+    phone?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    legalAcceptedAt?: string;
+  }>();
   const { setSession, setUser } = useAuthStore();
+  const { initializeForUser, updateProfile } = useAppDataStore();
   const [code, setCode] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
-  const rawPhone = params.phone != null ? String(params.phone) : '';
-  let phoneE164 = rawPhone;
-  try {
-    if (rawPhone) phoneE164 = decodeURIComponent(rawPhone);
-  } catch {
-    phoneE164 = rawPhone;
-  }
+  const phoneE164 = decodeParam(params.phone);
+  const firstName = decodeParam(params.firstName);
+  const lastName = decodeParam(params.lastName);
+  const email = decodeParam(params.email).toLowerCase();
+  const legalAcceptedAt = decodeParam(params.legalAcceptedAt);
 
   useEffect(() => {
     if (!phoneE164) {
@@ -84,16 +104,57 @@ export default function OTPScreen() {
         token,
         type: 'sms',
       });
-      setIsVerifying(false);
+
       if (error) {
+        setIsVerifying(false);
         setErrorMessage(error.message);
         return;
       }
-      if (data.session) {
-        setSession(data.session);
-        setUser(data.session.user);
-        router.replace('/(main)/home');
+
+      if (!data.session) {
+        setIsVerifying(false);
+        setErrorMessage('Session was not created. Please retry verification.');
+        return;
       }
+
+      setSession(data.session);
+      setUser(data.session.user);
+      initializeForUser(data.session.user);
+
+      const fullName = normalizeProfileName(`${firstName} ${lastName}`.trim());
+      if (fullName || email || phoneE164) {
+        updateProfile({
+          fullName: fullName || undefined,
+          email: email || undefined,
+          phone: phoneE164 || undefined,
+        });
+      }
+
+      if (data.session.user?.id) {
+        const { error: profileError } = await upsertBasicProfile({
+          userId: data.session.user.id,
+          firstName,
+          lastName,
+          email,
+          phone: phoneE164,
+        });
+        if (profileError && __DEV__) {
+          console.warn('[OTP] Could not upsert profile basics:', profileError.message);
+        }
+
+        if (legalAcceptedAt) {
+          const { error: legalError } = await logLegalAcceptance({
+            userId: data.session.user.id,
+            acceptedAt: legalAcceptedAt,
+          });
+          if (legalError && __DEV__) {
+            console.warn('[OTP] Could not log legal acceptance:', legalError.message);
+          }
+        }
+      }
+
+      setIsVerifying(false);
+      router.replace('/(main)/home');
     } catch (e) {
       setIsVerifying(false);
       const msg = e instanceof Error ? e.message : String(e);
@@ -102,74 +163,159 @@ export default function OTPScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-slate-950 px-8 justify-center"
-    >
-      <View className="items-center mb-10">
-        <View className="bg-slate-900 p-4 rounded-2xl border border-white/5 mb-4">
-          <Shield size={48} color="#F97316" strokeWidth={1.5} />
-        </View>
-        <Text className="text-3xl font-extrabold text-white text-center mb-2">Verify phone</Text>
-        <Text className="text-slate-400 text-center text-base px-2">
-          Enter the code we sent
-          {phoneE164 ? (
-            <>
-              {'\n'}
-              <Text className="text-slate-300 font-medium">{phoneE164}</Text>
-            </>
-          ) : null}
-        </Text>
-      </View>
-
-      <View className="bg-slate-900/50 p-6 rounded-3xl border border-white/10">
-        <TextInput
-          className="border-2 border-slate-700 rounded-2xl text-center text-2xl py-4 text-white tracking-[8px] font-semibold bg-slate-950/80"
-          placeholder="••••••"
-          placeholderTextColor="#475569"
-          keyboardType="number-pad"
-          maxLength={8}
-          value={code}
-          onChangeText={(t) => {
-            setCode(t.replace(/[^\d]/g, ''));
-            if (errorMessage) setErrorMessage(null);
-          }}
-        />
-
-        {errorMessage ? (
-          <Text className="text-red-400 text-sm mt-3 text-center">{errorMessage}</Text>
-        ) : null}
-
-        <TouchableOpacity
-          className="bg-primary h-14 rounded-2xl items-center justify-center mt-6 shadow-lg shadow-primary/30 active:opacity-80"
-          onPress={handleVerify}
-          disabled={isVerifying}
-        >
-          {isVerifying ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text className="text-white font-bold text-lg">Verify & continue</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          className="mt-5 items-center py-2"
-          onPress={sendOtp}
-          disabled={isResending || cooldown > 0 || !phoneE164}
-        >
-          {isResending ? (
-            <ActivityIndicator color="#94A3B8" />
-          ) : (
-            <Text className={`font-semibold ${cooldown > 0 ? 'text-slate-600' : 'text-primary'}`}>
-              {cooldown > 0 ? `Resend code (${cooldown}s)` : 'Resend code'}
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <View style={styles.content}>
+          <View style={styles.headerWrap}>
+            <View style={styles.iconBadge}>
+              <Shield size={32} color="#F97316" strokeWidth={1.7} />
+            </View>
+            <Text style={styles.title}>Verify phone</Text>
+            <Text style={styles.subtitle}>
+              Enter the code sent to {phoneE164 || 'your number'}
             </Text>
-          )}
-        </TouchableOpacity>
+          </View>
 
-        <TouchableOpacity className="mt-4 items-center" onPress={() => router.back()}>
-          <Text className="text-slate-500 font-medium">Change number</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+          <View style={styles.card}>
+            <TextInput
+              style={styles.codeInput}
+              placeholder="------"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="number-pad"
+              maxLength={8}
+              value={code}
+              onChangeText={(t) => {
+                setCode(t.replace(/[^\d]/g, ''));
+                if (errorMessage) setErrorMessage(null);
+              }}
+            />
+
+            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+            <TouchableOpacity style={styles.primaryBtn} onPress={handleVerify} disabled={isVerifying}>
+              {isVerifying ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.primaryBtnText}>Verify & continue</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.linkBtn}
+              onPress={sendOtp}
+              disabled={isResending || cooldown > 0 || !phoneE164}
+            >
+              {isResending ? (
+                <ActivityIndicator color="#6B7280" />
+              ) : (
+                <Text style={[styles.linkText, cooldown > 0 && styles.linkTextDisabled]}>
+                  {cooldown > 0 ? `Resend code (${cooldown}s)` : 'Resend code'}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.secondaryLink} onPress={() => router.back()}>
+              <Text style={styles.secondaryLinkText}>Change number</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  headerWrap: {
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  iconBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1E2B5A',
+  },
+  subtitle: {
+    marginTop: 4,
+    textAlign: 'center',
+    color: '#6B7280',
+    fontSize: 14,
+  },
+  card: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
+    padding: 18,
+  },
+  codeInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    textAlign: 'center',
+    fontSize: 28,
+    letterSpacing: 8,
+    color: '#1E2B5A',
+    fontWeight: '700',
+    paddingVertical: 14,
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 13,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  primaryBtn: {
+    backgroundColor: '#F97316',
+    height: 50,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+  },
+  primaryBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  linkBtn: {
+    marginTop: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+  linkText: {
+    color: '#F97316',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  linkTextDisabled: {
+    color: '#9CA3AF',
+  },
+  secondaryLink: {
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  secondaryLinkText: {
+    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+});

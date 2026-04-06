@@ -1,240 +1,164 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
+  Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
-  RefreshControl,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import {
-  ArrowLeft,
-  TrendingUp,
-  DollarSign,
-  Target,
-  Calendar,
-  Plus,
-  MoreVertical,
-  Users,
-  Clock,
-  CheckCircle,
-} from 'lucide-react-native';
-
-interface SavingsGoal {
-  id: string;
-  name: string;
-  targetAmount: string;
-  currentAmount: string;
-  progress: number;
-  deadline: string;
-  category: string;
-  contributors: number;
-  status: 'active' | 'completed' | 'paused';
-}
+import { Calendar, CheckCircle, Plus, TrendingUp, Users } from 'lucide-react-native';
+import { useAppDataStore } from '../../stores/appDataStore';
 
 export default function SavingsScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const { savingsGoals, addToSavingsGoal, runAutoSaveSweep } = useAppDataStore();
 
-  const savingsGoals: SavingsGoal[] = [
-    {
-      id: '1',
-      name: 'Emergency Fund',
-      targetAmount: '5000.00',
-      currentAmount: '3200.00',
-      progress: 64,
-      deadline: 'Dec 31, 2024',
-      category: 'Personal',
-      contributors: 1,
-      status: 'active',
-    },
-    {
-      id: '2',
-      name: 'Family Vacation',
-      targetAmount: '3000.00',
-      currentAmount: '1800.00',
-      progress: 60,
-      deadline: 'Jun 30, 2025',
-      category: 'Family',
-      contributors: 3,
-      status: 'active',
-    },
-    {
-      id: '3',
-      name: 'New Car',
-      targetAmount: '10000.00',
-      currentAmount: '2500.00',
-      progress: 25,
-      deadline: 'Mar 31, 2025',
-      category: 'Personal',
-      contributors: 2,
-      status: 'active',
-    },
-    {
-      id: '4',
-      name: 'Home Renovation',
-      targetAmount: '8000.00',
-      currentAmount: '8000.00',
-      progress: 100,
-      deadline: 'Nov 30, 2024',
-      category: 'Home',
-      contributors: 4,
-      status: 'completed',
-    },
-  ];
+  const totals = useMemo(() => {
+    const totalTarget = savingsGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
+    const totalSaved = savingsGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
+    const progress = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
+    return { totalTarget, totalSaved, progress };
+  }, [savingsGoals]);
 
-  const totalSavings = savingsGoals.reduce((sum, goal) => sum + parseFloat(goal.currentAmount), 0);
-  const totalTarget = savingsGoals.reduce((sum, goal) => sum + parseFloat(goal.targetAmount), 0);
-  const overallProgress = (totalSavings / totalTarget) * 100;
+  const activeGoals = useMemo(
+    () => savingsGoals.filter((goal) => goal.status === 'active').length,
+    [savingsGoals]
+  );
+  const completedGoals = useMemo(
+    () => savingsGoals.filter((goal) => goal.status === 'completed').length,
+    [savingsGoals]
+  );
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
+    const applied = runAutoSaveSweep();
+    if (applied > 0) {
+      Alert.alert('Auto-save applied', `${applied} goal(s) were auto-funded.`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    setRefreshing(false);
   };
 
-  const renderGoalCard = (goal: SavingsGoal) => (
-    <TouchableOpacity
-      key={goal.id}
-      style={styles.goalCard}
-      onPress={() => router.push('/(groups)/contribute')}
-    >
-      <View style={styles.goalHeader}>
-        <View style={styles.goalInfo}>
-          <Text style={styles.goalName}>{goal.name}</Text>
-          <View style={styles.goalMeta}>
-            <Text style={styles.goalCategory}>{goal.category}</Text>
-            <View style={styles.contributors}>
-              <Users size={12} color="#6B7280" />
-              <Text style={styles.contributorsText}>{goal.contributors}</Text>
-            </View>
-          </View>
-        </View>
-        <View style={styles.goalStatus}>
-          {goal.status === 'completed' ? (
-            <CheckCircle size={16} color="#10B981" />
-          ) : (
-            <MoreVertical size={16} color="#6B7280" />
-          )}
-        </View>
-      </View>
+  const addFunds = (goalId: string, amount: number) => {
+    addToSavingsGoal(goalId, amount);
+  };
 
-      <View style={styles.progressSection}>
-        <View style={styles.progressHeader}>
-          <Text style={styles.progressAmount}>NLe {goal.currentAmount}</Text>
-          <Text style={styles.progressTarget}>of NLe {goal.targetAmount}</Text>
-        </View>
-        <View style={styles.progressBar}>
-          <View 
-            style={[
-              styles.progressFill,
-              { width: `${goal.progress}%` },
-              goal.status === 'completed' && styles.completedProgress
-            ]}
-          />
-        </View>
-        <Text style={styles.progressText}>{goal.progress}% complete</Text>
-      </View>
-
-      <View style={styles.goalFooter}>
-        <View style={styles.deadline}>
-          <Clock size={12} color="#6B7280" />
-          <Text style={styles.deadlineText}>{goal.deadline}</Text>
-        </View>
-        <TouchableOpacity style={styles.addFundsButton}>
-          <Plus size={12} color="#F97316" />
-          <Text style={styles.addFundsText}>Add Funds</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
+  const progressWidth = `${Math.min(100, Math.max(0, totals.progress))}%` as const;
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Savings Goals</Text>
-        <TouchableOpacity style={styles.createButton}>
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => router.push('/(main)/savings-create')}
+        >
           <Plus size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
-      {/* Overall Summary */}
       <View style={styles.summaryCard}>
         <View style={styles.summaryHeader}>
-          <Text style={styles.summaryTitle}>Total Savings Progress</Text>
-          <Target size={20} color="#F97316" />
+          <Text style={styles.summaryTitle}>Total Progress</Text>
+          <TrendingUp size={20} color="#F97316" />
         </View>
-        <View style={styles.summaryAmounts}>
-          <Text style={styles.currentAmount}>NLe {totalSavings.toFixed(2)}</Text>
-          <Text style={styles.targetAmount}>of NLe {totalTarget.toFixed(2)}</Text>
+        <Text style={styles.summaryAmount}>NLe {totals.totalSaved.toFixed(2)}</Text>
+        <Text style={styles.summaryTarget}>of NLe {totals.totalTarget.toFixed(2)}</Text>
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { width: progressWidth }]} />
         </View>
-        <View style={styles.summaryProgress}>
-          <View style={styles.summaryProgressBar}>
-            <View 
-              style={[
-                styles.summaryProgressFill,
-                { width: `${Math.min(overallProgress, 100)}%` }
-              ]}
-            />
-          </View>
-          <Text style={styles.summaryProgressText}>{overallProgress.toFixed(1)}%</Text>
+        <Text style={styles.progressText}>{totals.progress.toFixed(1)}%</Text>
+      </View>
+
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Users size={18} color="#1D4ED8" />
+          <Text style={styles.statLabel}>Active</Text>
+          <Text style={styles.statValue}>{activeGoals}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <CheckCircle size={18} color="#10B981" />
+          <Text style={styles.statLabel}>Completed</Text>
+          <Text style={styles.statValue}>{completedGoals}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Calendar size={18} color="#F97316" />
+          <Text style={styles.statLabel}>Auto-Save</Text>
+          <Text style={styles.statValue}>
+            {savingsGoals.filter((goal) => goal.autoSaveEnabled).length}
+          </Text>
         </View>
       </View>
 
-      {/* Quick Stats */}
-      <View style={styles.quickStats}>
-        <View style={styles.statCard}>
-          <TrendingUp size={20} color="#10B981" />
-          <Text style={styles.statTitle}>Active Goals</Text>
-          <Text style={styles.statValue}>
-            {savingsGoals.filter(g => g.status === 'active').length}
-          </Text>
-        </View>
-        <View style={styles.statCard}>
-          <CheckCircle size={20} color="#F97316" />
-          <Text style={styles.statTitle}>Completed</Text>
-          <Text style={styles.statValue}>
-            {savingsGoals.filter(g => g.status === 'completed').length}
-          </Text>
-        </View>
-        <View style={styles.statCard}>
-          <Calendar size={20} color="#1D4ED8" />
-          <Text style={styles.statTitle}>This Month</Text>
-          <Text style={styles.statValue}>NLe 450</Text>
-        </View>
-      </View>
-
-      {/* Goals List */}
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        showsVerticalScrollIndicator={false}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <Text style={styles.sectionTitle}>Your Goals</Text>
-        {savingsGoals.map(renderGoalCard)}
-        
-        <TouchableOpacity 
+        {savingsGoals.map((goal) => {
+          const goalProgress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
+          return (
+            <View key={goal.id} style={styles.goalCard}>
+              <View style={styles.goalHead}>
+                <View style={styles.goalInfo}>
+                  <Text style={styles.goalTitle}>{goal.title}</Text>
+                  <Text style={styles.goalMeta}>
+                    {goal.category} - {goal.status.replace('_', ' ')}
+                  </Text>
+                </View>
+                <Text style={styles.goalAmount}>NLe {goal.currentAmount.toFixed(2)}</Text>
+              </View>
+
+              <View style={styles.goalProgressBar}>
+              <View
+                style={[
+                  styles.goalProgressFill,
+                  { width: `${Math.min(goalProgress, 100)}%` as const },
+                ]}
+              />
+              </View>
+              <View style={styles.goalProgressMeta}>
+                <Text style={styles.goalTarget}>Target NLe {goal.targetAmount.toFixed(2)}</Text>
+                <Text style={styles.goalTarget}>{goalProgress.toFixed(1)}%</Text>
+              </View>
+
+              <View style={styles.goalFooter}>
+                <Text style={styles.goalDate}>Due {goal.targetDate}</Text>
+                <View style={styles.goalActions}>
+                  <TouchableOpacity style={styles.addButton} onPress={() => addFunds(goal.id, 50)}>
+                    <Text style={styles.addButtonText}>+50</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.addButton} onPress={() => addFunds(goal.id, 100)}>
+                    <Text style={styles.addButtonText}>+100</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.autoSaveRow}>
+                <Text style={styles.autoSaveLabel}>
+                  {goal.autoSaveEnabled
+                    ? `Auto-save NLe ${goal.autoSaveAmount.toFixed(2)} (${goal.autoSaveInterval})`
+                    : 'Auto-save disabled'}
+                </Text>
+                <Text style={styles.autoSaveNext}>
+                  {goal.autoSaveNextDate ? `Next ${goal.autoSaveNextDate}` : 'No schedule'}
+                </Text>
+              </View>
+            </View>
+          );
+        })}
+
+        <TouchableOpacity
           style={styles.createGoalCard}
-          onPress={() => router.push('/(groups)/create')}
+          onPress={() => router.push('/(main)/savings-create')}
         >
-          <View style={styles.createGoalContent}>
-            <View style={styles.createGoalIcon}>
-              <Plus size={24} color="#F97316" />
-            </View>
-            <View style={styles.createGoalInfo}>
-              <Text style={styles.createGoalTitle}>Create New Goal</Text>
-              <Text style={styles.createGoalDescription}>
-                Set a new savings target and track your progress
-              </Text>
-            </View>
-          </View>
+          <Plus size={20} color="#F97316" />
+          <Text style={styles.createGoalTitle}>Create another goal</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -244,286 +168,207 @@ export default function SavingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: '#FFFFFF',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: '#1E2B5A',
   },
   createButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: '#F97316',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#F97316',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
   },
   summaryCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
     margin: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
   },
   summaryHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 8,
   },
   summaryTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    color: '#6B7280',
+    fontSize: 13,
+  },
+  summaryAmount: {
     color: '#1E2B5A',
-  },
-  summaryAmounts: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 12,
-  },
-  currentAmount: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1E2B5A',
-    marginRight: 8,
   },
-  targetAmount: {
-    fontSize: 16,
+  summaryTarget: {
     color: '#6B7280',
+    fontSize: 13,
+    marginBottom: 10,
   },
-  summaryProgress: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  summaryProgressBar: {
-    flex: 1,
+  progressBar: {
     height: 8,
+    borderRadius: 4,
     backgroundColor: '#F3F4F6',
-    borderRadius: 4,
-    marginRight: 12,
   },
-  summaryProgressFill: {
+  progressFill: {
     height: '100%',
-    backgroundColor: '#F97316',
     borderRadius: 4,
+    backgroundColor: '#F97316',
   },
-  summaryProgressText: {
-    fontSize: 14,
-    fontWeight: '600',
+  progressText: {
+    marginTop: 6,
     color: '#6B7280',
+    fontSize: 12,
+    textAlign: 'right',
   },
-  quickStats: {
+  statsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    marginHorizontal: 20,
+    marginBottom: 6,
   },
   statCard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 16,
+    paddingVertical: 10,
     alignItems: 'center',
-    marginHorizontal: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    marginHorizontal: 4,
   },
-  statTitle: {
-    fontSize: 12,
+  statLabel: {
+    marginTop: 4,
     color: '#6B7280',
-    marginTop: 8,
-    marginBottom: 4,
+    fontSize: 11,
   },
   statValue: {
-    fontSize: 16,
-    fontWeight: '700',
     color: '#1E2B5A',
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 2,
   },
-  scrollView: {
+  list: {
     flex: 1,
   },
-  scrollContent: {
+  listContent: {
     padding: 20,
-    paddingTop: 0,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1E2B5A',
-    marginBottom: 16,
+    paddingBottom: 36,
   },
   goalCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
   },
-  goalHeader: {
+  goalHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 8,
   },
   goalInfo: {
     flex: 1,
-  },
-  goalName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1E2B5A',
-    marginBottom: 4,
-  },
-  goalMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  goalCategory: {
-    fontSize: 12,
-    color: '#6B7280',
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
     marginRight: 8,
   },
-  contributors: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  contributorsText: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginLeft: 4,
-  },
-  goalStatus: {
-    padding: 8,
-  },
-  progressSection: {
-    marginBottom: 16,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 8,
-  },
-  progressAmount: {
-    fontSize: 20,
-    fontWeight: '700',
+  goalTitle: {
     color: '#1E2B5A',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 3,
   },
-  progressTarget: {
-    fontSize: 14,
+  goalMeta: {
     color: '#6B7280',
+    fontSize: 12,
   },
-  progressBar: {
-    height: 8,
+  goalAmount: {
+    color: '#1E2B5A',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  goalProgressBar: {
+    height: 7,
+    borderRadius: 4,
     backgroundColor: '#F3F4F6',
-    borderRadius: 4,
-    marginBottom: 4,
+    marginBottom: 5,
   },
-  progressFill: {
+  goalProgressFill: {
     height: '100%',
-    backgroundColor: '#F97316',
     borderRadius: 4,
-  },
-  completedProgress: {
     backgroundColor: '#10B981',
   },
-  progressText: {
-    fontSize: 12,
+  goalProgressMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  goalTarget: {
     color: '#6B7280',
-    textAlign: 'right',
+    fontSize: 11,
   },
   goalFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  deadline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  deadlineText: {
-    fontSize: 12,
+  goalDate: {
     color: '#6B7280',
-    marginLeft: 4,
+    fontSize: 12,
   },
-  addFundsButton: {
+  goalActions: {
     flexDirection: 'row',
-    alignItems: 'center',
+  },
+  addButton: {
     backgroundColor: '#FEF3C7',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
+    marginLeft: 6,
   },
-  addFundsText: {
-    fontSize: 12,
+  addButtonText: {
     color: '#F97316',
-    fontWeight: '500',
-    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  autoSaveRow: {
+    marginTop: 10,
+    paddingTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  autoSaveLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    flex: 1,
+    marginRight: 8,
+  },
+  autoSaveNext: {
+    fontSize: 11,
+    color: '#9CA3AF',
   },
   createGoalCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: '#F97316',
-    borderStyle: 'dashed',
-    marginTop: 8,
-  },
-  createGoalContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  createGoalIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    backgroundColor: '#FFF7ED',
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
-  },
-  createGoalInfo: {
-    flex: 1,
+    flexDirection: 'row',
   },
   createGoalTitle: {
-    fontSize: 18,
+    marginLeft: 8,
+    color: '#F97316',
     fontWeight: '700',
-    color: '#1E2B5A',
-    marginBottom: 4,
-  },
-  createGoalDescription: {
-    fontSize: 14,
-    color: '#6B7280',
   },
 });
+

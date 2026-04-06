@@ -1,84 +1,240 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { CalendarDays, Users, Wallet, ChevronLeft, ShieldCheck, Banknote } from 'lucide-react-native';
+import { CalendarDays, Users, Wallet, ChevronLeft, ShieldCheck } from 'lucide-react-native';
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-950">
-      <View className="flex-row items-center px-6 pt-4 pb-2">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4 p-2 bg-slate-900 rounded-full border border-slate-800">
-          <ChevronLeft size={24} color="#F97316" />
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ChevronLeft size={22} color="#F97316" />
         </TouchableOpacity>
-        <Text className="text-xl font-bold text-white tracking-tight">Vault Details</Text>
+        <Text style={styles.headerTitle}>Vault Details</Text>
       </View>
 
-      <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
-        {/* Header Section */}
-        <View className="mb-8 p-6 bg-slate-900 rounded-3xl border border-slate-800 shadow-xl overflow-hidden relative">
-          <View className="absolute -top-10 -right-10 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl" />
-          <View className="flex-row items-center mb-4">
-            <View className="bg-slate-950 p-3 rounded-2xl border border-slate-800 mr-4">
-              <ShieldCheck size={28} color="#F97316" />
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.heroCard}>
+          <View style={styles.heroTop}>
+            <View style={styles.heroIcon}>
+              <ShieldCheck size={24} color="#F97316" />
             </View>
             <View>
-              <Text className="text-2xl font-extrabold text-white">Family Fund</Text>
-              <View className="flex-row items-center mt-1">
-                <Text className="text-primary font-bold">NLe 50</Text>
-                <Text className="text-slate-400 text-sm ml-1">/ Weekly</Text>
-              </View>
+              <Text style={styles.groupName}>Family Fund</Text>
+              <Text style={styles.groupMeta}>NLe 50 / Weekly</Text>
             </View>
           </View>
-          
-          <View className="flex-row items-center bg-slate-950/50 p-3 rounded-xl border border-slate-800/50">
-            <Users size={16} color="#94A3B8" />
-            <Text className="text-slate-400 text-sm ml-2">10 Members â€¢ Collecting on Sundays</Text>
+
+          <View style={styles.metaRow}>
+            <Users size={16} color="#6B7280" />
+            <Text style={styles.metaText}>10 Members • Collecting on Sundays</Text>
           </View>
         </View>
 
-        {/* Action Card */}
-        <View className="bg-slate-900 rounded-3xl p-6 items-center mb-8 border border-slate-800 relative overflow-hidden">
-          <View className="absolute top-0 w-full h-1 bg-primary/80" />
-          <Text className="text-slate-400 font-semibold mb-2 uppercase tracking-widest text-xs">Next Contribution Due</Text>
-          <View className="flex-row items-baseline mb-6">
-            <Text className="text-6xl font-black text-white mr-2">3</Text>
-            <Text className="text-lg text-primary font-bold uppercase tracking-wider">Days</Text>
+        <View style={styles.actionCard}>
+          <Text style={styles.actionLabel}>Next Contribution Due</Text>
+          <View style={styles.countWrap}>
+            <Text style={styles.countValue}>3</Text>
+            <Text style={styles.countUnit}>Days</Text>
           </View>
-          <TouchableOpacity className="bg-primary w-full py-4 rounded-2xl flex-row justify-center items-center shadow-lg shadow-primary/20">
-            <Wallet size={20} color="white" className="mr-2" />
-            <Text className="text-white font-bold text-lg">Transmit Funds</Text>
+          <TouchableOpacity style={styles.primaryBtn}>
+            <Wallet size={18} color="#FFFFFF" />
+            <Text style={styles.primaryBtnText}>Transmit Funds</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Members Roster */}
-        <View className="mb-10">
-          <Text className="text-xl font-bold text-white mb-4 tracking-tight">Active Roster</Text>
-          <View className="bg-slate-900 rounded-3xl border border-slate-800 p-2">
-            {["Alpha Bah", "Fatu Kamara", "Mohamed Sesay"].map((name, i) => (
-              <View key={i} className={`flex-row justify-between items-center p-4 ${i !== 2 ? 'border-b border-slate-800' : ''}`}>
-                 <View className="flex-row items-center">
-                   <View className="w-12 h-12 rounded-full bg-slate-800 items-center justify-center mr-4 border border-slate-700">
-                     <Text className="text-primary font-bold text-lg">{name.charAt(0)}</Text>
-                   </View>
-                   <View>
-                     <Text className="text-white font-semibold text-base">{name}</Text>
-                     <Text className="text-slate-500 text-xs mt-0.5">Position #{i + 1}</Text>
-                   </View>
-                 </View>
-                 {i === 1 && (
-                   <View className="bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                     <Text className="text-emerald-500 font-bold text-xs">Collected</Text>
-                   </View>
-                 )}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Active Roster</Text>
+          {['Alpha Bah', 'Fatu Kamara', 'Mohamed Sesay'].map((name, i) => (
+            <View key={name} style={styles.memberRow}>
+              <View style={styles.memberLeft}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{name.charAt(0)}</Text>
+                </View>
+                <View>
+                  <Text style={styles.memberName}>{name}</Text>
+                  <Text style={styles.memberMeta}>Position #{i + 1}</Text>
+                </View>
               </View>
-            ))}
-          </View>
+              {i === 1 ? <Text style={styles.collectedTag}>Collected</Text> : null}
+            </View>
+          ))}
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  backButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1E2B5A',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 28,
+  },
+  heroCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+  },
+  heroTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  heroIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  groupName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1E2B5A',
+  },
+  groupMeta: {
+    marginTop: 2,
+    color: '#6B7280',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaText: {
+    marginLeft: 8,
+    color: '#6B7280',
+    fontSize: 12,
+  },
+  actionCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 14,
+    alignItems: 'center',
+  },
+  actionLabel: {
+    color: '#6B7280',
+    fontSize: 12,
+    textTransform: 'uppercase',
+    fontWeight: '700',
+  },
+  countWrap: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginTop: 6,
+    marginBottom: 12,
+  },
+  countValue: {
+    fontSize: 52,
+    color: '#1E2B5A',
+    fontWeight: '800',
+    marginRight: 6,
+  },
+  countUnit: {
+    color: '#F97316',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  primaryBtn: {
+    backgroundColor: '#F97316',
+    borderRadius: 12,
+    paddingVertical: 12,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  primaryBtnText: {
+    marginLeft: 8,
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  section: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
+    padding: 14,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E2B5A',
+    marginBottom: 10,
+  },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  memberLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFEAD5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  avatarText: {
+    color: '#F97316',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  memberName: {
+    color: '#1F2937',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  memberMeta: {
+    color: '#6B7280',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  collectedTag: {
+    color: '#10B981',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+});

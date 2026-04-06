@@ -23,6 +23,8 @@ import {
   Wallet,
   FileText,
 } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { useAppDataStore } from '../../stores/appDataStore';
 
 interface MemberAssignment {
   id: string;
@@ -36,6 +38,7 @@ interface MemberAssignment {
 
 export default function CollectorScreen() {
   const router = useRouter();
+  const { recordPaymentReceipt, addNotification } = useAppDataStore();
   const [selectedMember, setSelectedMember] = useState<MemberAssignment | null>(null);
   const [collectionMethod, setCollectionMethod] = useState<'cash' | 'mobile_money'>('cash');
   const [amount, setAmount] = useState('');
@@ -43,7 +46,7 @@ export default function CollectorScreen() {
   const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const todayAssignments: MemberAssignment[] = [
+  const [todayAssignments, setTodayAssignments] = useState<MemberAssignment[]>([
     {
       id: '1',
       name: 'John Doe',
@@ -71,16 +74,30 @@ export default function CollectorScreen() {
       lastPaidDate: 'Nov 24, 2024',
       status: 'collected',
     },
-  ];
+  ]);
 
   const handleSelectMember = (member: MemberAssignment) => {
     setSelectedMember(member);
     setAmount(member.amountDue);
   };
 
-  const handleTakePhoto = () => {
-    // TODO: Implement camera functionality
-    Alert.alert('Camera', 'Camera feature will be implemented');
+  const handleTakePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission required', 'Allow camera access to capture receipt proof.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    });
+
+    if (!result.canceled) {
+      setReceiptPhoto(result.assets[0].uri);
+    }
   };
 
   const handleSubmitCollection = async () => {
@@ -94,6 +111,17 @@ export default function CollectorScreen() {
       return;
     }
 
+    const amountValue = Number.parseFloat(amount);
+    if (!Number.isFinite(amountValue) || amountValue <= 0) {
+      Alert.alert('Error', 'Enter a valid amount.');
+      return;
+    }
+
+    if (amountValue > 5000) {
+      Alert.alert('Security check', 'Amount exceeds the daily collector threshold. Escalate to admin.');
+      return;
+    }
+
     if (collectionMethod === 'cash' && !receiptPhoto) {
       Alert.alert('Error', 'Please take a photo of the receipt');
       return;
@@ -102,28 +130,47 @@ export default function CollectorScreen() {
     setIsProcessing(true);
 
     try {
-      // TODO: Submit collection to API
-      // await submitCollection({
-      //   memberId: selectedMember.id,
-      //   amount,
-      //   method: collectionMethod,
-      //   notes,
-      //   receiptPhoto,
-      //   location: currentLocation,
-      // });
-
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
+      const paymentStatus = collectionMethod === 'cash' ? 'pending' : 'verified';
+      const receipt = recordPaymentReceipt({
+        amount: amountValue,
+        groupName: 'Collector Route',
+        paymentMethod: collectionMethod === 'cash' ? 'Cash Collection' : 'Mobile Money',
+        phoneNumber: selectedMember.phone,
+        status: paymentStatus,
+      });
+
+      addNotification({
+        type: 'collection_reminder',
+        title: 'Collector Entry Recorded',
+        message: `${selectedMember.name} collection recorded (${receipt.receiptNumber}).`,
+        actionPath: '/components/receipts',
+      });
+
+      setTodayAssignments((prev) =>
+        prev.map((member) =>
+          member.id === selectedMember.id
+            ? { ...member, status: 'collected', lastPaidDate: new Date().toLocaleDateString() }
+            : member
+        )
+      );
 
       setIsProcessing(false);
       Alert.alert(
         'Success',
-        `Collection of NLe ${amount} from ${selectedMember.name} has been recorded.`,
+        `Collection of NLe ${amountValue.toFixed(2)} from ${selectedMember.name} was recorded.`,
         [
-          { text: 'OK', onPress: () => router.back() }
+          {
+            text: 'OK',
+            onPress: () => {
+              setSelectedMember(null);
+              setAmount('');
+              setNotes('');
+              setReceiptPhoto(null);
+            },
+          },
         ]
       );
-
     } catch (error) {
       setIsProcessing(false);
       Alert.alert('Error', 'Failed to submit collection. Please try again.');
@@ -371,7 +418,7 @@ export default function CollectorScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -380,8 +427,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   backButton: {
     marginRight: 16,
@@ -511,8 +556,6 @@ const styles = StyleSheet.create({
   collectedInfo: {
     marginTop: 12,
     paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
   },
   collectedTime: {
     fontSize: 12,
@@ -596,12 +639,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
     paddingVertical: 16,
-    borderWidth: 2,
-    borderColor: 'transparent',
   },
   selectedMethod: {
     backgroundColor: '#FED7AA',
-    borderColor: '#F97316',
   },
   methodText: {
     fontSize: 14,
@@ -622,8 +662,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   amountInput: {
     flex: 1,
@@ -650,8 +688,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
     borderStyle: 'dashed',
   },
   photoText: {
@@ -670,8 +706,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     fontSize: 16,
     color: '#1F2937',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     textAlignVertical: 'top',
   },
   locationSection: {
@@ -712,3 +746,4 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+

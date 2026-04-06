@@ -336,7 +336,7 @@ export default function HelpCenterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -345,8 +345,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     marginRight: 16,
@@ -371,8 +369,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   searchInput: {
     flex: 1,
@@ -397,8 +393,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   contactIcon: {
     width: 40,
@@ -432,8 +426,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     overflow: 'hidden',
   },
   categoryHeader: {
@@ -489,8 +481,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     padding: 20,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   inputContainer: {
     marginBottom: 16,
@@ -503,8 +493,6 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -536,8 +524,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   resourceContent: {
     flex: 1,
@@ -554,3 +540,4 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
 });
+

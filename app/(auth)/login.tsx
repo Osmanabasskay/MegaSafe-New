@@ -12,15 +12,25 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import type { Session } from '@supabase/supabase-js';
 import { useAuthStore } from '../../stores/authStore';
+import { useAppDataStore } from '../../stores/appDataStore';
 import { supabase, supabaseConfigured } from '../../lib/supabase';
 import { signInWithGoogle } from '../../lib/auth/googleOAuth';
 import { normalizePhoneE164, isValidE164 } from '../../lib/auth/phone';
+import { fetchProfile } from '../../lib/profileService';
+import {
+  getCredentialDisplayName,
+  isPlaceholderProfileName,
+  normalizeProfileName,
+} from '../../lib/profileName';
 import { Shield, Mail, Lock, ChevronRight, Smartphone, Eye, EyeOff } from 'lucide-react-native';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { setSession, setUser } = useAuthStore();
+  const { initializeForUser, updateProfile } = useAppDataStore();
   const [authMode, setAuthMode] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,6 +42,47 @@ export default function LoginScreen() {
 
   const clearErrorOnChange = () => {
     if (errorMessage) setErrorMessage(null);
+  };
+
+  const syncProfileFromSession = async (session: Session) => {
+    initializeForUser(session.user);
+
+    const metadata = (session.user.user_metadata ?? {}) as Record<string, unknown>;
+    const metadataName = normalizeProfileName(
+      (typeof metadata.full_name === 'string' && metadata.full_name) ||
+        (typeof metadata.name === 'string' && metadata.name) ||
+        [metadata.first_name, metadata.last_name]
+          .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+          .join(' ')
+    );
+    const credentialName = getCredentialDisplayName(session.user.email, session.user.phone);
+
+    updateProfile({
+      fullName: !isPlaceholderProfileName(metadataName) ? metadataName : credentialName,
+      email: session.user.email ?? undefined,
+      phone: session.user.phone ?? undefined,
+    });
+
+    const { profile } = await fetchProfile(session.user.id);
+    if (!profile) return;
+
+    const remoteName = normalizeProfileName(
+      [profile.first_name, profile.last_name]
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .join(' ')
+    );
+    const resolvedName = !isPlaceholderProfileName(remoteName)
+      ? remoteName
+      : !isPlaceholderProfileName(metadataName)
+        ? metadataName
+        : credentialName;
+
+    updateProfile({
+      fullName: resolvedName,
+      email: profile.email ?? session.user.email ?? undefined,
+      phone: profile.phone ?? session.user.phone ?? undefined,
+      verificationStatus: profile.kyc_status === 'approved' ? 'Verified' : 'Pending',
+    });
   };
 
   const handleEmailLogin = async () => {
@@ -81,6 +132,8 @@ export default function LoginScreen() {
     if (data.session) {
       setSession(data.session);
       setUser(data.session.user);
+      await syncProfileFromSession(data.session);
+      router.replace('/(main)/home');
     }
   };
 
@@ -151,6 +204,8 @@ export default function LoginScreen() {
       if (session) {
         setSession(session);
         setUser(session.user);
+        await syncProfileFromSession(session);
+        router.replace('/(main)/home');
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -160,216 +215,338 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-slate-950"
-    >
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingVertical: 32 }}
-        className="px-8"
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
       >
-        <View className="relative">
-          <View className="absolute top-[-100] left-[-50] w-80 h-80 bg-primary/10 rounded-full blur-3xl" />
-          <View className="absolute bottom-[-50] right-[-100] w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
-
-          <View className="items-center mb-8 mt-4">
-            <View className="bg-white p-4 rounded-full mb-6 shadow-lg">
-              <Image 
-                source={require('../../assets/MegaSafe Logo.png')} 
-                style={{ width: 60, height: 60 }}
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.logoWrap}>
+            <View style={styles.logoBadge}>
+              <Image
+                source={require('../../assets/MegaSafe Logo.png')}
+                style={styles.logo}
                 resizeMode="contain"
               />
             </View>
-            <Text className="text-4xl font-extrabold text-white tracking-tight mb-2">
-              Mega<Text className="text-primary">Safe</Text>
-            </Text>
-            <Text className="text-slate-400 text-center font-medium text-base px-4">
-              Save Together, Grow Together
-            </Text>
+            <Text style={styles.title}>MegaSafe</Text>
+            <Text style={styles.subtitle}>Save Together, Grow Together</Text>
           </View>
 
-          <View className="space-y-5 bg-slate-900/50 p-6 rounded-3xl border border-white/10 backdrop-blur-md">
-            <View className="flex-row bg-slate-950/80 rounded-2xl p-1 border border-slate-800 mb-2">
+          <View style={styles.formCard}>
+            <View style={styles.modeWrap}>
               <TouchableOpacity
                 onPress={() => {
                   setAuthMode('email');
                   clearErrorOnChange();
                 }}
-                className={`flex-1 py-2.5 rounded-xl ${authMode === 'email' ? 'bg-primary' : ''}`}
+                style={[styles.modeBtn, authMode === 'email' && styles.modeBtnActive]}
               >
-                <Text
-                  className={`text-center font-semibold ${authMode === 'email' ? 'text-white' : 'text-slate-400'}`}
-                >
-                  Email
-                </Text>
+                <Text style={[styles.modeText, authMode === 'email' && styles.modeTextActive]}>Email</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
                   setAuthMode('phone');
                   clearErrorOnChange();
                 }}
-                className={`flex-1 py-2.5 rounded-xl ${authMode === 'phone' ? 'bg-primary' : ''}`}
+                style={[styles.modeBtn, authMode === 'phone' && styles.modeBtnActive]}
               >
-                <Text
-                  className={`text-center font-semibold ${authMode === 'phone' ? 'text-white' : 'text-slate-400'}`}
-                >
-                  Phone
-                </Text>
+                <Text style={[styles.modeText, authMode === 'phone' && styles.modeTextActive]}>Phone</Text>
               </TouchableOpacity>
             </View>
 
             {authMode === 'email' ? (
               <>
-                <View>
-                  <Text className="text-slate-400 text-sm font-semibold mb-2 ml-1 uppercase tracking-wider">
-                    Email Address
-                  </Text>
-                  <View className="flex-row items-center bg-slate-950/80 border border-slate-800 rounded-2xl px-4 py-1 h-14">
-                    <Mail size={20} color="#94A3B8" />
-                    <TextInput
-                      className="flex-1 text-white ml-3 text-base h-full"
-                      placeholder="Secure email"
-                      placeholderTextColor="#475569"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      value={email}
-                      onChangeText={(t) => {
-                        setEmail(t);
-                        clearErrorOnChange();
-                      }}
-                    />
-                  </View>
+                <Text style={styles.inputLabel}>Email Address</Text>
+                <View style={styles.inputWrap}>
+                  <Mail size={18} color="#9CA3AF" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Secure email"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={email}
+                    onChangeText={(t) => {
+                      setEmail(t);
+                      clearErrorOnChange();
+                    }}
+                  />
                 </View>
 
-                <View>
-                  <Text className="text-slate-400 text-sm font-semibold mb-2 ml-1 uppercase tracking-wider">
-                    Passphrase
-                  </Text>
-                  <View className="flex-row items-center bg-slate-950/80 border border-slate-800 rounded-2xl px-4 py-1 h-14">
-                    <Lock size={20} color="#94A3B8" />
-                    <TextInput
-                      className="flex-1 text-white ml-3 text-base h-full"
-                      placeholder="********"
-                      placeholderTextColor="#475569"
-                      secureTextEntry={!showPassword}
-                      value={password}
-                      onChangeText={(t) => {
-                        setPassword(t);
-                        clearErrorOnChange();
-                      }}
-                    />
-                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                      {showPassword ? (
-                        <EyeOff size={20} color="#94A3B8" />
-                      ) : (
-                        <Eye size={20} color="#94A3B8" />
-                      )}
-                    </TouchableOpacity>
-                  </View>
+                <Text style={styles.inputLabel}>Passphrase</Text>
+                <View style={styles.inputWrap}>
+                  <Lock size={18} color="#9CA3AF" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="********"
+                    placeholderTextColor="#9CA3AF"
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={(t) => {
+                      setPassword(t);
+                      clearErrorOnChange();
+                    }}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <EyeOff size={18} color="#9CA3AF" /> : <Eye size={18} color="#9CA3AF" />}
+                  </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity
-                  className="self-end mt-1"
-                  onPress={() => router.push('/(auth)/forgot-password')}
-                >
-                  <Text className="text-primary font-medium">Forgot Access Key?</Text>
+                <TouchableOpacity style={styles.forgotRow} onPress={() => router.push('/(auth)/forgot-password')}>
+                  <Text style={styles.forgotText}>Forgot Access Key?</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   onPress={handleEmailLogin}
                   disabled={isLoading || isGoogleLoading}
-                  className="bg-primary h-14 rounded-2xl flex-row items-center justify-center mt-4 shadow-lg shadow-primary/30 active:opacity-80"
+                  style={styles.primaryButton}
                 >
                   {isLoading ? (
                     <ActivityIndicator color="white" />
                   ) : (
                     <>
-                      <Text className="text-white text-lg font-bold mr-2">Sign In</Text>
-                      <ChevronRight size={20} color="white" strokeWidth={3} />
+                      <Text style={styles.primaryButtonText}>Sign In</Text>
+                      <ChevronRight size={18} color="white" />
                     </>
                   )}
                 </TouchableOpacity>
               </>
             ) : (
               <>
-                <View>
-                  <Text className="text-slate-400 text-sm font-semibold mb-2 ml-1 uppercase tracking-wider">
-                    Mobile number
-                  </Text>
-                  <Text className="text-slate-500 text-xs mb-2 ml-1">
-                    Include country code (e.g. +233...)
-                  </Text>
-                  <View className="flex-row items-center bg-slate-950/80 border border-slate-800 rounded-2xl px-4 py-1 h-14">
-                    <Smartphone size={20} color="#94A3B8" />
-                    <TextInput
-                      className="flex-1 text-white ml-3 text-base h-full"
-                      placeholder="+233201234567"
-                      placeholderTextColor="#475569"
-                      keyboardType="phone-pad"
-                      autoCapitalize="none"
-                      value={phone}
-                      onChangeText={(t) => {
-                        setPhone(t);
-                        clearErrorOnChange();
-                      }}
-                    />
-                  </View>
+                <Text style={styles.inputLabel}>Mobile Number</Text>
+                <View style={styles.inputWrap}>
+                  <Smartphone size={18} color="#9CA3AF" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="+233201234567"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="phone-pad"
+                    autoCapitalize="none"
+                    value={phone}
+                    onChangeText={(t) => {
+                      setPhone(t);
+                      clearErrorOnChange();
+                    }}
+                  />
                 </View>
 
                 <TouchableOpacity
                   onPress={handleSendPhoneOtp}
                   disabled={isLoading || isGoogleLoading}
-                  className="bg-secondary h-14 rounded-2xl flex-row items-center justify-center mt-4 shadow-lg shadow-secondary/30 active:opacity-80"
+                  style={styles.primaryButton}
                 >
                   {isLoading ? (
                     <ActivityIndicator color="white" />
                   ) : (
                     <>
-                      <Text className="text-white text-lg font-bold mr-2">Send verification code</Text>
-                      <ChevronRight size={20} color="white" strokeWidth={3} />
+                      <Text style={styles.primaryButtonText}>Send verification code</Text>
+                      <ChevronRight size={18} color="white" />
                     </>
                   )}
                 </TouchableOpacity>
               </>
             )}
 
-            {errorMessage ? (
-              <Text className="text-red-400 text-sm mt-2 px-1">{errorMessage}</Text>
-            ) : null}
+            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-            <View className="flex-row items-center my-4">
-              <View className="flex-1 h-px bg-slate-700" />
-              <Text className="text-slate-500 text-xs font-medium mx-3 uppercase">or continue with</Text>
-              <View className="flex-1 h-px bg-slate-700" />
+            <View style={styles.separatorRow}>
+              <View style={styles.separatorLine} />
+              <Text style={styles.separatorText}>or continue with</Text>
+              <View style={styles.separatorLine} />
             </View>
 
-            <TouchableOpacity
-              onPress={handleGoogle}
-              disabled={isLoading || isGoogleLoading}
-              className="h-14 rounded-2xl flex-row items-center justify-center bg-white border border-slate-200 active:opacity-90"
-            >
+            <TouchableOpacity onPress={handleGoogle} disabled={isLoading || isGoogleLoading} style={styles.googleBtn}>
               {isGoogleLoading ? (
-                <ActivityIndicator color="#1e293b" />
+                <ActivityIndicator color="#1f2937" />
               ) : (
                 <>
-                  <View className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center mr-3">
-                    <Text className="text-slate-800 font-bold text-lg">G</Text>
-                  </View>
-                  <Text className="text-slate-900 text-base font-bold">Continue with Google</Text>
+                  <Shield size={16} color="#1f2937" />
+                  <Text style={styles.googleText}>Continue with Google</Text>
                 </>
               )}
             </TouchableOpacity>
           </View>
 
-          <View className="flex-row justify-center mt-8 mb-4">
-            <Text className="text-slate-500">Unregistered entity? </Text>
+          <View style={styles.bottomRow}>
+            <Text style={styles.bottomText}>Unregistered entity? </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-              <Text className="text-secondary font-bold">Sign Up</Text>
+              <Text style={styles.bottomLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    justifyContent: 'center',
+  },
+  logoWrap: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logoBadge: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  logo: {
+    width: 54,
+    height: 54,
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#1E2B5A',
+  },
+  subtitle: {
+    marginTop: 4,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  formCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
+    padding: 18,
+  },
+  modeWrap: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 14,
+  },
+  modeBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  modeBtnActive: {
+    backgroundColor: '#F97316',
+  },
+  modeText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  modeTextActive: {
+    color: '#FFFFFF',
+  },
+  inputLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '600',
+    marginBottom: 6,
+    marginTop: 4,
+  },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 52,
+    marginBottom: 10,
+  },
+  input: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 15,
+    color: '#111827',
+  },
+  forgotRow: {
+    alignItems: 'flex-end',
+    marginBottom: 8,
+  },
+  forgotText: {
+    color: '#F97316',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  primaryButton: {
+    backgroundColor: '#F97316',
+    borderRadius: 12,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 4,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  errorText: {
+    marginTop: 10,
+    color: '#DC2626',
+    fontSize: 13,
+  },
+  separatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  separatorText: {
+    marginHorizontal: 8,
+    color: '#9CA3AF',
+    fontSize: 11,
+    textTransform: 'uppercase',
+    fontWeight: '600',
+  },
+  googleBtn: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  googleText: {
+    color: '#1f2937',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  bottomRow: {
+    marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  bottomText: {
+    color: '#6B7280',
+    fontSize: 13,
+  },
+  bottomLink: {
+    color: '#1D4ED8',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+});

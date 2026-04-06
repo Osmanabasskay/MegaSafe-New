@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
   Users,
@@ -24,19 +24,49 @@ import {
   ChevronRight,
   CheckCircle,
 } from 'lucide-react-native';
+import { getGroupById } from '../../../lib/groupService';
+import type { OsusuGroup } from '../../../types/group';
 
 export default function ManageGroupScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ id?: string }>();
+  const groupId = params.id != null ? String(params.id) : '';
   const [activeTab, setActiveTab] = useState<'ledger' | 'members' | 'contributions'>('ledger');
+  const [group, setGroup] = useState<OsusuGroup | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const groupData = {
-    name: 'Family Savings Circle',
-    members: 5,
-    totalCollected: '500.00',
-    nextPayout: 'Dec 22, 2024',
-    myNextDue: 'Dec 15, 2024',
-    contributionAmount: '100.00',
-  };
+  useEffect(() => {
+    let mounted = true;
+
+    const run = async () => {
+      if (!groupId) {
+        setIsLoading(false);
+        return;
+      }
+      const { group: loaded } = await getGroupById(groupId);
+      if (mounted) {
+        setGroup(loaded);
+        setIsLoading(false);
+      }
+    };
+
+    void run();
+    return () => {
+      mounted = false;
+    };
+  }, [groupId]);
+
+  const groupData = useMemo(
+    () => ({
+      name: group?.name ?? 'Family Savings Circle',
+      members: group?.max_members ?? 5,
+      totalCollected: '0.00',
+      nextPayout: group?.cycle_start_date ?? 'Pending',
+      myNextDue: group?.cycle_start_date ?? 'Pending',
+      contributionAmount: (group?.contribution_amount ?? 0).toFixed(2),
+    }),
+    [group]
+  );
 
   const ledgerData = [
     {
@@ -158,7 +188,9 @@ export default function ManageGroupScreen() {
           </View>
           <View>
             <Text style={styles.headerTitle}>{groupData.name}</Text>
-            <Text style={styles.headerSubtitle}>{groupData.members} members</Text>
+            <Text style={styles.headerSubtitle}>
+              {isLoading ? 'Loading...' : `${groupData.members} members`}
+            </Text>
           </View>
         </View>
       </View>
@@ -253,7 +285,15 @@ export default function ManageGroupScreen() {
                   <Text style={styles.amount}>NLe {groupData.contributionAmount}</Text>
                 </View>
               </View>
-              <TouchableOpacity style={styles.payButton} onPress={() => router.push('/(groups)/contribute')}>
+              <TouchableOpacity
+                style={styles.payButton}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(groups)/contribute',
+                    params: { groupId: groupId || group?.id || '1' },
+                  })
+                }
+              >
                 <Text style={styles.payButtonText}>Pay Now</Text>
               </TouchableOpacity>
             </View>
@@ -294,8 +334,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
   },
   backButton: {
     padding: 8,
@@ -329,8 +367,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
   },
   statItem: {
     flexDirection: 'row',
@@ -354,16 +390,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
   },
   tab: {
     padding: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: '#FFFFFF',
   },
   activeTab: {
-    borderBottomColor: '#F97316',
   },
   tabText: {
     fontSize: 14,

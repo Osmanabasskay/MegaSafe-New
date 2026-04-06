@@ -1,12 +1,31 @@
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuthStore } from '../stores/authStore';
+import { useState } from 'react';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const logout = useAuthStore((state) => state.logout);
+  const hasSession = useAuthStore((state) => Boolean(state.session));
+  const [isRouting, setIsRouting] = useState(false);
+
+  const routeToAuth = async (path: '/(auth)/register' | '/(auth)/login') => {
+    if (isRouting) return;
+    setIsRouting(true);
+    try {
+      if (hasSession) {
+        await logout();
+      }
+      router.replace(path);
+    } finally {
+      setIsRouting(false);
+    }
+  };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       
       {/* Logo Container */}
@@ -33,19 +52,25 @@ export default function WelcomeScreen() {
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
           style={[styles.button, styles.primaryButton]}
-          onPress={() => router.push('/(auth)/register')}
+          onPress={() => void routeToAuth('/(auth)/register')}
+          disabled={isRouting}
         >
-          <Text style={styles.primaryButtonText}>Get Started</Text>
+          {isRouting ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.primaryButtonText}>Get Started</Text>
+          )}
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={[styles.button, styles.secondaryButton]}
-          onPress={() => router.push('/(auth)/login')}
+          onPress={() => void routeToAuth('/(auth)/login')}
+          disabled={isRouting}
         >
           <Text style={styles.secondaryButtonText}>I Already Have an Account</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -124,8 +149,6 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#1D4ED8',
   },
   primaryButtonText: {
     fontSize: 16,

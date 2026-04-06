@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
 import { fetchProfile, type KycStatus } from '../../lib/profileService';
 import { useKycDraftStore } from '../../stores/kycDraftStore';
@@ -44,9 +45,11 @@ export default function PendingScreen() {
 
   if (loading) {
     return (
+      <SafeAreaView className="flex-1 bg-white">
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#F97316" />
       </View>
+      </SafeAreaView>
     );
   }
 
@@ -55,7 +58,7 @@ export default function PendingScreen() {
   const submitted = status === 'submitted';
 
   return (
-    <View className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white">
       <KycProgress currentStep={5} label="Status" />
       <View className="flex-1 items-center justify-center p-6">
         <Text className="text-6xl mb-4">{approved ? '✅' : rejected ? '❌' : '⏳'}</Text>
@@ -85,7 +88,7 @@ export default function PendingScreen() {
         ) : null}
 
         <TouchableOpacity
-          className={`px-8 py-3 rounded-full border ${approved ? 'bg-secondary border-secondary' : 'border-gray-300'}`}
+          className={`px-8 py-3 rounded-full ${approved ? 'bg-secondary' : 'bg-gray-100'}`}
           onPress={goHome}
         >
           <Text className={`font-semibold ${approved ? 'text-white' : 'text-gray-700'}`}>
@@ -93,6 +96,6 @@ export default function PendingScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

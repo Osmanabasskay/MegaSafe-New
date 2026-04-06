@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   Platform,
   StyleSheet,
   Alert,
+  Share,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -24,46 +26,43 @@ import {
   X,
   MessageCircle
 } from 'lucide-react-native';
-
-interface InvitedMember {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  status: 'pending' | 'accepted' | 'declined';
-}
+import { useAuthStore } from '../../stores/authStore';
+import { useGroupCreationStore } from '../../stores/groupCreationStore';
+import { createGroup, generateInviteCode } from '../../lib/groupService';
 
 export default function InviteMembersScreen() {
   const router = useRouter();
-  const [inviteCode, setInviteCode] = useState('MSF-ABC123');
-  const [inviteLink, setInviteLink] = useState('https://megasafe.app/join/MSF-ABC123');
+  const { user } = useAuthStore();
+  const { draft, addInvite, removeInvite, setInviteCode: setDraftInviteCode, resetDraft } = useGroupCreationStore();
+  const [inviteCode, setInviteCode] = useState(draft.inviteCode);
   const [emailInvite, setEmailInvite] = useState('');
   const [phoneInvite, setPhoneInvite] = useState('');
-  const [invitedMembers, setInvitedMembers] = useState<InvitedMember[]>([
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      phone: '+232 76 123 456',
-      status: 'accepted'
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      phone: '+232 30 987 654',
-      status: 'pending'
+  const [isSaving, setIsSaving] = useState(false);
+
+  const inviteLink = useMemo(() => `https://megasafe.app/join/${inviteCode}`, [inviteCode]);
+  const invitedMembers = draft.invites;
+
+  useEffect(() => {
+    if (inviteCode) return;
+    const generated = generateInviteCode();
+    setInviteCode(generated);
+    setDraftInviteCode(generated);
+  }, [inviteCode, setDraftInviteCode]);
+
+  const shareInvite = async (message: string): Promise<void> => {
+    try {
+      await Share.share({ message });
+    } catch {
+      Alert.alert('Share failed', 'Unable to open the share sheet right now.');
     }
-  ]);
+  };
 
   const copyInviteCode = () => {
-    // TODO: Implement clipboard copy
-    Alert.alert('Success', 'Invite code copied to clipboard!');
+    void shareInvite(`Join my MegaSafe group using invite code: ${inviteCode}`);
   };
 
   const copyInviteLink = () => {
-    // TODO: Implement clipboard copy
-    Alert.alert('Success', 'Invite link copied to clipboard!');
+    void shareInvite(`Join my MegaSafe group: ${inviteLink}`);
   };
 
   const sendEmailInvite = () => {
@@ -71,7 +70,21 @@ export default function InviteMembersScreen() {
       Alert.alert('Error', 'Please enter an email address');
       return;
     }
-    // TODO: Implement email invite
+    const normalizedEmail = emailInvite.trim().toLowerCase();
+    if (!/\S+@\S+\.\S+/.test(normalizedEmail)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    const id = `invite-email-${Date.now()}`;
+    addInvite({
+      id,
+      name: normalizedEmail.split('@')[0],
+      email: normalizedEmail,
+      phone: '',
+      status: 'pending',
+    });
+
     Alert.alert('Success', 'Invitation sent via email!');
     setEmailInvite('');
   };
@@ -81,18 +94,75 @@ export default function InviteMembersScreen() {
       Alert.alert('Error', 'Please enter a phone number');
       return;
     }
-    // TODO: Implement SMS invite
+    const normalizedPhone = phoneInvite.trim();
+    const id = `invite-phone-${Date.now()}`;
+    addInvite({
+      id,
+      name: normalizedPhone,
+      email: '',
+      phone: normalizedPhone,
+      status: 'pending',
+    });
+
     Alert.alert('Success', 'Invitation sent via SMS!');
     setPhoneInvite('');
   };
 
   const removeInvitation = (memberId: string) => {
-    setInvitedMembers(prev => prev.filter(member => member.id !== memberId));
+    removeInvite(memberId);
   };
 
-  const handleContinue = () => {
-    // TODO: Save invitations and navigate to setup completion
-    router.push('/(groups)/setup-complete');
+  const handleContinue = async () => {
+    if (!user?.id) {
+      Alert.alert('Sign in required', 'Please sign in again to create this group.');
+      return;
+    }
+    if (!draft.name.trim()) {
+      Alert.alert('Missing details', 'Please go back and provide a group name.');
+      return;
+    }
+    if (draft.contributionAmount <= 0) {
+      Alert.alert('Missing details', 'Please go back and enter a valid contribution amount.');
+      return;
+    }
+
+    setIsSaving(true);
+    const rulesSummary = JSON.stringify({
+      rules: draft.rules,
+      invites: draft.invites.map((invite) => ({
+        name: invite.name,
+        email: invite.email,
+        phone: invite.phone,
+      })),
+    });
+
+    const { group, error } = await createGroup({
+      userId: user.id,
+      name: draft.name,
+      description: draft.description || null,
+      contributionAmount: draft.contributionAmount,
+      frequency: draft.frequency,
+      maxMembers: draft.maxMembers,
+      cycleStartDate: draft.cycleStartDate,
+      totalCycles: draft.totalCycles,
+      payoutOrder: draft.payoutOrder,
+      isPublic: true,
+      joinRequiresApproval: draft.rules.requireApproval,
+      customRules: rulesSummary,
+      inviteCode,
+    });
+    setIsSaving(false);
+
+    if (error || !group) {
+      Alert.alert('Unable to create group', error?.message ?? 'Please try again.');
+      return;
+    }
+
+    resetDraft();
+    router.push({
+      pathname: '/(groups)/setup-complete',
+      params: { groupId: group.id },
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -258,8 +328,16 @@ export default function InviteMembersScreen() {
           </View>
 
           {/* Continue Button */}
-          <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-            <Text style={styles.continueButtonText}>Continue to Setup</Text>
+          <TouchableOpacity
+            style={[styles.continueButton, isSaving && { opacity: 0.7 }]}
+            onPress={handleContinue}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.continueButtonText}>Continue to Setup</Text>
+            )}
           </TouchableOpacity>
 
           <Text style={styles.note}>
@@ -274,7 +352,7 @@ export default function InviteMembersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: '#FFFFFF',
   },
   keyboardContainer: {
     flex: 1,
@@ -286,8 +364,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   backButton: {
     marginRight: 16,
@@ -349,8 +425,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    borderWidth: 2,
-    borderColor: '#F97316',
     borderStyle: 'dashed',
   },
   codeText: {
@@ -376,8 +450,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   linkText: {
     flex: 1,
@@ -389,8 +461,6 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F97316',
   },
   inputContainer: {
     marginBottom: 16,
@@ -407,8 +477,6 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -428,8 +496,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   memberInfo: {
     flex: 1,
@@ -508,8 +574,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   shareButtonText: {
     fontSize: 14,
@@ -542,3 +606,4 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+

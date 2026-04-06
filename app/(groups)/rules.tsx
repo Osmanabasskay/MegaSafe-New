@@ -9,9 +9,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useGroupCreationStore, type GroupRulesConfig } from '../../stores/groupCreationStore';
 import { 
   ArrowLeft, 
   Shield, 
@@ -24,42 +26,38 @@ import {
   X
 } from 'lucide-react-native';
 
-interface GroupRules {
-  requireApproval: boolean;
-  allowLatePayments: boolean;
-  latePaymentFee: string;
-  maxMissedPayments: number;
-  emergencyWithdrawal: boolean;
-  withdrawalLimit: string;
-  meetingFrequency: 'weekly' | 'monthly' | 'quarterly';
-  digitalOnly: boolean;
-  autoReminders: boolean;
-  reminderDays: number;
-}
-
 export default function GroupRulesScreen() {
   const router = useRouter();
-  const [groupName, setGroupName] = useState('');
-  const [groupDescription, setGroupDescription] = useState('');
-  const [rules, setRules] = useState<GroupRules>({
-    requireApproval: true,
-    allowLatePayments: true,
-    latePaymentFee: '5.00',
-    maxMissedPayments: 2,
-    emergencyWithdrawal: false,
-    withdrawalLimit: '50.00',
-    meetingFrequency: 'monthly',
-    digitalOnly: true,
-    autoReminders: true,
-    reminderDays: 3,
-  });
+  const { draft, updateDetails, updateRules } = useGroupCreationStore();
+  const [groupName, setGroupName] = useState(draft.name);
+  const [groupDescription, setGroupDescription] = useState(draft.description);
+  const [rules, setRules] = useState<GroupRulesConfig>(draft.rules);
 
-  const updateRule = (key: keyof GroupRules, value: any) => {
+  const updateRule = <K extends keyof GroupRulesConfig>(key: K, value: GroupRulesConfig[K]) => {
     setRules(prev => ({ ...prev, [key]: value }));
   };
 
   const handleNext = () => {
-    // TODO: Save rules and navigate to invite members
+    const name = groupName.trim();
+    if (!name) {
+      Alert.alert('Group name required', 'Enter a name for your group before continuing.');
+      return;
+    }
+    if (rules.maxMissedPayments < 0) {
+      Alert.alert('Invalid rule', 'Maximum missed payments cannot be negative.');
+      return;
+    }
+    if (rules.reminderDays < 0) {
+      Alert.alert('Invalid rule', 'Reminder days cannot be negative.');
+      return;
+    }
+
+    updateDetails({
+      name,
+      description: groupDescription.trim(),
+    });
+    updateRules(rules);
+
     router.push('/(groups)/invite');
   };
 
@@ -158,7 +156,7 @@ export default function GroupRulesScreen() {
                 placeholder="2"
                 placeholderTextColor="#9CA3AF"
                 value={rules.maxMissedPayments.toString()}
-                onChangeText={(value) => updateRule('maxMissedPayments', parseInt(value) || 0)}
+                onChangeText={(value) => updateRule('maxMissedPayments', Number.parseInt(value, 10) || 0)}
                 keyboardType="numeric"
               />
             </View>
@@ -190,14 +188,14 @@ export default function GroupRulesScreen() {
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Late Payment Fee (NLe)</Text>
                 <TextInput
-                  style={styles.textInput}
-                  placeholder="5.00"
-                  placeholderTextColor="#9CA3AF"
-                  value={rules.latePaymentFee}
-                  onChangeText={(value) => updateRule('latePaymentFee', value)}
-                  keyboardType="numeric"
-                />
-              </View>
+                style={styles.textInput}
+                placeholder="5.00"
+                placeholderTextColor="#9CA3AF"
+                value={rules.latePaymentFee.toString()}
+                onChangeText={(value) => updateRule('latePaymentFee', Number.parseFloat(value) || 0)}
+                keyboardType="numeric"
+              />
+            </View>
             )}
           </View>
 
@@ -227,14 +225,14 @@ export default function GroupRulesScreen() {
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Emergency Withdrawal Limit (NLe)</Text>
                 <TextInput
-                  style={styles.textInput}
-                  placeholder="50.00"
-                  placeholderTextColor="#9CA3AF"
-                  value={rules.withdrawalLimit}
-                  onChangeText={(value) => updateRule('withdrawalLimit', value)}
-                  keyboardType="numeric"
-                />
-              </View>
+                style={styles.textInput}
+                placeholder="50.00"
+                placeholderTextColor="#9CA3AF"
+                value={rules.withdrawalLimit.toString()}
+                onChangeText={(value) => updateRule('withdrawalLimit', Number.parseFloat(value) || 0)}
+                keyboardType="numeric"
+              />
+            </View>
             )}
           </View>
 
@@ -255,7 +253,7 @@ export default function GroupRulesScreen() {
                       styles.frequencyButton,
                       rules.meetingFrequency === freq && styles.frequencyButtonActive
                     ]}
-                    onPress={() => updateRule('meetingFrequency', freq)}
+                    onPress={() => updateRule('meetingFrequency', freq as GroupRulesConfig['meetingFrequency'])}
                   >
                     <Text style={[
                       styles.frequencyText,
@@ -298,11 +296,11 @@ export default function GroupRulesScreen() {
                   style={styles.textInput}
                   placeholder="3"
                   placeholderTextColor="#9CA3AF"
-                  value={rules.reminderDays.toString()}
-                  onChangeText={(value) => updateRule('reminderDays', parseInt(value) || 0)}
-                  keyboardType="numeric"
-                />
-              </View>
+                value={rules.reminderDays.toString()}
+                onChangeText={(value) => updateRule('reminderDays', Number.parseInt(value, 10) || 0)}
+                keyboardType="numeric"
+              />
+            </View>
             )}
           </View>
 
@@ -319,7 +317,7 @@ export default function GroupRulesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: '#FFFFFF',
   },
   keyboardContainer: {
     flex: 1,
@@ -331,8 +329,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   backButton: {
     marginRight: 16,
@@ -382,8 +378,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   textInput: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -400,8 +394,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   ruleContent: {
     flex: 1,
@@ -459,3 +451,4 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+

@@ -174,3 +174,49 @@ export async function uploadAvatar(userId: string, uri: string): Promise<{ path:
 
   return { path: publicUrl, error: null };
 }
+
+export async function upsertBasicProfile(params: {
+  userId: string;
+  email?: string;
+  phone?: string;
+  firstName?: string;
+  lastName?: string;
+}): Promise<{ error: Error | null }> {
+  const firstName = params.firstName?.trim() || null;
+  const lastName = params.lastName?.trim() || null;
+  const email = params.email?.trim().toLowerCase() || null;
+  const phone = params.phone?.trim() || null;
+
+  const payload = {
+    id: params.userId,
+    email,
+    phone,
+    first_name: firstName,
+    last_name: lastName,
+  };
+
+  const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
+  if (error) return { error: new Error(error.message) };
+  return { error: null };
+}
+
+export async function logLegalAcceptance(params: {
+  userId: string;
+  acceptedAt: string;
+}): Promise<{ error: Error | null }> {
+  const payload = {
+    user_id: params.userId,
+    action: 'legal_acceptance',
+    table_name: 'profiles',
+    record_id: params.userId,
+    new_values: {
+      accepted_at: params.acceptedAt,
+      terms_version: '2024-11-01',
+      privacy_version: '2024-11-01',
+    },
+  };
+
+  const { error } = await supabase.from('audit_logs').insert(payload as never);
+  if (error) return { error: new Error(error.message) };
+  return { error: null };
+}

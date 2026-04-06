@@ -23,11 +23,18 @@ export const useAuthStore = create<AuthState>()((set) => ({
   setLoading: (isLoading) => set({ isLoading }),
   logout: async () => {
     set({ isLoading: true });
-    if (supabaseConfigured) {
-      await supabase.auth.signOut();
+    try {
+      if (supabaseConfigured) {
+        await supabase.auth.signOut();
+      }
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('[Auth] Sign out warning:', error);
+      }
+    } finally {
+      useKycDraftStore.getState().reset();
+      set({ user: null, session: null, isLoading: false });
     }
-    useKycDraftStore.getState().reset();
-    set({ user: null, session: null, isLoading: false });
   },
   refreshSession: async () => {
     set({ isLoading: true });

@@ -1,182 +1,344 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { ArrowDownLeft, ArrowUpRight, PlusCircle, Search, ShieldAlert, Users } from 'lucide-react-native';
 import { useAuthStore } from '../../stores/authStore';
-import { fetchProfile } from '../../lib/profileService';
-import { Bell, Wallet, ArrowUpRight, ArrowDownLeft, PlusCircle, Search, Users } from 'lucide-react-native';
+import { useAppDataStore } from '../../stores/appDataStore';
+import { listGroupsForUser } from '../../lib/groupService';
+import { getCredentialDisplayName, getProfileFirstName } from '../../lib/profileName';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const [isReady, setIsReady] = useState(false);
+  const {
+    profile,
+    savingsGoals,
+    vaultTransactions,
+    disputes,
+    initializeForUser,
+    runAutoSaveSweep,
+  } = useAppDataStore();
+  const [groupCount, setGroupCount] = useState(0);
 
   useEffect(() => {
-    setIsReady(true);
-  }, []);
+    initializeForUser(user);
+    runAutoSaveSweep();
+  }, [initializeForUser, runAutoSaveSweep, user]);
 
-  const { data: profile } = useQuery({
-    queryKey: ['profile', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { profile: p, error } = await fetchProfile(user.id);
-      if (error) throw error;
-      return p;
-    },
-    enabled: !!user?.id,
-  });
+  useEffect(() => {
+    let mounted = true;
+    const run = async () => {
+      if (!user?.id) return;
+      const { groups } = await listGroupsForUser(user.id);
+      if (mounted) setGroupCount(groups.length);
+    };
+    void run();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
 
-  const showKycBanner = profile?.kyc_status !== 'approved';
+  const totalAssets = useMemo(
+    () =>
+      vaultTransactions
+        .filter((transaction) => transaction.status === 'completed')
+        .reduce((sum, transaction) => {
+          if (transaction.type === 'withdrawal') return sum - transaction.amount;
+          return sum + transaction.amount;
+        }, 0),
+    [vaultTransactions]
+  );
 
-  const transactions = [
-    { id: '1', title: 'Osusu Contribution', date: 'Today, 10:24 AM', amount: '-NLe 500.00', isOut: true },
-    { id: '2', title: 'Group Payout', date: 'Yesterday, 3:15 PM', amount: '+NLe 2,500.00', isOut: false },
-    { id: '3', title: 'Wallet Top-up', date: 'Oct 24, 09:12 AM', amount: '+NLe 1,000.00', isOut: false },
-  ];
+  const recentTransactions = useMemo(() => vaultTransactions.slice(0, 4), [vaultTransactions]);
+  const activeGoals = useMemo(
+    () => savingsGoals.filter((goal) => goal.status === 'active').length,
+    [savingsGoals]
+  );
+  const openDisputes = useMemo(
+    () => disputes.filter((dispute) => dispute.status === 'open' || dispute.status === 'under_review').length,
+    [disputes]
+  );
 
-  const handleNavigation = (path: string) => {
-    if (isReady && router) {
-      router.push(path);
-    }
-  };
+  const displayName = getProfileFirstName(
+    profile.fullName,
+    getCredentialDisplayName(profile.email, profile.phone)
+  );
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-950">
-      <StatusBar barStyle="light-content" />
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }}>
-        {showKycBanner ? (
-          <TouchableOpacity
-            className="mx-6 mt-4 mb-2 bg-amber-500/15 border border-amber-500/40 rounded-2xl p-4"
-            onPress={() => handleNavigation('/(kyc)/id-photos')}
-            activeOpacity={0.85}
-          >
-            <Text className="text-amber-200 font-bold text-base">Complete identity verification</Text>
-            <Text className="text-amber-100/80 text-sm mt-1">
-              Upload your ID and guarantor to unlock the full MegaSafe experience.
-            </Text>
-            <Text className="text-primary font-semibold text-sm mt-2">Continue KYC →</Text>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.headerBlock}>
+          <Text style={styles.greeting}>Welcome back</Text>
+          <Text style={styles.name}>{displayName}</Text>
+        </View>
+
+        <View style={styles.balanceCard}>
+          <Text style={styles.balanceLabel}>Total Secured Assets</Text>
+          <Text style={styles.balanceValue}>NLe {Math.max(0, totalAssets).toFixed(2)}</Text>
+
+          <View style={styles.balanceActions}>
+            <TouchableOpacity style={styles.actionChip} onPress={() => router.push('/(main)/vault')}>
+              <ArrowDownLeft size={16} color="#10B981" />
+              <Text style={styles.actionText}>Deposit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionChip} onPress={() => router.push('/(main)/vault')}>
+              <ArrowUpRight size={16} color="#F97316" />
+              <Text style={styles.actionText}>Withdraw</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.grid}>
+          <TouchableOpacity onPress={() => router.push('/(groups)/create')} style={styles.gridCard}>
+            <PlusCircle size={22} color="#F97316" />
+            <Text style={styles.gridTitle}>Create Group</Text>
+            <Text style={styles.gridSubtitle}>Start osusu cycle</Text>
           </TouchableOpacity>
-        ) : null}
 
-        {/* Balance Card Section */}
-        <View className="px-6 mt-2">
-          <View className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-3xl border border-slate-700 shadow-2xl shadow-black relative overflow-hidden">
-            {/* Background Decor */}
-            <View className="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 rounded-full blur-2xl" />
-            
-            <View className="flex-row justify-between items-center mb-6">
-              <View className="flex-row items-center">
-                <Wallet size={20} color="#94A3B8" />
-                <Text className="text-slate-400 text-sm font-semibold ml-2">Total Secured Assets</Text>
-              </View>
-            </View>
-            <Text className="text-4xl font-extrabold text-white tracking-tight mb-8">
-              NLe 14,250.00
-            </Text>
-            
-            {/* Quick Actions */}
-            <View className="flex-row justify-between border-t border-slate-700 pt-5">
-              <TouchableOpacity 
-                className="flex-row items-center"
-                onPress={() => handleNavigation('/(main)/vault')}
-              >
-                <View className="w-10 h-10 bg-primary/20 rounded-full items-center justify-center mr-3">
-                  <ArrowDownLeft size={20} color="#F97316" />
-                </View>
-                <Text className="text-white font-medium">Deposit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                className="flex-row items-center"
-                onPress={() => handleNavigation('/(main)/vault')}
-              >
-                <View className="w-10 h-10 bg-secondary/20 rounded-full items-center justify-center mr-3">
-                  <ArrowUpRight size={20} color="#3B82F6" />
-                </View>
-                <Text className="text-white font-medium">Withdraw</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <TouchableOpacity onPress={() => router.push('/(groups)/discover')} style={styles.gridCard}>
+            <Search size={22} color="#1D4ED8" />
+            <Text style={styles.gridTitle}>Discover</Text>
+            <Text style={styles.gridSubtitle}>Join trusted groups</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => router.push('/(main)/savings')} style={styles.gridCard}>
+            <PlusCircle size={22} color="#10B981" />
+            <Text style={styles.gridTitle}>Savings</Text>
+            <Text style={styles.gridSubtitle}>{activeGoals} active goals</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => router.push('/components/disputes')} style={styles.gridCard}>
+            <ShieldAlert size={22} color="#F59E0B" />
+            <Text style={styles.gridTitle}>Disputes</Text>
+            <Text style={styles.gridSubtitle}>{openDisputes} active cases</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Feature Grid */}
-        <View className="px-6 mt-8">
-          <View className="flex-row justify-between mb-4">
-            <TouchableOpacity 
-              onPress={() => handleNavigation('/(groups)/create')}
-              className="bg-slate-900 w-[48%] p-5 rounded-2xl border border-slate-800 items-center justify-center shadow-lg"
-            >
-              <PlusCircle size={32} color="#F97316" className="mb-3" />
-              <Text className="text-white font-bold text-center">Create Group</Text>
-              <Text className="text-slate-500 text-xs mt-1">Start Osusu</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => handleNavigation('/(groups)/discover')}
-              className="bg-slate-900 w-[48%] p-5 rounded-2xl border border-slate-800 items-center justify-center shadow-lg"
-            >
-              <Search size={32} color="#3B82F6" className="mb-3" />
-              <Text className="text-white font-bold text-center">Discover</Text>
-              <Text className="text-slate-500 text-xs mt-1">Find Groups</Text>
+        <View style={styles.dashboardCard}>
+          <View style={styles.rowBetween}>
+            <Text style={styles.sectionTitle}>Creator Dashboard</Text>
+            <TouchableOpacity onPress={() => router.push('/(groups)/creator-dashboard')}>
+              <Text style={styles.linkText}>Open</Text>
             </TouchableOpacity>
           </View>
-          
-          <View className="flex-row justify-between">
-            <TouchableOpacity 
-              onPress={() => handleNavigation('/(main)/savings')}
-              className="bg-orange-950/20 w-[48%] p-5 rounded-2xl border border-orange-900/50 items-center justify-center shadow-lg"
-            >
-              <PlusCircle size={32} color="#F97316" className="mb-3" />
-              <Text className="text-orange-400 font-bold text-center">Savings</Text>
-              <Text className="text-slate-500 text-xs mt-1">View Savings</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => handleNavigation('/(main)/groups')}
-              className="bg-blue-950/20 w-[48%] p-5 rounded-2xl border border-blue-900/50 items-center justify-center shadow-lg"
-            >
-              <Users size={32} color="#3B82F6" className="mb-3" />
-              <Text className="text-blue-400 font-bold text-center">My Groups</Text>
-              <Text className="text-slate-500 text-xs mt-1">View Groups</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.gridSubtitle}>{groupCount} groups managed. Track approvals and payouts.</Text>
         </View>
 
-        {/* Recent Transactions */}
-        <View className="px-6 mt-10">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-white text-xl font-bold tracking-tight">Recent Ledger</Text>
-            <TouchableOpacity onPress={() => handleNavigation('/(main)/vault')}>
-              <Text className="text-primary font-medium">View All</Text>
+        <View style={styles.recentBlock}>
+          <View style={styles.rowBetween}>
+            <Text style={styles.sectionTitle}>Recent Ledger</Text>
+            <TouchableOpacity onPress={() => router.push('/(main)/vault')}>
+              <Text style={styles.linkText}>View All</Text>
             </TouchableOpacity>
           </View>
 
-          <View className="bg-slate-900 rounded-3xl p-2 border border-slate-800">
-            {transactions.map((tx, index) => (
-              <View 
-                key={tx.id} 
-                className={`flex-row justify-between items-center p-4 ${index !== transactions.length - 1 ? 'border-b border-slate-800' : ''}`}
-              >
-                <View className="flex-row items-center flex-1">
-                  <View className={`w-12 h-12 rounded-full items-center justify-center ${tx.isOut ? 'bg-orange-500/10' : 'bg-green-500/10'}`}>
-                    {tx.isOut ? (
-                      <ArrowUpRight size={20} color="#F97316" />
-                    ) : (
-                      <ArrowDownLeft size={20} color="#22C55E" />
-                    )}
+          <View style={styles.recentCard}>
+            {recentTransactions.length > 0 ? (
+              recentTransactions.map((transaction) => {
+                const isOut = transaction.type === 'withdrawal';
+                return (
+                  <View key={transaction.id} style={styles.transactionRow}>
+                    <View style={styles.transactionLeft}>
+                      <View style={styles.iconCircle}>
+                        {isOut ? (
+                          <ArrowUpRight size={16} color="#F97316" />
+                        ) : (
+                          <ArrowDownLeft size={16} color="#10B981" />
+                        )}
+                      </View>
+                      <View style={styles.transactionBody}>
+                        <Text style={styles.transactionTitle}>{transaction.description}</Text>
+                        <Text style={styles.transactionTime}>
+                          {new Date(transaction.occurredAt).toLocaleString()}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.transactionAmount, isOut && styles.transactionAmountOut]}>
+                      {isOut ? '-' : '+'}NLe {transaction.amount.toFixed(2)}
+                    </Text>
                   </View>
-                  <View className="ml-4 flex-1">
-                    <Text className="text-white font-semibold text-base mb-1">{tx.title}</Text>
-                    <Text className="text-slate-500 text-xs">{tx.date}</Text>
-                  </View>
-                </View>
-                <Text className={`font-extrabold ${tx.isOut ? 'text-white' : 'text-green-400'}`}>
-                  {tx.amount}
-                </Text>
+                );
+              })
+            ) : (
+              <View style={styles.emptyWrap}>
+                <Users size={22} color="#9CA3AF" />
+                <Text style={styles.emptyText}>No transactions yet.</Text>
               </View>
-            ))}
+            )}
           </View>
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+  },
+  headerBlock: {
+    paddingTop: 12,
+    marginBottom: 14,
+  },
+  greeting: {
+    color: '#6B7280',
+    fontSize: 13,
+  },
+  name: {
+    color: '#1E2B5A',
+    fontSize: 24,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  balanceCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 14,
+  },
+  balanceLabel: {
+    color: '#6B7280',
+    fontSize: 13,
+    marginBottom: 6,
+  },
+  balanceValue: {
+    color: '#1E2B5A',
+    fontSize: 32,
+    fontWeight: '800',
+    marginBottom: 14,
+  },
+  balanceActions: {
+    flexDirection: 'row',
+  },
+  actionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    marginRight: 10,
+  },
+  actionText: {
+    marginLeft: 6,
+    color: '#1F2937',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  gridCard: {
+    width: '48%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+  },
+  gridTitle: {
+    color: '#1E2B5A',
+    fontWeight: '700',
+    fontSize: 14,
+    marginTop: 8,
+  },
+  gridSubtitle: {
+    color: '#6B7280',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  dashboardCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+  },
+  rowBetween: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  sectionTitle: {
+    color: '#1E2B5A',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  linkText: {
+    color: '#F97316',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  recentBlock: {
+    marginTop: 2,
+  },
+  recentCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    paddingVertical: 6,
+  },
+  transactionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  transactionLeft: {
+    flexDirection: 'row',
+    flex: 1,
+    marginRight: 8,
+  },
+  iconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  transactionBody: {
+    flex: 1,
+  },
+  transactionTitle: {
+    fontSize: 13,
+    color: '#1F2937',
+    fontWeight: '600',
+  },
+  transactionTime: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  transactionAmount: {
+    color: '#10B981',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  transactionAmountOut: {
+    color: '#F97316',
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+  },
+  emptyText: {
+    marginTop: 6,
+    color: '#6B7280',
+    fontSize: 12,
+  },
+});

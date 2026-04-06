@@ -7,89 +7,63 @@ import {
   StyleSheet,
   RefreshControl,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  ArrowLeft,
   Users,
   MessageCircle,
-  Phone,
   MoreVertical,
   Plus,
   Search,
-  TrendingUp,
   DollarSign,
   Calendar,
 } from 'lucide-react-native';
-
-interface Group {
-  id: string;
-  name: string;
-  members: number;
-  contribution: string;
-  frequency: string;
-  lastActivity: string;
-  unreadCount?: number;
-  totalCollected: string;
-  nextPayout: string;
-  role: 'member' | 'admin' | 'creator';
-}
+import { useAuthStore } from '../../stores/authStore';
+import { listGroupsForUser, type GroupListItem } from '../../lib/groupService';
 
 export default function GroupsScreen() {
   const router = useRouter();
+  const { user } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [groups, setGroups] = useState<GroupListItem[]>([]);
 
-  const groups: Group[] = [
-    {
-      id: '1',
-      name: 'Family Savings Circle',
-      members: 5,
-      contribution: 'NLe 100',
-      frequency: 'Weekly',
-      lastActivity: '2 hours ago',
-      unreadCount: 3,
-      totalCollected: '500.00',
-      nextPayout: 'Dec 20, 2024',
-      role: 'member',
-    },
-    {
-      id: '2',
-      name: 'Business Savings Group',
-      members: 8,
-      contribution: 'NLe 150',
-      frequency: 'Monthly',
-      lastActivity: '1 day ago',
-      totalCollected: '1,200.00',
-      nextPayout: 'Jan 15, 2025',
-      role: 'admin',
-    },
-    {
-      id: '3',
-      name: 'Emergency Fund',
-      members: 12,
-      contribution: 'NLe 50',
-      frequency: 'Monthly',
-      lastActivity: '3 days ago',
-      totalCollected: '600.00',
-      nextPayout: 'Jan 1, 2025',
-      role: 'member',
-    },
-  ];
+  const loadGroups = async () => {
+    if (!user?.id) {
+      setGroups([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const { groups: loaded } = await listGroupsForUser(user.id);
+    setGroups(loaded);
+    setIsLoading(false);
+  };
+
+  React.useEffect(() => {
+    void loadGroups();
+  }, [user?.id]);
 
   const filteredGroups = groups.filter(group => 
     group.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const onRefresh = () => {
+  const totalSaved = groups.reduce((sum, group) => sum + group.totalCollected, 0);
+  const totalExpectedPerCycle = groups.reduce(
+    (sum, group) => sum + group.contributionAmount * Math.max(1, group.members),
+    0
+  );
+
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
+    await loadGroups();
+    setRefreshing(false);
   };
 
-  const renderGroup = (group: Group) => (
+  const renderGroup = (group: GroupListItem) => (
     <TouchableOpacity
       key={group.id}
       style={styles.groupItem}
@@ -109,13 +83,15 @@ export default function GroupsScreen() {
           </View>
           <View style={styles.detailItem}>
             <DollarSign size={14} color="#6B7280" />
-            <Text style={styles.detailText}>{group.contribution}/{group.frequency}</Text>
+            <Text style={styles.detailText}>
+              NLe {group.contributionAmount.toFixed(2)}/{group.frequency}
+            </Text>
           </View>
         </View>
         <View style={styles.groupStats}>
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>Total Collected</Text>
-            <Text style={styles.statValue}>NLe {group.totalCollected}</Text>
+            <Text style={styles.statValue}>NLe {group.totalCollected.toFixed(2)}</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>Next Payout</Text>
@@ -171,7 +147,7 @@ export default function GroupsScreen() {
 
       {/* Quick Stats */}
       <View style={styles.quickStats}>
-        <View style={styles.statCard}>
+          <View style={styles.statCard}>
           <Users size={20} color="#F97316" />
           <Text style={styles.statCardTitle}>Total Groups</Text>
           <Text style={styles.statCardValue}>{groups.length}</Text>
@@ -179,12 +155,12 @@ export default function GroupsScreen() {
         <View style={styles.statCard}>
           <DollarSign size={20} color="#10B981" />
           <Text style={styles.statCardTitle}>Total Saved</Text>
-          <Text style={styles.statCardValue}>NLe 2,300</Text>
+          <Text style={styles.statCardValue}>NLe {totalSaved.toFixed(2)}</Text>
         </View>
         <View style={styles.statCard}>
           <Calendar size={20} color="#1D4ED8" />
-          <Text style={styles.statCardTitle}>This Month</Text>
-          <Text style={styles.statCardValue}>NLe 300</Text>
+          <Text style={styles.statCardTitle}>Per Cycle</Text>
+          <Text style={styles.statCardValue}>NLe {totalExpectedPerCycle.toFixed(2)}</Text>
         </View>
       </View>
 
@@ -198,7 +174,21 @@ export default function GroupsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.sectionTitle}>Active Groups</Text>
-        {filteredGroups.map(renderGroup)}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator color="#F97316" />
+            <Text style={styles.loadingText}>Loading your groups...</Text>
+          </View>
+        ) : filteredGroups.length > 0 ? (
+          filteredGroups.map(renderGroup)
+        ) : (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>No groups yet</Text>
+            <Text style={styles.emptyDescription}>
+              Create your first Osusu group to start collecting contributions.
+            </Text>
+          </View>
+        )}
         
         <TouchableOpacity 
           style={styles.createGroupCard}
@@ -224,7 +214,7 @@ export default function GroupsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -234,8 +224,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   headerTitle: {
     fontSize: 24,
@@ -249,11 +237,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#F97316',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -261,8 +244,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   searchInput: {
     flex: 1,
@@ -286,11 +267,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
   statCardTitle: {
     fontSize: 12,
@@ -323,11 +299,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
   groupInfo: {
     flex: 1,
@@ -430,12 +401,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   createGroupCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF7ED',
     borderRadius: 16,
     padding: 20,
-    borderWidth: 2,
-    borderColor: '#F97316',
-    borderStyle: 'dashed',
     marginTop: 8,
   },
   createGroupContent: {
@@ -464,4 +432,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
   },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#6B7280',
+    fontSize: 14,
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E2B5A',
+    marginBottom: 6,
+  },
+  emptyDescription: {
+    color: '#6B7280',
+    fontSize: 14,
+    lineHeight: 20,
+  },
 });
+

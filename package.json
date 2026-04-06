@@ -6,7 +6,10 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "test:phase10": "node scripts/phase10/static-security-audit.mjs",
+    "phase10:check": "npm run typecheck && npm run test:phase10"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

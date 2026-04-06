@@ -14,7 +14,7 @@ export default function DiscoverScreen() {
   const router = useRouter();
 
   return (
-    <SafeAreaView className="flex-1 bg-[#FAFAFC]">
+    <SafeAreaView className="flex-1 bg-[#FFFFFF]">
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
         
         {/* Header Logo Area Placeholder */}
@@ -35,12 +35,12 @@ export default function DiscoverScreen() {
           </Text>
 
           {/* Private Invite */}
-          <View className="bg-white rounded-[24px] p-6 mb-6 shadow-sm border border-gray-50/50">
+          <View className="bg-white rounded-[24px] p-6 mb-6 shadow-sm ">
             <View className="flex-row items-center mb-4">
                <Key color="#B45309" size={20} className="mr-3" />
                <Text className="text-[#1E2B5A] font-bold text-lg">Private Invite</Text>
             </View>
-            <View className="bg-[#F0F4FA] rounded-[16px] px-4 py-4 mb-4 border border-transparent focus:border-[#F97316]">
+            <View className="bg-[#F0F4FA] rounded-[16px] px-4 py-4 mb-4">
               <TextInput 
                 className="text-[#1E2B5A] font-medium text-base"
                 placeholder="Enter 6-digit code" 
@@ -53,12 +53,12 @@ export default function DiscoverScreen() {
           </View>
 
           {/* Search Groups */}
-          <View className="bg-white rounded-[24px] p-6 mb-8 shadow-sm border border-gray-50/50">
+          <View className="bg-white rounded-[24px] p-6 mb-8 shadow-sm ">
             <View className="flex-row items-center mb-4">
                <Search color="#3B82F6" size={20} className="mr-3" />
                <Text className="text-[#1E2B5A] font-bold text-lg">Search Groups</Text>
             </View>
-            <View className="bg-[white] rounded-[16px] px-4 py-4 flex-row items-center border border-gray-200 mb-4 shadow-sm">
+            <View className="bg-[white] rounded-[16px] px-4 py-4 flex-row items-center bg-gray-100 mb-4 shadow-sm">
               <Search color="#9CA3AF" size={18} className="mr-2" />
               <TextInput 
                 className="flex-1 text-[#1E2B5A] font-medium text-base"
@@ -84,7 +84,7 @@ export default function DiscoverScreen() {
           </View>
 
           {RECOMMENDED_GROUPS.map((group) => (
-            <View key={group.id} className="bg-white rounded-[24px] p-5 mb-5 shadow-sm border border-gray-50/50">
+            <View key={group.id} className="bg-white rounded-[24px] p-5 mb-5 shadow-sm ">
               <View className="flex-row items-center mb-4">
                 <View className={`w-14 h-14 ${group.iconBg} rounded-[14px] items-center justify-center mr-4 shadow-sm`}>
                   <group.Icon color="#1E2B5A" size={24} />
@@ -112,7 +112,7 @@ export default function DiscoverScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity className="bg-[#E0E7FF] py-3.5 rounded-[12px] items-center border border-[#C7D2FE]">
+              <TouchableOpacity className="bg-[#E0E7FF] py-3.5 rounded-[12px] items-center ">
                 <Text className="text-[#1E2B5A] font-black text-[15px]">Request to Join</Text>
               </TouchableOpacity>
             </View>
@@ -130,3 +130,5 @@ export default function DiscoverScreen() {
     </SafeAreaView>
   );
 }
+
+

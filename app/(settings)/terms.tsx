@@ -75,12 +75,12 @@ export default function TermsOfServiceScreen() {
             MegaSafe provides the following services:
           </Text>
           <View style={styles.listContainer}>
-            <Text style={styles.listItem}>• Digital wallet and money storage</Text>
-            <Text style={styles.listItem}>• Peer-to-peer money transfers</Text>
-            <Text style={styles.listItem}>• Group collection management</Text>
-            <Text style={styles.listItem}>• Bill payment services</Text>
-            <Text style={styles.listItem}>• Mobile money integration</Text>
-            <Text style={styles.listItem}>• Transaction history and reporting</Text>
+            <Text style={styles.listItem}>- Digital wallet and money storage</Text>
+            <Text style={styles.listItem}>- Peer-to-peer money transfers</Text>
+            <Text style={styles.listItem}>- Group collection management</Text>
+            <Text style={styles.listItem}>- Bill payment services</Text>
+            <Text style={styles.listItem}>- Mobile money integration</Text>
+            <Text style={styles.listItem}>- Transaction history and reporting</Text>
           </View>
         </View>
 
@@ -94,12 +94,12 @@ export default function TermsOfServiceScreen() {
             As a MegaSafe user, you agree to:
           </Text>
           <View style={styles.listContainer}>
-            <Text style={styles.listItem}>• Maintain accurate account information</Text>
-            <Text style={styles.listItem}>• Keep your login credentials secure</Text>
-            <Text style={styles.listItem}>• Use the service for legitimate transactions only</Text>
-            <Text style={styles.listItem}>• Comply with all applicable laws and regulations</Text>
-            <Text style={styles.listItem}>• Not engage in fraudulent activities</Text>
-            <Text style={styles.listItem}>• Report suspicious activity immediately</Text>
+            <Text style={styles.listItem}>- Maintain accurate account information</Text>
+            <Text style={styles.listItem}>- Keep your login credentials secure</Text>
+            <Text style={styles.listItem}>- Use the service for legitimate transactions only</Text>
+            <Text style={styles.listItem}>- Comply with all applicable laws and regulations</Text>
+            <Text style={styles.listItem}>- Not engage in fraudulent activities</Text>
+            <Text style={styles.listItem}>- Report suspicious activity immediately</Text>
           </View>
         </View>
 
@@ -113,12 +113,12 @@ export default function TermsOfServiceScreen() {
             You may not use MegaSafe for:
           </Text>
           <View style={styles.listContainer}>
-            <Text style={styles.listItem}>• Illegal activities or transactions</Text>
-            <Text style={styles.listItem}>• Money laundering or terrorist financing</Text>
-            <Text style={styles.listItem}>• Fraudulent or deceptive practices</Text>
-            <Text style={styles.listItem}>• Unauthorized access to others' accounts</Text>
-            <Text style={styles.listItem}>• Violation of intellectual property rights</Text>
-            <Text style={styles.listItem}>• Interference with service operations</Text>
+            <Text style={styles.listItem}>- Illegal activities or transactions</Text>
+            <Text style={styles.listItem}>- Money laundering or terrorist financing</Text>
+            <Text style={styles.listItem}>- Fraudulent or deceptive practices</Text>
+            <Text style={styles.listItem}>- Unauthorized access to others' accounts</Text>
+            <Text style={styles.listItem}>- Violation of intellectual property rights</Text>
+            <Text style={styles.listItem}>- Interference with service operations</Text>
           </View>
         </View>
 
@@ -129,10 +129,10 @@ export default function TermsOfServiceScreen() {
             MegaSafe charges transparent fees for various services:
           </Text>
           <View style={styles.listContainer}>
-            <Text style={styles.listItem}>• Transfer fees: 1% of transaction amount</Text>
-            <Text style={styles.listItem}>• Group collection fees: 2% of collected amount</Text>
-            <Text style={styles.listItem}>• Bill payment fees: Variable by service provider</Text>
-            <Text style={styles.listItem}>• Withdrawal fees: NLe 5.00 per withdrawal</Text>
+            <Text style={styles.listItem}>- Transfer fees: 1% of transaction amount</Text>
+            <Text style={styles.listItem}>- Group collection fees: 2% of collected amount</Text>
+            <Text style={styles.listItem}>- Bill payment fees: Variable by service provider</Text>
+            <Text style={styles.listItem}>- Withdrawal fees: NLe 5.00 per withdrawal</Text>
           </View>
           <Text style={styles.sectionText}>
             All fees are clearly displayed before transaction confirmation. MegaSafe reserves the right to modify fees with 30 days' notice.
@@ -227,7 +227,7 @@ export default function TermsOfServiceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFC',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -236,8 +236,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     marginRight: 16,
@@ -301,3 +299,5 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
 });
+
+
