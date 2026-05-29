@@ -1,6 +1,4 @@
-const ADMIN_RATE_WINDOW_MS = 60_000;
-const ADMIN_RATE_LIMIT = 500;
-const rateWindow = new Map<string, { count: number; windowStartMs: number }>();
+import { createClient } from '@supabase/supabase-js';
 
 export const getClientIp = (headers: Headers): string => {
   const forwarded = headers.get('x-forwarded-for');
@@ -18,16 +16,29 @@ export const isIpAllowed = (ip: string): boolean => {
   return allowlist.includes(ip);
 };
 
-export const consumeAdminRateLimit = (ip: string): boolean => {
-  const now = Date.now();
-  const existing = rateWindow.get(ip);
-  if (!existing || now - existing.windowStartMs >= ADMIN_RATE_WINDOW_MS) {
-    rateWindow.set(ip, { count: 1, windowStartMs: now });
-    return true;
+// DB-backed rate limiter: survives server restarts, shared across all instances.
+// Fails CLOSED on any DB error — an attacker triggering an RPC error must not
+// bypass rate limiting. If the DB is genuinely down, admin actions are denied.
+export const consumeAdminRateLimit = async (ip: string): Promise<boolean> => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    console.error('[security] consume_admin_rate_limit: service-role key not configured — denying request');
+    return false; // fail closed: misconfigured == deny
   }
-  if (existing.count >= ADMIN_RATE_LIMIT) return false;
-  existing.count += 1;
-  return true;
+
+  try {
+    const client = createClient(url, key, { auth: { persistSession: false } });
+    const { data, error } = await client.rpc('consume_admin_rate_limit', { p_ip: ip });
+    if (error) {
+      console.error('[security] consume_admin_rate_limit RPC error — denying request:', error.message);
+      return false; // fail CLOSED
+    }
+    return Boolean(data);
+  } catch (err) {
+    console.error('[security] consume_admin_rate_limit exception — denying request:', err);
+    return false; // fail CLOSED
+  }
 };
 
 export const isSuperAdminRole = (role: unknown): boolean => role === 'super_admin';

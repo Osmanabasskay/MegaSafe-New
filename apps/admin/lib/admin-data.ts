@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from './supabase/server';
-import { isSuperAdminRole } from './security';
 import type {
   AdminActivity,
   AdminUser,
@@ -58,21 +57,20 @@ export const requireSuperAdmin = async (): Promise<AdminContext> => {
 
   if (!user) redirect('/login');
 
-  let role = user.app_metadata?.role ?? user.user_metadata?.role;
-  if (!isSuperAdminRole(role)) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role,first_name,last_name')
-      .eq('id', user.id)
-      .maybeSingle();
-    role = profile?.role ?? role;
-  }
+  // Always query the database — JWT metadata is stale for up to 60 min after
+  // a role change and MUST NOT be used as an authorization fast-path.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, status, first_name, last_name')
+    .eq('id', user.id)
+    .single();
 
-  if (!isSuperAdminRole(role)) redirect('/login?denied=1');
+  if (!profile || profile.role !== 'super_admin') redirect('/login?denied=1');
+  if (profile.status === 'suspended' || profile.status === 'banned') redirect('/login?denied=1');
 
-  const firstName = typeof user.user_metadata?.first_name === 'string' ? user.user_metadata.first_name : '';
-  const fullName =
-    typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : firstName;
+  const firstName = typeof profile.first_name === 'string' ? profile.first_name : '';
+  const lastName  = typeof profile.last_name  === 'string' ? profile.last_name  : '';
+  const fullName  = [firstName, lastName].filter(Boolean).join(' ');
 
   return {
     userId: user.id,
@@ -286,7 +284,7 @@ export const getKycQueue = async (): Promise<KycQueueItem[]> => {
 
   const signKycUrl = async (pathOrUrl: string | null): Promise<string | null> => {
     if (!pathOrUrl) return null;
-    if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) return pathOrUrl;
+    if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) return null;
     const { data: signed } = await supabase.storage
       .from('kyc-documents')
       .createSignedUrl(pathOrUrl, 60 * 10);
