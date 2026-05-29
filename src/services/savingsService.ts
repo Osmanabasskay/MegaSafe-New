@@ -206,24 +206,26 @@ export async function createSavingsGoal(
   }
 
   try {
-    const { data, error } = await supabase.from('savings_goals').insert({
-      owner_id:            input.ownerId,
-      title:               input.title.trim(),
-      description:         input.description?.trim() || null,
-      category:            input.category,
-      target_amount:       input.targetAmount,
-      current_amount:      0,            // backend owns this field
-      currency_code:       'NLe',
-      target_date:         input.targetDate ?? null,
-      status:              'active',
-      auto_save_enabled:   input.autoSaveEnabled ?? false,
-      auto_save_amount:    input.autoSaveEnabled ? input.autoSaveAmount ?? null : null,
-      auto_save_frequency: input.autoSaveEnabled ? input.autoSaveFrequency ?? null : null,
-      auto_save_next_date: null,
-    }).select().single();
+    // Use SECURITY DEFINER RPC — enforces auth.uid() = owner_id server-side,
+    // sets current_amount = 0, and creates an audit log atomically.
+    // Direct INSERT is no longer permitted here.
+    const { data, error } = await supabase.rpc('create_savings_goal', {
+      p_owner_id:            input.ownerId,
+      p_title:               input.title.trim(),
+      p_description:         input.description?.trim() || null,
+      p_category:            input.category,
+      p_target_amount:       input.targetAmount,
+      p_target_date:         input.targetDate ?? null,
+      p_auto_save_enabled:   input.autoSaveEnabled ?? false,
+      p_auto_save_amount:    input.autoSaveEnabled ? input.autoSaveAmount ?? null : null,
+      p_auto_save_frequency: input.autoSaveEnabled ? input.autoSaveFrequency ?? null : null,
+    });
 
     if (error) throw new Error(error.message);
-    return { goal: normalizeSavingsGoal(data), error: null };
+    const result = data as Record<string, unknown>;
+    if (result?.error) throw new Error(result.error as string);
+
+    return { goal: normalizeSavingsGoal(result), error: null };
   } catch (err) {
     return { goal: null, error: toBackendError(err, 'Create savings goal') };
   }
