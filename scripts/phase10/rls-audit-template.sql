@@ -1,4 +1,4 @@
--- Phase 10 RLS Audit Template for MegaSafe
+-- Phase 10 RLS Audit Template for Mi Osusu
 -- Run each section with role-specific JWT/session context.
 
 -- 1) Profiles isolation

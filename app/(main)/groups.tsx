@@ -20,7 +20,6 @@ import { useRouter } from 'expo-router';
 import * as Contacts from 'expo-contacts';
 import {
   Check,
-  Compass,
   Link2,
   Lock,
   Plus,
@@ -94,7 +93,7 @@ function InviteModal({ visible, group, onClose, C }: InviteModalProps) {
   const [contacts, setContacts] = useState<PhoneContact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
 
-  const inviteLink = `https://megasafe.app/join/${group?.id ?? 'group'}`;
+  const inviteLink = `https://miosusu.app/join/${group?.id ?? 'group'}`;
 
   const loadContacts = useCallback(async () => {
     if (!visible) return;
@@ -103,7 +102,7 @@ function InviteModal({ visible, group, onClose, C }: InviteModalProps) {
     try {
       const { status } = await Contacts.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Allow MegaSafe to access your contacts to invite group members.');
+        Alert.alert('Permission Required', 'Allow Mi Osusu to access your contacts to invite group members.');
         return;
       }
       const { data } = await Contacts.getContactsAsync({
@@ -143,7 +142,7 @@ function InviteModal({ visible, group, onClose, C }: InviteModalProps) {
   }, [contacts, searchQuery]);
 
   const openSmsInvite = async (phone: string) => {
-    const message = encodeURIComponent(`Join my Osusu group "${group?.name}" on MegaSafe!\n\n${inviteLink}`);
+    const message = encodeURIComponent(`Join my Osusu group "${group?.name}" on Mi Osusu!\n\n${inviteLink}`);
     const url = `sms:${phone}?body=${message}`;
     const canOpen = await Linking.canOpenURL(url);
     if (canOpen) {
@@ -151,7 +150,7 @@ function InviteModal({ visible, group, onClose, C }: InviteModalProps) {
       return;
     }
     await Share.share({
-      message: `Join my Osusu group "${group?.name}" on MegaSafe!\n\n${inviteLink}`,
+      message: `Join my Osusu group "${group?.name}" on Mi Osusu!\n\n${inviteLink}`,
       title: 'Join my Osusu group',
     });
   };
@@ -187,7 +186,7 @@ function InviteModal({ visible, group, onClose, C }: InviteModalProps) {
   const handleShareLink = async () => {
     try {
       await Share.share({
-        message: `Join my Osusu group "${group?.name}" on MegaSafe!\n\n${inviteLink}`,
+        message: `Join my Osusu group "${group?.name}" on Mi Osusu!\n\n${inviteLink}`,
         title: 'Join my Osusu group',
       });
     } catch {
@@ -606,10 +605,10 @@ export default function OsusuScreen() {
       const memberCountMap = new Map<string, number>();
       if (groupIds.length > 0) {
         const { data: memberData } = await sb
-          .from('group_memberships')
+          .from('osusu_group_members')
           .select('group_id')
           .in('group_id', groupIds)
-          .eq('status', 'approved');
+          .eq('is_active', true);
         for (const m of (memberData ?? []) as Array<{ group_id: string }>) {
           memberCountMap.set(m.group_id, (memberCountMap.get(m.group_id) ?? 0) + 1);
         }
@@ -617,9 +616,9 @@ export default function OsusuScreen() {
 
       // Fetch groups the current user belongs to (to show "joined" state)
       const { data: myMemberships } = await sb
-        .from('group_memberships')
+        .from('osusu_group_members')
         .select('group_id')
-        .eq('member_id', user.id)
+        .eq('user_id', user.id)
         .in('group_id', groupIds);
       const myGroupIds = new Set((myMemberships ?? []).map((m: { group_id: string }) => m.group_id));
 
@@ -872,7 +871,6 @@ export default function OsusuScreen() {
               ))
             ) : (
               <View style={[styles.emptyCard, { backgroundColor: C.card }]}>
-                <Compass size={40} color="#1D4ED8" strokeWidth={1.5} />
                 <Text style={[styles.emptyTitle, { color: C.text }]}>No groups joined yet</Text>
                 <Text style={[styles.emptyDesc, { color: C.textMuted }]}>
                   Switch to the Discover tab to find and request to join an Osusu group.
@@ -881,7 +879,6 @@ export default function OsusuScreen() {
                   style={[styles.emptyBtn, { backgroundColor: '#1D4ED8' }]}
                   onPress={() => setTab('discover')}
                 >
-                  <Compass size={16} color="#FFFFFF" />
                   <Text style={styles.emptyBtnText}>Browse Groups</Text>
                 </TouchableOpacity>
               </View>

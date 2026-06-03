@@ -34,6 +34,11 @@ const appJson = require('./app.json');
 
 module.exports = () => ({
   ...appJson.expo,
+  plugins: [
+    ...(appJson.expo.plugins || []),
+    '@react-native-community/datetimepicker',
+    'expo-audio',
+  ],
   extra: {
     ...(appJson.expo.extra || {}),
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,

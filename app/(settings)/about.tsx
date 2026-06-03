@@ -12,244 +12,236 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowLeft,
-  Info,
   Globe,
   Mail,
   Phone,
   MapPin,
-  Users,
-  Shield,
-  Award,
-  Star,
 } from 'lucide-react-native';
+import { useAppDataStore } from '../../src/store/appDataStore';
+import { darkColors, lightColors } from '../../src/theme/colors';
 
 export default function AboutScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isDark = useAppDataStore((s) => s.preferences.darkMode);
+  const C = isDark ? darkColors : lightColors;
 
   const appVersion = '1.0.0';
   const buildNumber = '2024.11.01';
   const launchDate = 'January 15, 2024';
 
+  // Phase 8: Updated team information
   const teamMembers = [
-    { name: 'Sarah Conteh', role: 'CEO & Founder' },
-    { name: 'James Kamara', role: 'CTO' },
-    { name: 'Aminata Bangura', role: 'Head of Operations' },
-    { name: 'Michael Turay', role: 'Lead Developer' },
-    { name: 'Fatmata Kabbah', role: 'Customer Success Manager' },
+    { name: 'Osman Abass Kamara', role: 'CEO & Founder' },
+    { name: 'Archibald Jarbee', role: 'CTO' },
+    { name: 'Mohamed Yorpoi', role: 'Head of Operations' },
+    { name: 'Osman Abass Kamara', role: 'Lead Developer' },
+    { name: 'Momoh Samura', role: 'Customer Success Manager' },
   ];
 
+  // Phase 7: Icons removed from features — text only
   const features = [
-    { icon: <Shield size={20} color="#F97316" />, text: 'Bank-level security' },
-    { icon: <Users size={20} color="#F97316" />, text: 'Group collections' },
-    { icon: <Award size={20} color="#F97316" />, text: 'Regulated by Bank of Sierra Leone' },
-    { icon: <Star size={20} color="#F97316" />, text: '4.8/5 user rating' },
+    { text: 'Bank-level security' },
+    { text: 'Group collections' },
+    { text: 'Regulated by Bank of Sierra Leone' },
+    { text: '4.8/5 user rating' },
   ];
 
   const handleContactEmail = () => {
-    Linking.openURL('mailto:info@megasafe.sl');
+    void Linking.openURL('mailto:info@miosusu.sl');
   };
 
+  // Phase 6: Updated phone number
   const handleContactPhone = () => {
-    Linking.openURL('tel:+23276123456');
+    void Linking.openURL('tel:+23288938326');
   };
 
   const handleVisitWebsite = () => {
-    Linking.openURL('https://www.megasafe.sl');
+    void Linking.openURL('https://www.miosusu.sl');
   };
 
   const handleSocialPress = (platform: string) => {
-    const urls = {
-      twitter: 'https://twitter.com/megasafesierraleone',
-      facebook: 'https://facebook.com/megasafesierraleone',
-      instagram: 'https://instagram.com/megasafesierraleone',
-      github: 'https://github.com/megasafe',
+    const urls: Record<string, string> = {
+      twitter: 'https://twitter.com/miosususierraleone',
+      facebook: 'https://facebook.com/miosususierraleone',
+      instagram: 'https://instagram.com/miosususierraleone',
+      github: 'https://github.com/miosusu',
     };
-    Linking.openURL(urls[platform as keyof typeof urls] || '#');
+    const url = urls[platform];
+    if (url) void Linking.openURL(url);
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bg }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: C.bg }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color="#F97316" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>About MegaSafe</Text>
+        <Text style={[styles.headerTitle, { color: C.text }]}>About Mi Osusu</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* App Logo and Version */}
+        {/* Logo and Version */}
         <View style={styles.logoSection}>
           <View style={styles.logoContainer}>
             <Text style={styles.logoText}>MS</Text>
           </View>
-          <Text style={styles.appName}>MegaSafe</Text>
-          <Text style={styles.version}>Version {appVersion}</Text>
-          <Text style={styles.buildInfo}>Build {buildNumber}</Text>
-          <Text style={styles.launchInfo}>Launched: {launchDate}</Text>
+          <Text style={[styles.appName, { color: C.text }]}>Mi Osusu</Text>
+          <Text style={[styles.version, { color: C.textSub }]}>Version {appVersion}</Text>
+          <Text style={[styles.buildInfo, { color: C.textMuted }]}>Build {buildNumber}</Text>
+          <Text style={[styles.launchInfo, { color: C.textMuted }]}>Launched: {launchDate}</Text>
         </View>
 
         {/* Mission Statement */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Our Mission</Text>
-          <Text style={styles.sectionText}>
-            MegaSafe is revolutionizing financial services in Sierra Leone by providing secure, accessible, and innovative digital banking solutions. We empower individuals and communities to achieve financial freedom through technology.
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Our Mission</Text>
+          <Text style={[styles.sectionText, { color: C.textSub }]}>
+            Mi Osusu is revolutionizing financial services in Sierra Leone by providing secure, accessible, and innovative digital banking solutions. We empower individuals and communities to achieve financial freedom through technology.
           </Text>
         </View>
 
-        {/* Key Features */}
+        {/* Key Features — Phase 7: icons removed, text only */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Key Features</Text>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Key Features</Text>
           <View style={styles.featuresGrid}>
             {features.map((feature, index) => (
-              <View key={index} style={styles.featureItem}>
-                <View style={styles.featureIcon}>{feature.icon}</View>
-                <Text style={styles.featureText}>{feature.text}</Text>
+              <View key={index} style={[styles.featureItem, { backgroundColor: C.card }]}>
+                <Text style={[styles.featureText, { color: C.text }]}>{feature.text}</Text>
               </View>
             ))}
           </View>
         </View>
 
-        {/* Statistics */}
+        {/* Impact Statistics */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Our Impact</Text>
-          <View style={styles.statsContainer}>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Our Impact</Text>
+          <View style={[styles.statsContainer, { backgroundColor: C.card }]}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>50K+</Text>
-              <Text style={styles.statLabel}>Active Users</Text>
+              <Text style={[styles.statLabel, { color: C.textSub }]}>Active Users</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: C.borderStrong }]} />
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>NLe 10M+</Text>
-              <Text style={styles.statLabel}>Transactions</Text>
+              <Text style={[styles.statLabel, { color: C.textSub }]}>Transactions</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: C.borderStrong }]} />
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>1K+</Text>
-              <Text style={styles.statLabel}>Groups</Text>
+              <Text style={[styles.statLabel, { color: C.textSub }]}>Groups</Text>
             </View>
           </View>
         </View>
 
-        {/* Team */}
+        {/* Phase 8: Updated Team */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Our Team</Text>
-          <Text style={styles.sectionText}>
-            Meet the passionate team behind MegaSafe, dedicated to transforming financial services in Sierra Leone.
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Our Team</Text>
+          <Text style={[styles.sectionText, { color: C.textSub }]}>
+            Meet the passionate team behind Mi Osusu, dedicated to transforming financial services in Sierra Leone.
           </Text>
           <View style={styles.teamContainer}>
             {teamMembers.map((member, index) => (
-              <View key={index} style={styles.teamMember}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>
-                    {member.name.split(' ').map(n => n[0]).join('')}
+              <View key={index} style={[styles.teamMember, { backgroundColor: C.card }]}>
+                <View style={[styles.avatar, { backgroundColor: C.iconBg }]}>
+                  <Text style={[styles.avatarText, { color: C.textSub }]}>
+                    {member.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
                   </Text>
                 </View>
                 <View style={styles.memberInfo}>
-                  <Text style={styles.memberName}>{member.name}</Text>
-                  <Text style={styles.memberRole}>{member.role}</Text>
+                  <Text style={[styles.memberName, { color: C.text }]}>{member.name}</Text>
+                  <Text style={[styles.memberRole, { color: C.textSub }]}>{member.role}</Text>
                 </View>
               </View>
             ))}
           </View>
         </View>
 
-        {/* Contact Information */}
+        {/* Phase 9: Updated Address */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact Us</Text>
-          
-          <TouchableOpacity style={styles.contactItem} onPress={handleContactEmail}>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Contact Us</Text>
+
+          <TouchableOpacity style={[styles.contactItem, { backgroundColor: C.card }]} onPress={handleContactEmail}>
             <Mail size={20} color="#F97316" />
             <View style={styles.contactContent}>
-              <Text style={styles.contactLabel}>Email</Text>
-              <Text style={styles.contactValue}>info@megasafe.sl</Text>
+              <Text style={[styles.contactLabel, { color: C.textSub }]}>Email</Text>
+              <Text style={[styles.contactValue, { color: C.text }]}>info@miosusu.sl</Text>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.contactItem} onPress={handleContactPhone}>
+          {/* Phase 6: Updated phone number */}
+          <TouchableOpacity style={[styles.contactItem, { backgroundColor: C.card }]} onPress={handleContactPhone}>
             <Phone size={20} color="#F97316" />
             <View style={styles.contactContent}>
-              <Text style={styles.contactLabel}>Phone</Text>
-              <Text style={styles.contactValue}>+232 76 123 456</Text>
+              <Text style={[styles.contactLabel, { color: C.textSub }]}>Phone</Text>
+              <Text style={[styles.contactValue, { color: C.text }]}>+232 88 938 326</Text>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.contactItem} onPress={handleVisitWebsite}>
+          <TouchableOpacity style={[styles.contactItem, { backgroundColor: C.card }]} onPress={handleVisitWebsite}>
             <Globe size={20} color="#F97316" />
             <View style={styles.contactContent}>
-              <Text style={styles.contactLabel}>Website</Text>
-              <Text style={styles.contactValue}>www.megasafe.sl</Text>
+              <Text style={[styles.contactLabel, { color: C.textSub }]}>Website</Text>
+              <Text style={[styles.contactValue, { color: C.text }]}>www.miosusu.sl</Text>
             </View>
           </TouchableOpacity>
 
-          <View style={styles.contactItem}>
+          {/* Phase 9: New address — 25 York Road, Waterloo */}
+          <View style={[styles.contactItem, { backgroundColor: C.card }]}>
             <MapPin size={20} color="#F97316" />
             <View style={styles.contactContent}>
-              <Text style={styles.contactLabel}>Address</Text>
-              <Text style={styles.contactValue}>42 Circular Road, Freetown, Sierra Leone</Text>
+              <Text style={[styles.contactLabel, { color: C.textSub }]}>Address</Text>
+              <Text style={[styles.contactValue, { color: C.text }]}>25 York Road, Waterloo</Text>
             </View>
           </View>
         </View>
 
         {/* Social Media */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Follow Us</Text>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Follow Us</Text>
           <View style={styles.socialContainer}>
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={() => handleSocialPress('twitter')}
-            >
+            <TouchableOpacity style={styles.socialButton} onPress={() => handleSocialPress('twitter')}>
               <Text style={styles.socialIconText}>X</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={() => handleSocialPress('facebook')}
-            >
+            <TouchableOpacity style={styles.socialButton} onPress={() => handleSocialPress('facebook')}>
               <Text style={styles.socialIconText}>f</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={() => handleSocialPress('instagram')}
-            >
+            <TouchableOpacity style={styles.socialButton} onPress={() => handleSocialPress('instagram')}>
               <Text style={styles.socialIconText}>IG</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={() => handleSocialPress('github')}
-            >
+            <TouchableOpacity style={styles.socialButton} onPress={() => handleSocialPress('github')}>
               <Text style={styles.socialIconText}>GH</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Legal Information */}
+        {/* Legal Information — Phase 9: updated registered office */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Legal Information</Text>
-          <Text style={styles.sectionText}>
-            MegaSafe is licensed and regulated by the Bank of Sierra Leone. We comply with all applicable financial regulations and anti-money laundering requirements.
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Legal Information</Text>
+          <Text style={[styles.sectionText, { color: C.textSub }]}>
+            Mi Osusu is licensed and regulated by the Bank of Sierra Leone. We comply with all applicable financial regulations and anti-money laundering requirements.
           </Text>
-          <Text style={styles.sectionText}>
+          <Text style={[styles.sectionText, { color: C.textSub }]}>
             License Number: BSL/DFI/2024/001
           </Text>
-          <Text style={styles.sectionText}>
-            Registered Office: 42 Circular Road, Freetown, Sierra Leone
+          <Text style={[styles.sectionText, { color: C.textSub }]}>
+            Registered Office: 25 York Road, Waterloo
           </Text>
         </View>
 
         {/* Acknowledgments */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Acknowledgments</Text>
-          <Text style={styles.sectionText}>
-            Special thanks to the Bank of Sierra Leone for their guidance and support. We also thank our early users and partners who helped shape MegaSafe into what it is today.
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Acknowledgments</Text>
+          <Text style={[styles.sectionText, { color: C.textSub }]}>
+            Special thanks to the Bank of Sierra Leone for their guidance and support. We also thank our early users and partners who helped shape Mi Osusu into what it is today.
           </Text>
         </View>
 
-        {/* Copyright */}
+        {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.copyright}>
-            © 2024 MegaSafe Financial Services Ltd. All rights reserved.
+          <Text style={[styles.copyright, { color: C.textSub }]}>
+            © 2024 Mi Osusu Financial Services Ltd. All rights reserved.
           </Text>
           <Text style={styles.footerText}>
             Made with ❤️ in Sierra Leone
@@ -263,7 +255,6 @@ export default function AboutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -271,7 +262,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
   },
   backButton: {
     marginRight: 16,
@@ -279,7 +269,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1E2B5A',
     flex: 1,
   },
   headerSpacer: {
@@ -309,23 +298,19 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1E2B5A',
     marginBottom: 8,
   },
   version: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#6B7280',
     marginBottom: 4,
   },
   buildInfo: {
     fontSize: 14,
-    color: '#9CA3AF',
     marginBottom: 2,
   },
   launchInfo: {
     fontSize: 14,
-    color: '#9CA3AF',
   },
   section: {
     marginHorizontal: 24,
@@ -334,12 +319,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1E2B5A',
     marginBottom: 16,
   },
   sectionText: {
     fontSize: 16,
-    color: '#374151',
     lineHeight: 24,
     marginBottom: 16,
   },
@@ -350,24 +333,16 @@ const styles = StyleSheet.create({
   },
   featureItem: {
     width: '48%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
   },
-  featureIcon: {
-    marginRight: 12,
-  },
   featureText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1E2B5A',
   },
   statsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
   },
@@ -383,12 +358,10 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
   },
   statDivider: {
     width: 1,
-    backgroundColor: '#E5E7EB',
     marginHorizontal: 16,
   },
   teamContainer: {
@@ -397,7 +370,6 @@ const styles = StyleSheet.create({
   teamMember: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -406,7 +378,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -414,7 +385,6 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#6B7280',
   },
   memberInfo: {
     flex: 1,
@@ -422,17 +392,14 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1E2B5A',
     marginBottom: 4,
   },
   memberRole: {
     fontSize: 14,
-    color: '#6B7280',
   },
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -443,13 +410,11 @@ const styles = StyleSheet.create({
   },
   contactLabel: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 4,
   },
   contactValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1E2B5A',
   },
   socialContainer: {
     flexDirection: 'row',
@@ -476,7 +441,6 @@ const styles = StyleSheet.create({
   },
   copyright: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -486,4 +450,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-

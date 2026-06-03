@@ -235,7 +235,7 @@ function AddMembersModal({ visible, groupId, groupName, onClose }: AddMembersMod
   const loadContacts = useCallback(async () => {
     const { status } = await Contacts.requestPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Allow MegaSafe to access your contacts to invite group members.');
+      Alert.alert('Permission Required', 'Allow Mi Osusu to access your contacts to invite group members.');
       onClose();
       return;
     }

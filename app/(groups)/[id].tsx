@@ -3,42 +3,47 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { CalendarDays, Users, Wallet, ChevronLeft, ShieldCheck } from 'lucide-react-native';
+import { useAppDataStore } from '../../src/store/appDataStore';
+import { darkColors, lightColors } from '../../src/theme/colors';
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { preferences } = useAppDataStore();
+  const isDark = preferences.darkMode;
+  const C = isDark ? darkColors : lightColors;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bg }]}>
+      <View style={[styles.header, { backgroundColor: C.bg }]}>
+        <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: isDark ? '#431407' : '#FFF7ED' }]}>
           <ChevronLeft size={22} color="#F97316" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Vault Details</Text>
+        <Text style={[styles.headerTitle, { color: C.text }]}>Vault Details</Text>
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.heroCard}>
+        <View style={[styles.heroCard, { backgroundColor: C.card }]}>
           <View style={styles.heroTop}>
-            <View style={styles.heroIcon}>
+            <View style={[styles.heroIcon, { backgroundColor: isDark ? '#431407' : '#FFF7ED' }]}>
               <ShieldCheck size={24} color="#F97316" />
             </View>
             <View>
-              <Text style={styles.groupName}>Family Fund</Text>
-              <Text style={styles.groupMeta}>NLe 50 / Weekly</Text>
+              <Text style={[styles.groupName, { color: C.text }]}>Family Fund</Text>
+              <Text style={[styles.groupMeta, { color: C.textSub }]}>NLe 50 / Weekly</Text>
             </View>
           </View>
 
           <View style={styles.metaRow}>
-            <Users size={16} color="#6B7280" />
-            <Text style={styles.metaText}>10 Members • Collecting on Sundays</Text>
+            <Users size={16} color={C.textSub} />
+            <Text style={[styles.metaText, { color: C.textSub }]}>10 Members Â· Collecting on Sundays</Text>
           </View>
         </View>
 
-        <View style={styles.actionCard}>
-          <Text style={styles.actionLabel}>Next Contribution Due</Text>
+        <View style={[styles.actionCard, { backgroundColor: C.card }]}>
+          <Text style={[styles.actionLabel, { color: C.textMuted }]}>Next Contribution Due</Text>
           <View style={styles.countWrap}>
-            <Text style={styles.countValue}>3</Text>
+            <Text style={[styles.countValue, { color: C.text }]}>3</Text>
             <Text style={styles.countUnit}>Days</Text>
           </View>
           <TouchableOpacity style={styles.primaryBtn}>
@@ -47,8 +52,8 @@ export default function GroupDetailScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Active Roster</Text>
+        <View style={[styles.section, { backgroundColor: C.card }]}>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Active Roster</Text>
           {['Alpha Bah', 'Fatu Kamara', 'Mohamed Sesay'].map((name, i) => (
             <View key={name} style={styles.memberRow}>
               <View style={styles.memberLeft}>
@@ -56,8 +61,8 @@ export default function GroupDetailScreen() {
                   <Text style={styles.avatarText}>{name.charAt(0)}</Text>
                 </View>
                 <View>
-                  <Text style={styles.memberName}>{name}</Text>
-                  <Text style={styles.memberMeta}>Position #{i + 1}</Text>
+                  <Text style={[styles.memberName, { color: C.text }]}>{name}</Text>
+                  <Text style={[styles.memberMeta, { color: C.textMuted }]}>Position #{i + 1}</Text>
                 </View>
               </View>
               {i === 1 ? <Text style={styles.collectedTag}>Collected</Text> : null}
@@ -72,7 +77,6 @@ export default function GroupDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -85,7 +89,6 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#FFF7ED',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
@@ -93,7 +96,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1E2B5A',
   },
   scrollView: {
     flex: 1,
@@ -103,7 +105,6 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   heroCard: {
-    backgroundColor: '#F8FAFC',
     borderRadius: 18,
     padding: 16,
     marginBottom: 12,
@@ -117,7 +118,6 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: '#FFF7ED',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -125,11 +125,9 @@ const styles = StyleSheet.create({
   groupName: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#1E2B5A',
   },
   groupMeta: {
     marginTop: 2,
-    color: '#6B7280',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -139,18 +137,15 @@ const styles = StyleSheet.create({
   },
   metaText: {
     marginLeft: 8,
-    color: '#6B7280',
     fontSize: 12,
   },
   actionCard: {
-    backgroundColor: '#F8FAFC',
     borderRadius: 18,
     padding: 16,
     marginBottom: 14,
     alignItems: 'center',
   },
   actionLabel: {
-    color: '#6B7280',
     fontSize: 12,
     textTransform: 'uppercase',
     fontWeight: '700',
@@ -163,7 +158,6 @@ const styles = StyleSheet.create({
   },
   countValue: {
     fontSize: 52,
-    color: '#1E2B5A',
     fontWeight: '800',
     marginRight: 6,
   },
@@ -188,14 +182,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   section: {
-    backgroundColor: '#F8FAFC',
     borderRadius: 18,
     padding: 14,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1E2B5A',
     marginBottom: 10,
   },
   memberRow: {
@@ -223,12 +215,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   memberName: {
-    color: '#1F2937',
     fontSize: 14,
     fontWeight: '600',
   },
   memberMeta: {
-    color: '#6B7280',
     fontSize: 11,
     marginTop: 2,
   },

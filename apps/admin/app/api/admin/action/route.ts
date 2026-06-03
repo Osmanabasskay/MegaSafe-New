@@ -1,95 +1,125 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { logAdminAction } from '@/lib/audit';
+import { logAdminAction, riskScoreForAction } from '@/lib/audit';
 import { assertNoSelfAction, consumeAdminRateLimit, getClientIp, isIpAllowed } from '@/lib/security';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { createClient } from '@supabase/supabase-js';
-
-const VALID_ROLES = ['super_admin', 'group_creator', 'collector', 'member'] as const;
-type ValidRole = typeof VALID_ROLES[number];
+import { createServiceClient } from '@/lib/supabase/service';
 
 const actionSchema = z.object({
   action: z.enum([
+    // KYC
     'approve_kyc',
     'reject_kyc',
+    'request_kyc_resubmission',
+    'mark_kyc_verified',
+    'escalate_kyc',
+    // account status
     'suspend_user',
+    'unsuspend_user',
     'ban_user',
-    'change_role',
+    'lock_account',
+    'unlock_account',
+    'force_logout',
+    'add_admin_note',
+    // osusu
     'pause_group',
     'force_disband_group',
     'suspend_collector',
     'reinstate_collector',
+    // compliance
+    'resolve_dispute',
+    'reject_dispute',
+    // finance
+    'approve_withdrawal',
+    'reject_withdrawal',
+    'freeze_payout',
+    'unfreeze_payout',
+    'freeze_transaction',
+    // risk / fraud
+    'mark_risk_reviewed',
+    'update_risk_status',
+    'create_fraud_case',
+    'update_fraud_case',
   ]),
-  targetUserId:   z.string().uuid(),
+  targetUserId:   z.string().uuid().optional(),
   targetRecordId: z.string().uuid().optional(),
-  reason:         z.string().max(500).optional(),
-  nextRole:       z.enum(VALID_ROLES).optional(),
+  reason:         z.string().max(2000).optional(),
+  newStatus:      z.string().max(40).optional(),
+  severity:       z.enum(['low', 'medium', 'high', 'critical', 'extreme']).optional(),
 });
 
+type ActionPayload = z.infer<typeof actionSchema>;
+
 const readPayload = async (request: Request): Promise<Record<string, unknown>> => {
-  const contentType = request.headers.get('content-type') ?? '';
-  if (contentType.includes('application/json')) {
-    return (await request.json()) as Record<string, unknown>;
-  }
+  const ct = request.headers.get('content-type') ?? '';
+  if (ct.includes('application/json')) return (await request.json()) as Record<string, unknown>;
   const form = await request.formData();
-  const payload: Record<string, unknown> = {};
-  form.forEach((value, key) => { payload[key] = String(value); });
-  return payload;
+  const out: Record<string, unknown> = {};
+  form.forEach((v, k) => { out[k] = String(v); });
+  return out;
 };
 
-/** Service-role client for writes — NEVER exposed to the browser. */
-function createServiceClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('Supabase service role not configured.');
-  return createClient(url, key, { auth: { persistSession: false } });
-}
+// Actions that target a user account (subject to the self-action guard).
+const USER_TARGETED = new Set([
+  'approve_kyc', 'reject_kyc', 'request_kyc_resubmission', 'mark_kyc_verified', 'escalate_kyc',
+  'suspend_user', 'unsuspend_user', 'ban_user', 'lock_account', 'unlock_account',
+  'force_logout', 'add_admin_note',
+]);
+
+// Actions that also raise a risk_event for the live monitor.
+const RISK_EVENT_FOR: Record<string, { type: string; score: number }> = {
+  ban_user:           { type: 'admin_ban_user', score: 70 },
+  lock_account:       { type: 'admin_lock_account', score: 55 },
+  freeze_payout:      { type: 'payout_frozen', score: 60 },
+  freeze_transaction: { type: 'transaction_frozen', score: 60 },
+  force_logout:       { type: 'admin_force_logout', score: 35 },
+};
 
 export async function POST(request: Request) {
-  // ── IP allowlist & rate limit ──────────────────────────────
   const ip = getClientIp(request.headers);
+  const userAgent = request.headers.get('user-agent') ?? undefined;
 
   if (!isIpAllowed(ip)) {
     return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
   }
-
   if (!await consumeAdminRateLimit(ip)) {
     return NextResponse.json({ error: 'Rate limit exceeded.' }, { status: 429 });
   }
 
-  // ── Authentication via cookie session ──────────────────────
+  // ── Authentication ──
   const anonClient = await createSupabaseServerClient();
   const { data: { user } } = await anonClient.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
 
-  // ── Role check: READ FROM DATABASE, not JWT metadata ────────
-  //    JWT metadata can be stale; the DB is the source of truth.
+  // ── Server-side role check from DATABASE (never trust JWT metadata) ──
   const svc = createServiceClient();
-  const { data: profileRow } = await svc
-    .from('profiles')
-    .select('role, status')
-    .eq('id', user.id)
-    .single();
+  const [{ data: roleRow }, { data: profileRow }] = await Promise.all([
+    svc.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'super_admin').maybeSingle(),
+    svc.from('profiles').select('status, first_name, last_name, full_name').eq('id', user.id).maybeSingle(),
+  ]);
 
-  if (!profileRow || profileRow.role !== 'super_admin') {
+  if (!roleRow) {
     return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
   }
-
-  if (profileRow.status === 'suspended' || profileRow.status === 'banned') {
+  if (profileRow?.status === 'suspended' || profileRow?.status === 'banned') {
     return NextResponse.json({ error: 'Account is suspended.' }, { status: 403 });
   }
+  const adminName =
+    [profileRow?.first_name, profileRow?.last_name].filter(Boolean).join(' ') ||
+    String(profileRow?.full_name ?? '') || 'Super Admin';
 
-  // ── Input validation ───────────────────────────────────────
+  // ── Input validation ──
   const parsed = actionSchema.safeParse(await readPayload(request));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const payload       = parsed.data;
+  const payload: ActionPayload = parsed.data;
   const targetRecordId = payload.targetRecordId ?? payload.targetUserId;
+  const nowIso = new Date().toISOString();
 
-  // Self-action guard for user-targeted actions
-  if (['approve_kyc', 'reject_kyc', 'suspend_user', 'ban_user', 'change_role'].includes(payload.action)) {
+  // ── Self-action guard for user-targeted actions ──
+  if (USER_TARGETED.has(payload.action) && payload.targetUserId) {
     try {
       assertNoSelfAction(user.id, payload.targetUserId);
     } catch (err) {
@@ -97,79 +127,158 @@ export async function POST(request: Request) {
     }
   }
 
-  // ── Execute action (all writes via service-role client) ─────
+  // ── Execute action (all writes through service-role client) ──
+  try {
+    switch (payload.action) {
+      // ── KYC ──
+      case 'approve_kyc':
+        await svc.from('profiles').update({ kyc_status: 'approved', kyc_rejection_reason: null }).eq('id', payload.targetUserId);
+        break;
+      case 'reject_kyc':
+        await svc.from('profiles').update({ kyc_status: 'rejected', kyc_rejection_reason: payload.reason?.trim() || 'KYC rejected by admin.' }).eq('id', payload.targetUserId);
+        break;
+      case 'request_kyc_resubmission':
+        await svc.from('profiles').update({ kyc_status: 'pending', kyc_rejection_reason: payload.reason?.trim() ?? null }).eq('id', payload.targetUserId);
+        break;
+      case 'mark_kyc_verified':
+        await svc.from('profiles').update({ kyc_status: 'approved', kyc_verified: true, kyc_verified_at: nowIso, kyc_rejection_reason: null }).eq('id', payload.targetUserId);
+        break;
+      case 'escalate_kyc':
+        // keep document for manual review; flag via risk event below
+        await svc.from('profiles').update({ kyc_status: 'submitted' }).eq('id', payload.targetUserId);
+        break;
 
-  if (payload.action === 'approve_kyc') {
-    await svc.from('profiles')
-      .update({ kyc_status: 'approved', kyc_rejection_reason: null })
-      .eq('id', payload.targetUserId);
+      // ── Account status ──
+      case 'suspend_user':
+        await svc.from('profiles').update({ status: 'suspended', is_active: false }).eq('id', payload.targetUserId);
+        break;
+      case 'unsuspend_user':
+        await svc.from('profiles').update({ status: 'active', is_active: true }).eq('id', payload.targetUserId);
+        break;
+      case 'ban_user':
+        await svc.from('profiles').update({ status: 'banned', is_active: false }).eq('id', payload.targetUserId);
+        break;
+      case 'lock_account':
+        await svc.from('profiles').update({ status: 'locked', is_active: false }).eq('id', payload.targetUserId);
+        break;
+      case 'unlock_account':
+        await svc.from('profiles').update({ status: 'active', is_active: true }).eq('id', payload.targetUserId);
+        break;
+      case 'force_logout':
+        // revoke tracked device sessions; real GoTrue revocation is a follow-up edge step
+        await svc.from('device_sessions').update({ revoked_at: nowIso, revoked_by: user.id }).eq('user_id', payload.targetUserId).is('revoked_at', null);
+        await svc.rpc('log_security_event', {
+          p_event_type: 'session_revoked', p_user_id: payload.targetUserId, p_severity: 'medium',
+          p_reason: payload.reason?.trim() ?? 'Forced logout by admin', p_metadata: { by: user.id },
+        });
+        break;
+      case 'add_admin_note':
+        // note is captured in the admin_actions ledger (reason field) — no state change
+        break;
+
+      // ── Osusu ──
+      case 'pause_group':
+        await svc.from('osusu_groups').update({ status: 'paused' }).eq('id', targetRecordId);
+        break;
+      case 'force_disband_group':
+        // group_status enum has no 'disbanded'; 'archived' is the terminal state
+        await svc.from('osusu_groups').update({ status: 'archived' }).eq('id', targetRecordId);
+        break;
+      case 'suspend_collector':
+        // FIX: collectors keys on user_id, not profile_id
+        await svc.from('collectors').update({ is_active: false }).eq('user_id', payload.targetUserId);
+        break;
+      case 'reinstate_collector':
+        await svc.from('collectors').update({ is_active: true }).eq('user_id', payload.targetUserId);
+        break;
+
+      // ── Compliance ──
+      case 'resolve_dispute':
+        await svc.from('disputes').update({ status: 'resolved', resolution_note: payload.reason?.trim() || 'Resolved by admin.', resolved_at: nowIso }).eq('id', targetRecordId);
+        break;
+      case 'reject_dispute':
+        await svc.from('disputes').update({ status: 'rejected', resolution_note: payload.reason?.trim() || 'Rejected by admin.' }).eq('id', targetRecordId);
+        break;
+
+      // ── Finance ──
+      case 'approve_withdrawal':
+        await svc.from('withdrawal_requests').update({ status: 'approved', reviewed_by: user.id, reviewed_at: nowIso }).eq('id', targetRecordId);
+        break;
+      case 'reject_withdrawal':
+        await svc.from('withdrawal_requests').update({ status: 'rejected', reviewed_by: user.id, reviewed_at: nowIso, review_note: payload.reason?.trim() || 'Rejected by admin.' }).eq('id', targetRecordId);
+        break;
+      case 'freeze_payout':
+        await svc.from('withdrawal_requests').update({ payout_status: 'frozen', review_note: payload.reason?.trim() || 'Payout frozen for review.' }).eq('id', targetRecordId);
+        break;
+      case 'unfreeze_payout':
+        await svc.from('withdrawal_requests').update({ payout_status: null }).eq('id', targetRecordId);
+        break;
+      case 'freeze_transaction':
+        // mobile_money_status has no 'frozen'; represent freeze as a risk flag (below)
+        break;
+
+      // ── Risk / fraud ──
+      case 'mark_risk_reviewed':
+        await svc.from('risk_events').update({ status: 'resolved', reviewed_by: user.id, reviewed_at: nowIso }).eq('id', targetRecordId);
+        break;
+      case 'update_risk_status': {
+        const next = ['open', 'investigating', 'resolved', 'false_positive'].includes(payload.newStatus ?? '') ? payload.newStatus : 'investigating';
+        await svc.from('risk_events').update({ status: next, reviewed_by: user.id, reviewed_at: nowIso }).eq('id', targetRecordId);
+        break;
+      }
+      case 'create_fraud_case':
+        await svc.from('fraud_cases').insert({
+          title: payload.reason?.trim()?.slice(0, 200) || 'Fraud case opened by admin',
+          description: payload.reason?.trim() ?? null,
+          severity: payload.severity ?? 'high',
+          subject_user_id: payload.targetUserId ?? null,
+          related_record_id: payload.targetRecordId ?? null,
+          opened_by: user.id,
+        } as never);
+        break;
+      case 'update_fraud_case': {
+        const next = ['open', 'investigating', 'escalated', 'resolved', 'false_positive'].includes(payload.newStatus ?? '') ? payload.newStatus : 'investigating';
+        const patch: Record<string, unknown> = { status: next, updated_at: nowIso };
+        if (payload.reason) patch.resolution_note = payload.reason.trim();
+        if (next === 'resolved' || next === 'false_positive') patch.resolved_at = nowIso;
+        await svc.from('fraud_cases').update(patch as never).eq('id', targetRecordId);
+        break;
+      }
+    }
+  } catch (err) {
+    await logAdminAction({
+      supabase: svc, adminUserId: user.id, adminName, targetUserId: payload.targetUserId,
+      tableName: resolveTableName(payload.action), action: payload.action, targetRecordId,
+      reason: payload.reason, ipAddress: ip, status: 'failed',
+      metadata: { error: String(err), userAgent },
+    });
+    return NextResponse.json({ error: 'Action failed.' }, { status: 500 });
   }
 
-  if (payload.action === 'reject_kyc') {
-    const reason = payload.reason?.trim() || 'KYC rejected by admin.';
-    await svc.from('profiles')
-      .update({ kyc_status: 'rejected', kyc_rejection_reason: reason })
-      .eq('id', payload.targetUserId);
+  // ── Raise a risk_event for high-severity admin actions ──
+  const re = RISK_EVENT_FOR[payload.action];
+  if (re) {
+    await svc.rpc('record_risk_event', {
+      p_event_type: re.type,
+      p_risk_score: re.score,
+      p_reason: payload.reason?.trim() ?? `${payload.action} by admin`,
+      p_actor_user_id: user.id,
+      p_target_user_id: payload.targetUserId ?? null,
+      p_related_table: resolveTableName(payload.action),
+      p_related_record_id: targetRecordId ?? null,
+      p_metadata: { admin_action: payload.action },
+    });
   }
 
-  if (payload.action === 'suspend_user') {
-    await svc.from('profiles')
-      .update({ status: 'suspended' })
-      .eq('id', payload.targetUserId);
-  }
-
-  if (payload.action === 'ban_user') {
-    await svc.from('profiles')
-      .update({ status: 'banned' })
-      .eq('id', payload.targetUserId);
-  }
-
-  if (payload.action === 'change_role') {
-    const nextRole: ValidRole = payload.nextRole ?? 'member';
-    await svc.from('profiles')
-      .update({ role: nextRole })
-      .eq('id', payload.targetUserId);
-  }
-
-  if (payload.action === 'pause_group') {
-    await svc.from('osusu_groups')
-      .update({ status: 'paused' })
-      .eq('id', targetRecordId);
-  }
-
-  if (payload.action === 'force_disband_group') {
-    await svc.from('osusu_groups')
-      .update({ status: 'disbanded' })
-      .eq('id', targetRecordId);
-  }
-
-  if (payload.action === 'suspend_collector') {
-    await svc.from('collectors')
-      .update({ is_active: false, deactivated_at: new Date().toISOString(), deactivated_by: user.id })
-      .eq('profile_id', payload.targetUserId);
-  }
-
-  if (payload.action === 'reinstate_collector') {
-    await svc.from('collectors')
-      .update({ is_active: true, deactivated_at: null, deactivated_by: null })
-      .eq('profile_id', payload.targetUserId);
-  }
-
-  // ── Audit log via service-role (DB trigger can't be bypassed) ──
+  // ── Audit log every action (admin_actions ledger) ──
   await logAdminAction({
-    supabase: svc,
-    adminUserId:    user.id,
-    targetUserId:   payload.targetUserId,
-    tableName:      resolveTableName(payload.action),   // hardcoded, never user-supplied
-    action:         payload.action,
-    targetRecordId,
-    reason:         payload.reason,
-    metadata:       { nextRole: payload.nextRole ?? null, ip },
+    supabase: svc, adminUserId: user.id, adminName, targetUserId: payload.targetUserId,
+    tableName: resolveTableName(payload.action), action: payload.action, targetRecordId,
+    reason: payload.reason, ipAddress: ip, status: 'success',
+    metadata: { userAgent, riskScore: riskScoreForAction(payload.action) },
   });
 
-  // Only redirect to same-origin Referer to prevent open-redirect attacks.
-  // An attacker-controlled Referer must never cause the admin browser to be
-  // sent to an external domain after a privileged action.
+  // Redirect back to same-origin referer only
   const referer = request.headers.get('referer');
   if (referer) {
     try {
@@ -181,16 +290,20 @@ export async function POST(request: Request) {
         return NextResponse.redirect(referer, { status: 303 });
       }
     } catch {
-      // Malformed Referer — ignore and fall through to JSON response.
+      // Malformed Referer — fall through
     }
   }
   return NextResponse.json({ ok: true });
 }
 
-/** Returns the actual table name — never uses user-supplied tableName. */
 function resolveTableName(action: string): string {
-  if (['approve_kyc','reject_kyc','suspend_user','ban_user','change_role'].includes(action)) return 'profiles';
-  if (['pause_group','force_disband_group'].includes(action)) return 'osusu_groups';
-  if (['suspend_collector','reinstate_collector'].includes(action)) return 'collectors';
+  if (['approve_kyc', 'reject_kyc', 'request_kyc_resubmission', 'mark_kyc_verified', 'escalate_kyc', 'suspend_user', 'unsuspend_user', 'ban_user', 'lock_account', 'unlock_account', 'force_logout', 'add_admin_note'].includes(action)) return 'profiles';
+  if (['pause_group', 'force_disband_group'].includes(action)) return 'osusu_groups';
+  if (['suspend_collector', 'reinstate_collector'].includes(action)) return 'collectors';
+  if (['resolve_dispute', 'reject_dispute'].includes(action)) return 'disputes';
+  if (['approve_withdrawal', 'reject_withdrawal', 'freeze_payout', 'unfreeze_payout'].includes(action)) return 'withdrawal_requests';
+  if (['freeze_transaction'].includes(action)) return 'mobile_money_transactions';
+  if (['mark_risk_reviewed', 'update_risk_status'].includes(action)) return 'risk_events';
+  if (['create_fraud_case', 'update_fraud_case'].includes(action)) return 'fraud_cases';
   return 'admin_actions';
 }

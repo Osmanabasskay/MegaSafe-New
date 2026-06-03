@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#690005",
+                        "secondary": "#ffcb8d",
+                        "tertiary": "#c6c6c7",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "on-secondary": "#462a00",
+                        "on-surface-variant": "#c6c5d4",
+                        "on-primary-container": "#7887ec",
+                        "tertiary-container": "#262828",
+                        "on-primary": "#102287",
+                        "surface-tint": "#bbc3ff",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "inverse-surface": "#dfe2ea",
+                        "outline-variant": "#454652",
+                        "outline": "#8f8f9e",
+                        "surface-bright": "#353940",
+                        "surface-container": "#1c2026",
+                        "background": "#0f1419",
+                        "surface-dim": "#0f1419",
+                        "primary-fixed-dim": "#bbc3ff",
+                        "on-tertiary-container": "#8e8f8f",
+                        "surface-container-low": "#181c21",
+                        "secondary-container": "#ffa504",
+                        "on-surface": "#dfe2ea",
+                        "surface-variant": "#31353b",
+                        "inverse-on-surface": "#2c3137",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#ffddb7",
+                        "on-secondary-container": "#684100",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "surface": "#0f1419",
+                        "on-tertiary": "#2f3131",
+                        "on-secondary-fixed": "#2a1700",
+                        "surface-container-highest": "#31353b",
+                        "surface-container-high": "#262a30",
+                        "surface-container-lowest": "#0a0f14",
+                        "on-primary-fixed": "#000d5f",
+                        "inverse-primary": "#4655b7",
+                        "primary-container": "#00157f",
+                        "tertiary-fixed": "#e2e2e2",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#2d3c9e",
+                        "primary": "#bbc3ff",
+                        "secondary-fixed-dim": "#ffb95c",
+                        "on-background": "#dfe2ea",
+                        "error": "#ffb4ab",
+                        "primary-fixed": "#dfe0ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "40px",
+                        "xs": "4px",
+                        "base": "8px",
+                        "md": "24px",
+                        "margin-mobile": "20px",
+                        "sm": "12px",
+                        "margin-desktop": "120px",
+                        "xl": "64px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-sm": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .otp-input:focus {
+            border-color: #FFA504;
+            box-shadow: 0 0 0 2px rgba(255, 165, 4, 0.2);
+            outline: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-white text-on-surface font-body-md antialiased min-h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex justify-between items-center px-margin-mobile h-16 w-full bg-white text-primary docked full-width top-0 z-50">
+<div class="flex items-center gap-base">
+<button class="hover:opacity-80 transition-opacity active:scale-95 duration-150">
+<span class="material-symbols-outlined text-headline-md">arrow_back</span>
+</button>
+</div>
+<div class="text-headline-md font-headline-md font-bold text-secondary-container">
+            Osusu
+        </div>
+<div class="w-8"></div> <!-- Spacer for centering title -->
+</header>
+<main class="flex-grow flex items-center justify-center px-margin-mobile">
+<div class="w-full max-w-md bg-white p-md rounded-xl">
+<!-- Header Section -->
+<div class="mb-lg text-center md:text-left">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary-container mb-base">
+                    Verify your email
+                </h1>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                    Enter the 6-digit code sent to <span class="font-bold text-primary-container">amina.chen@example.com</span>
+</p>
+</div>
+<!-- OTP Input Section -->
+<form action="#" class="space-y-lg" method="POST">
+<div class="flex justify-between gap-xs sm:gap-base">
+<input aria-label="Digit 1" class="otp-input w-12 h-14 md:w-14 md:h-16 text-center text-headline-md font-headline-md border-[1.5px] border-primary-container rounded-lg bg-white text-primary-container transition-all" maxlength="1" type="text"/>
+<input aria-label="Digit 2" class="otp-input w-12 h-14 md:w-14 md:h-16 text-center text-headline-md font-headline-md border-[1.5px] border-primary-container rounded-lg bg-white text-primary-container transition-all" maxlength="1" type="text"/>
+<input aria-label="Digit 3" class="otp-input w-12 h-14 md:w-14 md:h-16 text-center text-headline-md font-headline-md border-[1.5px] border-primary-container rounded-lg bg-white text-primary-container transition-all" maxlength="1" type="text"/>
+<input aria-label="Digit 4" class="otp-input w-12 h-14 md:w-14 md:h-16 text-center text-headline-md font-headline-md border-[1.5px] border-primary-container rounded-lg bg-white text-primary-container transition-all" maxlength="1" type="text"/>
+<input aria-label="Digit 5" class="otp-input w-12 h-14 md:w-14 md:h-16 text-center text-headline-md font-headline-md border-[1.5px] border-primary-container rounded-lg bg-white text-primary-container transition-all" maxlength="1" type="text"/>
+<input aria-label="Digit 6" class="otp-input w-12 h-14 md:w-14 md:h-16 text-center text-headline-md font-headline-md border-[1.5px] border-primary-container rounded-lg bg-white text-primary-container transition-all" maxlength="1" type="text"/>
+</div>
+<!-- Timer & Resend -->
+<div class="text-center">
+<p class="font-label-md text-label-md text-on-surface-variant">
+                        Resend code in <span class="text-secondary-container font-bold">0:59</span>
+</p>
+</div>
+<!-- Action Button -->
+<div class="pt-base">
+<button class="w-full bg-[#FFA500] text-primary-container font-bold py-4 rounded-xl shadow-[0_10px_30px_rgba(255,165,0,0.2)] hover:opacity-90 active:scale-[0.98] transition-all text-body-lg" type="submit">
+                        Verify OTP
+                    </button>
+</div>
+</form>
+<!-- Supplemental Image/Illustration -->
+<div class="mt-xl flex justify-center">
+<div class="relative w-48 h-48 rounded-full overflow-hidden">
+<img alt="Email security verification" class="w-full h-full object-cover opacity-80" data-alt="A highly detailed 3D digital illustration of a glowing holographic envelope floating above a secure digital keypad. The background is a clean, minimalist white environment with soft, ambient occlusion shadows. The aesthetic is modern fintech, featuring subtle amber and deep blue accents that align with the brand identity. The lighting is soft and cinematic, emphasizing a sense of security and technological sophistication." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAcZ1VNS_jXF75FMQxH8jBNaeYmEtiycYL20VRoW3xhq90VkUwzoq9E_VbxjBnaGZsTAfpp0ew1iHqjW8QG8nme3XrBIj07w93yDoVi1LL9-ly7RJN5s-CJRs-xmCd4M0XYBK9hjVg58Xj2YJR-HgUGD7mlJZD33AN8G4oDON2xek97wPfX77NPK6mAt9X_3oPS3l1eZgtuh2VehHjjppedBevRRzPSfrxQjPZhW3Y8XknYGUNyu98Ke_au6zai9oyJE46VExL8Ng"/>
+<div class="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent"></div>
+</div>
+</div>
+</div>
+</main>
+<!-- Support Footer -->
+<footer class="py-md text-center">
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
+            Secured by Osusu Vault Technology
+        </p>
+</footer>
+</body></html>

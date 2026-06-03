@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Verify Identity - Osusu</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#690005",
+                        "secondary": "#ffcb8d",
+                        "tertiary": "#c6c6c7",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "on-secondary": "#462a00",
+                        "on-surface-variant": "#c6c5d4",
+                        "on-primary-container": "#7887ec",
+                        "tertiary-container": "#262828",
+                        "on-primary": "#102287",
+                        "surface-tint": "#bbc3ff",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "inverse-surface": "#dfe2ea",
+                        "outline-variant": "#454652",
+                        "outline": "#8f8f9e",
+                        "surface-bright": "#353940",
+                        "surface-container": "#1c2026",
+                        "background": "#0f1419",
+                        "surface-dim": "#0f1419",
+                        "primary-fixed-dim": "#bbc3ff",
+                        "on-tertiary-container": "#8e8f8f",
+                        "surface-container-low": "#181c21",
+                        "secondary-container": "#ffa504",
+                        "on-surface": "#dfe2ea",
+                        "surface-variant": "#31353b",
+                        "inverse-on-surface": "#2c3137",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#ffddb7",
+                        "on-secondary-container": "#684100",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "surface": "#0f1419",
+                        "on-tertiary": "#2f3131",
+                        "on-secondary-fixed": "#2a1700",
+                        "surface-container-highest": "#31353b",
+                        "surface-container-high": "#262a30",
+                        "surface-container-lowest": "#0a0f14",
+                        "on-primary-fixed": "#000d5f",
+                        "inverse-primary": "#4655b7",
+                        "primary-container": "#00157f",
+                        "tertiary-fixed": "#e2e2e2",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#2d3c9e",
+                        "primary": "#bbc3ff",
+                        "secondary-fixed-dim": "#ffb95c",
+                        "on-background": "#dfe2ea",
+                        "error": "#ffb4ab",
+                        "primary-fixed": "#dfe0ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "40px",
+                        "xs": "4px",
+                        "base": "8px",
+                        "md": "24px",
+                        "margin-mobile": "20px",
+                        "sm": "12px",
+                        "margin-desktop": "120px",
+                        "xl": "64px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-sm": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom Orange for the Primary Button per brand style */
+        .btn-primary-orange {
+            background-color: #FFA500;
+            color: #00157F; /* Dark blue contrast text for accessibility */
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col">
+<!-- TopAppBar Component -->
+<header class="bg-background dark:bg-surface-dim flex justify-between items-center px-margin-mobile h-16 w-full docked full-width top-0 z-50">
+<div class="flex items-center gap-4">
+<button class="text-primary dark:text-primary-fixed-dim hover:opacity-80 transition-opacity active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="text-headline-md font-headline-md font-bold text-secondary dark:text-secondary-fixed">Osusu</h1>
+</div>
+<div class="flex items-center">
+<!-- Space for potential trailing icons -->
+</div>
+</header>
+<!-- Main Content: KYC Intro Screen -->
+<main class="flex-grow flex flex-col items-center bg-white text-[#0f1419] px-margin-mobile py-lg">
+<div class="max-w-md w-full flex flex-col items-center">
+<!-- Illustration Section -->
+<div class="w-full aspect-square mb-lg rounded-xl overflow-hidden relative group">
+<img alt="Identity Verification Documents" class="w-full h-full object-cover" data-alt="A highly detailed close-up of a modern biometric passport and a secure government-issued identity card resting on a clean, white minimalist surface. The lighting is bright and architectural, reflecting the high-contrast light-mode aesthetic of a premium fintech application. Subtle reflections on the cards emphasize their high-security features and digital precision, while the overall mood remains corporate yet fluid and accessible." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbRueTp1CHo0a6vn7ObSeUzjNuUyc-SJ6KievQGBZMXFV9e4Fn95CQdvLw7ppWqO9uKFcZL7T2q9Ojg_biORNId1UlQreovxZU4Y95BGORFbGikA-4x4wcoT8QUOZ1mVpaNvZRwp2BQxoRHdbW7JyVY8k7O2gwxAxaCCa28mo2ZlC3FONpHXe83QT_o-Hmhu-9z0BihIVrWxrFZtMk_IzlDaZPBlqUO28iAb0FTajj_ZKQMEmQtOqH50DWCdDpAUaQ2Bo9zvRH_n8"/>
+<!-- Glassmorphism overlay for style consistency -->
+<div class="absolute inset-0 bg-[#00157f]/5 backdrop-blur-[2px] pointer-events-none border border-white/10 rounded-xl"></div>
+</div>
+<!-- Text Content -->
+<div class="text-center mb-lg">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-[#00157f] mb-base">Verify your identity</h2>
+<p class="font-body-md text-body-md text-[#454652]">We need a quick scan of your ID to keep your account safe.</p>
+</div>
+<!-- Benefits List (Bento-lite Card) -->
+<div class="w-full bg-[#f8f9ff] border border-[#e2e2e2] rounded-xl p-md mb-xl shadow-[0_10px_30px_rgba(0,21,127,0.05)]">
+<p class="font-label-md text-label-md text-[#00157f] uppercase tracking-wider mb-base font-bold">Member Benefits</p>
+<ul class="space-y-md">
+<li class="flex items-start gap-md">
+<div class="bg-[#FFA500]/10 p-base rounded-lg shrink-0">
+<span class="material-symbols-outlined text-[#FFA500] text-[20px]" data-icon="bolt">bolt</span>
+</div>
+<div>
+<span class="block font-label-md text-label-md text-[#0f1419] font-bold">Instant payouts</span>
+<span class="block font-label-sm text-label-sm text-[#454652]">Access your funds the moment they land.</span>
+</div>
+</li>
+<li class="flex items-start gap-md">
+<div class="bg-[#FFA500]/10 p-base rounded-lg shrink-0">
+<span class="material-symbols-outlined text-[#FFA500] text-[20px]" data-icon="trending_up">trending_up</span>
+</div>
+<div>
+<span class="block font-label-md text-label-md text-[#0f1419] font-bold">Higher limits</span>
+<span class="block font-label-sm text-label-sm text-[#454652]">Enjoy increased contribution and savings ceilings.</span>
+</div>
+</li>
+</ul>
+</div>
+<!-- Primary Action -->
+<div class="w-full mt-auto">
+<button class="btn-primary-orange w-full h-14 rounded-xl font-label-md text-label-md font-bold uppercase tracking-widest shadow-[0_4px_15px_rgba(255,165,0,0.3)] hover:brightness-110 active:scale-95 transition-all">
+                    Start Verification
+                </button>
+<p class="text-center font-label-sm text-label-sm text-[#8f8f9e] mt-md px-md">
+                    Osusu uses 256-bit encryption to protect your data. Your ID is only used for regulatory compliance.
+                </p>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Suppressed for KYC Transactional flow per Shell Visibility Rule -->
+<!-- Footer spacer for mobile safe areas -->
+<div class="h-safe-bottom bg-white"></div>
+</body></html>

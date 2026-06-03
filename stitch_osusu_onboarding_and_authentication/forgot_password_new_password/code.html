@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Reset Password | Osusu</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-variant": "#31353b",
+                    "on-secondary-fixed": "#2a1700",
+                    "on-error-container": "#ffdad6",
+                    "inverse-primary": "#4655b7",
+                    "background": "#0f1419",
+                    "surface-container-lowest": "#0a0f14",
+                    "surface-dim": "#0f1419",
+                    "on-surface-variant": "#c6c5d4",
+                    "inverse-surface": "#dfe2ea",
+                    "tertiary-fixed": "#e2e2e2",
+                    "primary-fixed": "#dfe0ff",
+                    "on-tertiary-fixed-variant": "#454747",
+                    "on-background": "#dfe2ea",
+                    "outline-variant": "#454652",
+                    "tertiary-fixed-dim": "#c6c6c7",
+                    "tertiary-container": "#262828",
+                    "error": "#ffb4ab",
+                    "secondary-container": "#ffa504",
+                    "surface-container-high": "#262a30",
+                    "on-tertiary-fixed": "#1a1c1c",
+                    "on-tertiary-container": "#8e8f8f",
+                    "on-secondary-container": "#684100",
+                    "on-primary-container": "#7887ec",
+                    "surface-bright": "#353940",
+                    "on-primary": "#102287",
+                    "on-secondary": "#462a00",
+                    "secondary-fixed-dim": "#ffb95c",
+                    "primary-fixed-dim": "#bbc3ff",
+                    "surface-container": "#1c2026",
+                    "on-surface": "#dfe2ea",
+                    "surface": "#0f1419",
+                    "on-primary-fixed-variant": "#2d3c9e",
+                    "primary": "#bbc3ff",
+                    "primary-container": "#00157f",
+                    "secondary": "#ffcb8d",
+                    "error-container": "#93000a",
+                    "secondary-fixed": "#ffddb7",
+                    "inverse-on-surface": "#2c3137",
+                    "surface-container-highest": "#31353b",
+                    "outline": "#8f8f9e",
+                    "tertiary": "#c6c6c7",
+                    "surface-tint": "#bbc3ff",
+                    "on-error": "#690005",
+                    "surface-container-low": "#181c21",
+                    "on-secondary-fixed-variant": "#653e00",
+                    "on-tertiary": "#2f3131",
+                    "on-primary-fixed": "#000d5f"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "24px",
+                    "sm": "12px",
+                    "margin-mobile": "20px",
+                    "lg": "40px",
+                    "xs": "4px",
+                    "base": "8px",
+                    "margin-desktop": "120px",
+                    "gutter": "16px",
+                    "xl": "64px"
+            },
+            "fontFamily": {
+                    "label-md": ["Inter"],
+                    "headline-xl": ["Hanken Grotesk"],
+                    "label-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-md": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "headline-lg-mobile": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #0f1419;
+            color: #dfe2ea;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen flex flex-col font-body-md text-body-md overflow-x-hidden">
+<!-- Top Navigation Anchor -->
+<header class="bg-background flex items-center w-full px-margin-mobile h-16 sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<button class="text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-secondary">Osusu</h1>
+</div>
+</header>
+<main class="flex-grow flex items-center justify-center px-margin-mobile py-lg">
+<div class="w-full max-w-[480px] space-y-lg">
+<!-- Hero Content -->
+<div class="space-y-sm text-center md:text-left">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-background">Reset Password</h2>
+<p class="text-on-surface-variant font-body-md text-body-md max-w-sm">Secure your account by creating a new strong password.</p>
+</div>
+<!-- Form Container -->
+<div class="glass-panel p-md md:p-lg rounded-xl shadow-lg space-y-md">
+<!-- New Password Field -->
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant block px-xs">New Password</label>
+<div class="relative group">
+<input class="w-full bg-white/10 border-transparent focus:border-primary focus:ring-0 rounded-xl px-md py-sm text-on-surface placeholder-on-surface-variant/30 transition-all outline-none" placeholder="••••••••" type="password"/>
+<span class="material-symbols-outlined absolute right-md top-1/2 -translate-y-1/2 text-on-surface-variant cursor-pointer" data-icon="visibility">visibility</span>
+</div>
+</div>
+<!-- Strength Indicator -->
+<div class="space-y-sm">
+<div class="flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Password Strength</span>
+<span class="font-label-sm text-label-sm text-secondary">Strong</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-[8px] bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-secondary-container w-3/4"></div>
+</div>
+<!-- Requirements Checklist -->
+<ul class="grid grid-cols-1 md:grid-cols-2 gap-y-2 pt-xs">
+<li class="flex items-center gap-2 font-label-sm text-label-sm text-secondary">
+<span class="material-symbols-outlined text-[18px]" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            At least 8 characters
+                        </li>
+<li class="flex items-center gap-2 font-label-sm text-label-sm text-secondary">
+<span class="material-symbols-outlined text-[18px]" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            One uppercase letter
+                        </li>
+<li class="flex items-center gap-2 font-label-sm text-label-sm text-secondary">
+<span class="material-symbols-outlined text-[18px]" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            One number
+                        </li>
+<li class="flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant/60">
+<span class="material-symbols-outlined text-[18px]" data-icon="radio_button_unchecked">radio_button_unchecked</span>
+                            One special character
+                        </li>
+</ul>
+</div>
+<!-- Confirm Password Field -->
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant block px-xs">Confirm New Password</label>
+<div class="relative">
+<input class="w-full bg-white/10 border-transparent focus:border-primary focus:ring-0 rounded-xl px-md py-sm text-on-surface placeholder-on-surface-variant/30 transition-all outline-none" placeholder="••••••••" type="password"/>
+<span class="material-symbols-outlined absolute right-md top-1/2 -translate-y-1/2 text-on-surface-variant cursor-pointer" data-icon="visibility_off">visibility_off</span>
+</div>
+</div>
+<!-- Action Button -->
+<div class="pt-sm">
+<button class="w-full bg-secondary-container text-on-secondary-container font-label-md text-label-md h-14 rounded-xl shadow-lg active:scale-95 transition-all hover:opacity-90 flex items-center justify-center gap-2">
+                        Update Password
+                        <span class="material-symbols-outlined" data-icon="lock_reset">lock_reset</span>
+</button>
+</div>
+</div>
+<!-- Contextual Footer -->
+<div class="text-center">
+<p class="font-label-md text-label-md text-on-surface-variant">
+                    Need help? <a class="text-secondary font-semibold hover:underline decoration-secondary/30" href="#">Contact support</a>
+</p>
+</div>
+</div>
+</main>
+<!-- Visual Anchor Decorations -->
+<div class="fixed top-0 right-0 -z-10 w-[500px] h-[500px] bg-primary-container/20 blur-[120px] rounded-full"></div>
+<div class="fixed bottom-0 left-0 -z-10 w-[400px] h-[400px] bg-secondary-container/10 blur-[100px] rounded-full"></div>
+<!-- Responsive Bottom Spacer for Mobile -->
+<footer class="h-8 md:hidden"></footer>
+</body></html>

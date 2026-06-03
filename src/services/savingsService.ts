@@ -8,9 +8,27 @@
  */
 
 import { supabase, supabaseConfigured } from './supabase';
-import { toBackendError } from './backendErrors';
+import { toBackendError, logDbError } from './backendErrors';
 import type { SupportedPaymentMethod } from './paymentService';
 import { generateIdempotencyKey } from './paymentService';
+
+// Maps any UI label (capitalized or lowercase) to the DB enum value.
+// The live savings_goals.auto_save_frequency column type is contribution_frequency.
+// Valid DB enum values: daily | weekly | biweekly | monthly
+export const AUTO_SAVE_FREQ_TO_DB: Readonly<Record<string, 'daily' | 'weekly' | 'biweekly' | 'monthly'>> = {
+  daily:    'daily',
+  Daily:    'daily',
+  DAILY:    'daily',
+  weekly:   'weekly',
+  Weekly:   'weekly',
+  WEEKLY:   'weekly',
+  biweekly: 'biweekly',
+  Biweekly: 'biweekly',
+  BIWEEKLY: 'biweekly',
+  monthly:  'monthly',
+  Monthly:  'monthly',
+  MONTHLY:  'monthly',
+};
 
 export type SavingsGoalStatus = 'active' | 'completed' | 'withdrawn' | 'cancelled';
 export type SavingsGoalCategory =
@@ -25,7 +43,7 @@ export type SavingsGoalCategory =
 
 export interface SavingsGoal {
   id: string;
-  owner_id: string;
+  user_id: string;
   title: string;
   description: string | null;
   category: SavingsGoalCategory;
@@ -70,7 +88,7 @@ function normalizeSavingsGoal(row: unknown): SavingsGoal | null {
   const r = row as Record<string, unknown>;
   return {
     id:                  typeof r.id === 'string' ? r.id : createLocalId('goal'),
-    owner_id:            typeof r.owner_id === 'string' ? r.owner_id : '',
+    user_id:             typeof r.user_id === 'string' ? r.user_id : (typeof r.owner_id === 'string' ? r.owner_id : ''),
     title:               typeof r.title === 'string' ? r.title : 'Untitled Goal',
     description:         typeof r.description === 'string' ? r.description : null,
     category:            typeof r.category === 'string' ? (r.category as SavingsGoalCategory) : 'other',
@@ -124,7 +142,7 @@ export async function fetchSavingsGoals(
     const { data, error } = await supabase
       .from('savings_goals')
       .select('*')
-      .eq('owner_id', ownerId)
+      .eq('user_id', ownerId)
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
@@ -191,7 +209,7 @@ export async function createSavingsGoal(
   if (!supabaseConfigured) {
     return {
       goal: {
-        id: createLocalId('goal'), owner_id: input.ownerId, title: input.title,
+        id: createLocalId('goal'), user_id: input.ownerId, title: input.title,
         description: input.description ?? null, category: input.category, goal_emoji: '🎯',
         target_amount: input.targetAmount, current_amount: 0, currency_code: 'NLe',
         target_date: input.targetDate ?? null, status: 'active',
@@ -205,23 +223,33 @@ export async function createSavingsGoal(
     };
   }
 
+  // Map UI label → DB enum value defensively before sending to Supabase.
+  // savings_goals.auto_save_frequency is type contribution_frequency (enum).
+  const rawFreq = input.autoSaveEnabled ? (input.autoSaveFrequency ?? null) : null;
+  const mappedFreq = rawFreq != null ? (AUTO_SAVE_FREQ_TO_DB[rawFreq] ?? rawFreq) : null;
+
+  const rpcPayload = {
+    p_owner_id:            input.ownerId,
+    p_title:               input.title.trim(),
+    p_description:         input.description?.trim() || null,
+    p_category:            input.category,
+    p_target_amount:       input.targetAmount,
+    p_target_date:         input.targetDate ?? null,
+    p_auto_save_enabled:   input.autoSaveEnabled ?? false,
+    p_auto_save_amount:    input.autoSaveEnabled ? input.autoSaveAmount ?? null : null,
+    p_auto_save_frequency: mappedFreq,
+  };
+
   try {
     // Use SECURITY DEFINER RPC — enforces auth.uid() = owner_id server-side,
     // sets current_amount = 0, and creates an audit log atomically.
     // Direct INSERT is no longer permitted here.
-    const { data, error } = await supabase.rpc('create_savings_goal', {
-      p_owner_id:            input.ownerId,
-      p_title:               input.title.trim(),
-      p_description:         input.description?.trim() || null,
-      p_category:            input.category,
-      p_target_amount:       input.targetAmount,
-      p_target_date:         input.targetDate ?? null,
-      p_auto_save_enabled:   input.autoSaveEnabled ?? false,
-      p_auto_save_amount:    input.autoSaveEnabled ? input.autoSaveAmount ?? null : null,
-      p_auto_save_frequency: input.autoSaveEnabled ? input.autoSaveFrequency ?? null : null,
-    });
+    const { data, error } = await supabase.rpc('create_savings_goal', rpcPayload);
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      logDbError('create_savings_goal RPC', 'savings_goals', rpcPayload as Record<string, unknown>, error);
+      throw new Error(error.message);
+    }
     const result = data as Record<string, unknown>;
     if (result?.error) throw new Error(result.error as string);
 
@@ -248,7 +276,7 @@ export async function deleteSavingsGoal(params: {
       .from('savings_goals')
       .delete()
       .eq('id', params.goalId)
-      .eq('owner_id', params.ownerId)
+      .eq('user_id', params.ownerId)
       .select('id');
 
     if (error) throw new Error(error.message);

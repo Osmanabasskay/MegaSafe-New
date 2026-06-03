@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Guarantor Details - Osusu</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#690005",
+                        "secondary": "#ffcb8d",
+                        "tertiary": "#c6c6c7",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "on-secondary": "#462a00",
+                        "on-surface-variant": "#c6c5d4",
+                        "on-primary-container": "#7887ec",
+                        "tertiary-container": "#262828",
+                        "on-primary": "#102287",
+                        "surface-tint": "#bbc3ff",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "inverse-surface": "#dfe2ea",
+                        "outline-variant": "#454652",
+                        "outline": "#8f8f9e",
+                        "surface-bright": "#353940",
+                        "surface-container": "#1c2026",
+                        "background": "#0f1419",
+                        "surface-dim": "#0f1419",
+                        "primary-fixed-dim": "#bbc3ff",
+                        "on-tertiary-container": "#8e8f8f",
+                        "surface-container-low": "#181c21",
+                        "secondary-container": "#ffa504",
+                        "on-surface": "#dfe2ea",
+                        "surface-variant": "#31353b",
+                        "inverse-on-surface": "#2c3137",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#ffddb7",
+                        "on-secondary-container": "#684100",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "surface": "#0f1419",
+                        "on-tertiary": "#2f3131",
+                        "on-secondary-fixed": "#2a1700",
+                        "surface-container-highest": "#31353b",
+                        "surface-container-high": "#262a30",
+                        "surface-container-lowest": "#0a0f14",
+                        "on-primary-fixed": "#000d5f",
+                        "inverse-primary": "#4655b7",
+                        "primary-container": "#00157f",
+                        "tertiary-fixed": "#e2e2e2",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#2d3c9e",
+                        "primary": "#bbc3ff",
+                        "secondary-fixed-dim": "#ffb95c",
+                        "on-background": "#dfe2ea",
+                        "error": "#ffb4ab",
+                        "primary-fixed": "#dfe0ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "40px",
+                        "xs": "4px",
+                        "base": "8px",
+                        "md": "24px",
+                        "margin-mobile": "20px",
+                        "sm": "12px",
+                        "margin-desktop": "120px",
+                        "xl": "64px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-sm": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .form-focus-ring:focus {
+            border-color: #00157f;
+            box-shadow: 0 0 0 1px #00157f;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-white text-on-tertiary selection:bg-secondary-container selection:text-on-secondary-container min-h-screen flex flex-col font-body-md">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-margin-mobile h-16 w-full sticky top-0 z-50 bg-white border-b border-outline-variant/10">
+<div class="flex items-center gap-base">
+<button class="material-symbols-outlined text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 duration-150" data-icon="arrow_back">arrow_back</button>
+<h1 class="font-headline-md text-headline-md font-bold text-secondary-container">Osusu</h1>
+</div>
+<div class="flex items-center gap-md">
+<span class="font-label-md text-label-md text-on-surface-variant">Step 3 of 4</span>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-grow flex flex-col items-center px-margin-mobile md:px-margin-desktop py-lg max-w-[1280px] mx-auto w-full">
+<!-- Form Header Section -->
+<div class="w-full max-w-2xl mb-xl">
+<h2 class="font-headline-xl text-headline-xl text-primary-container mb-xs">Guarantor Details</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">To secure your contribution circle, please provide the details of a trusted individual who can vouch for your participation.</p>
+</div>
+<!-- Form Canvas -->
+<div class="w-full max-w-2xl bg-white rounded-xl p-md md:p-lg border border-outline-variant/20 shadow-[0_10px_30px_rgba(0,21,127,0.05)]">
+<form action="#" class="space-y-md" method="POST">
+<!-- Full Name Input -->
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-primary-container" for="full_name">Full Name</label>
+<div class="relative">
+<input class="w-full h-14 px-md rounded-xl border-[1.5px] border-outline text-primary-container font-body-md placeholder:text-outline-variant focus:border-primary-container focus:ring-0 transition-all outline-none" id="full_name" name="full_name" placeholder="Enter guarantor's legal name" type="text"/>
+</div>
+</div>
+<!-- Phone Number Input -->
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-primary-container" for="phone_number">Phone Number</label>
+<div class="relative flex">
+<span class="inline-flex items-center px-md rounded-l-xl border-y-[1.5px] border-l-[1.5px] border-outline bg-surface-container-lowest text-on-surface-variant font-label-md">
+                            +234
+                        </span>
+<input class="w-full h-14 px-md rounded-r-xl border-[1.5px] border-outline text-primary-container font-body-md placeholder:text-outline-variant focus:border-primary-container focus:ring-0 transition-all outline-none" id="phone_number" name="phone_number" placeholder="801 234 5678" type="tel"/>
+</div>
+</div>
+<!-- Relationship Selector -->
+<div class="space-y-base pt-base">
+<label class="font-label-md text-label-md text-primary-container block">Relationship</label>
+<div class="flex flex-wrap gap-base">
+<button class="px-md py-sm rounded-full border-[1.5px] border-secondary-container bg-secondary-container text-white font-semibold text-label-md transition-all active:scale-95" type="button">
+                            Family
+                        </button>
+<button class="px-md py-sm rounded-full border-[1.5px] border-outline-variant text-on-surface-variant font-semibold text-label-md hover:bg-surface-container-low transition-all active:scale-95" type="button">
+                            Friend
+                        </button>
+<button class="px-md py-sm rounded-full border-[1.5px] border-outline-variant text-on-surface-variant font-semibold text-label-md hover:bg-surface-container-low transition-all active:scale-95" type="button">
+                            Colleague
+                        </button>
+<button class="px-md py-sm rounded-full border-[1.5px] border-outline-variant text-on-surface-variant font-semibold text-label-md hover:bg-surface-container-low transition-all active:scale-95" type="button">
+                            Other
+                        </button>
+</div>
+</div>
+<!-- Descriptive Image/Illustration Card -->
+<div class="relative w-full h-48 mt-lg rounded-xl overflow-hidden group">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A professional, high-end close-up of two diverse hands coming together in a firm, supportive handshake. The scene is set against a clean, minimalist white studio background with soft cinematic lighting that highlights the textures of the skin. The overall aesthetic is corporate yet warm, conveying deep trust, modern security, and mutual prosperity in a premium fintech context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDo1ATASykNsv9HmkI1onMBs9DLzABT1E3CkoEcU5eHUJIcwKE4-vZewZ7iwA5aaTKxISYpG4keTVI3nJYgS_1ypzyVEeBhcWLKMHansvqK2LktRw4iXVH8toUMWM--icfDeeODR2ldotVk1xcnz8gZc7gb4WY4q8uXmd1Vn7FZaPMhx0MZ1mgYhYoH-yLpy9SCjxeOq5QwIeoC0Glwy6DnRlkEAyBuMzuEEPO-zfv2l5Z_Iz3aPP3NHI0816F44jre_PCgUdmRSMY"/>
+<div class="absolute inset-0 bg-gradient-to-t from-primary-container/60 to-transparent flex items-end p-md">
+<p class="text-white text-label-md font-medium leading-tight">Trust is the foundation of our community. Ensuring verified connections keeps Osusu safe for everyone.</p>
+</div>
+</div>
+<!-- Submit Button -->
+<div class="pt-lg">
+<button class="w-full h-14 bg-secondary-container hover:opacity-90 text-white font-bold text-body-md rounded-xl shadow-[0_4px_15px_rgba(255,165,0,0.3)] transition-all active:scale-95 flex items-center justify-center gap-base" type="submit">
+                        Submit Details
+                        <span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</form>
+</div>
+<!-- Support Info -->
+<div class="mt-lg flex flex-col items-center gap-xs">
+<p class="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-widest">Secure Verification</p>
+<div class="flex items-center gap-base text-outline">
+<span class="material-symbols-outlined text-[18px]" data-icon="shield_lock" data-weight="fill" style="font-variation-settings: 'FILL' 1;">shield_lock</span>
+<span class="text-label-md font-label-md">End-to-end encrypted data protection</span>
+</div>
+</div>
+</main>
+<!-- Footer for Sub-page context (Suppressed BottomNavBar but visible small footer) -->
+<footer class="mt-auto py-md px-margin-mobile border-t border-outline-variant/10 text-center">
+<p class="text-label-sm font-label-sm text-on-surface-variant/60">© 2024 Osusu Fintech Inc. All rights reserved.</p>
+</footer>
+<!-- Navigation Drawer (Hidden by default, used for logic) -->
+<aside class="hidden fixed inset-y-0 left-0 w-80 bg-surface-container-low shadow-2xl z-[60] flex-col p-md gap-base rounded-r-xl">
+<div class="flex items-center gap-md p-md mb-base border-b border-outline-variant">
+<div class="w-12 h-12 rounded-full bg-secondary-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary-container" data-icon="person">person</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-primary-container">Amina Chen</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Verified Member</p>
+</div>
+</div>
+<nav class="space-y-xs">
+<a class="flex items-center gap-md p-md text-on-surface hover:bg-surface-variant rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="manage_accounts">manage_accounts</span>
+<span class="font-label-md">Account Details</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface hover:bg-surface-variant rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+<span class="font-label-md">Security</span>
+</a>
+<a class="flex items-center gap-md p-md text-on-surface hover:bg-surface-variant rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="headset_mic">headset_mic</span>
+<span class="font-label-md">Support</span>
+</a>
+<hr class="my-base border-outline-variant/30"/>
+<a class="flex items-center gap-md p-md text-on-surface hover:bg-surface-variant rounded-lg transition-all text-on-error" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-label-md">Logout</span>
+</a>
+</nav>
+</aside>
+</body></html>

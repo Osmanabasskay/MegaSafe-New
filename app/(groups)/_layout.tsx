@@ -8,12 +8,16 @@ export default function GroupsLayout() {
       <Stack.Screen name="invite" />
       <Stack.Screen name="setup-complete" />
       <Stack.Screen name="contribute" />
+      <Stack.Screen name="monime-payment" />
       <Stack.Screen name="payment-success" />
       <Stack.Screen name="collector" />
       <Stack.Screen name="discover" />
       <Stack.Screen name="creator-dashboard" />
       <Stack.Screen name="[id]" />
       <Stack.Screen name="manage/[id]" />
+      <Stack.Screen name="physical-collect" />
+      <Stack.Screen name="chat/[id]" />
+      <Stack.Screen name="assign-contributors" />
     </Stack>
   );
 }

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Scan Front - Osusu</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#690005",
+                        "secondary": "#ffcb8d",
+                        "tertiary": "#c6c6c7",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "on-secondary": "#462a00",
+                        "on-surface-variant": "#c6c5d4",
+                        "on-primary-container": "#7887ec",
+                        "tertiary-container": "#262828",
+                        "on-primary": "#102287",
+                        "surface-tint": "#bbc3ff",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "inverse-surface": "#dfe2ea",
+                        "outline-variant": "#454652",
+                        "outline": "#8f8f9e",
+                        "surface-bright": "#353940",
+                        "surface-container": "#1c2026",
+                        "background": "#0f1419",
+                        "surface-dim": "#0f1419",
+                        "primary-fixed-dim": "#bbc3ff",
+                        "on-tertiary-container": "#8e8f8f",
+                        "surface-container-low": "#181c21",
+                        "secondary-container": "#ffa504",
+                        "on-surface": "#dfe2ea",
+                        "surface-variant": "#31353b",
+                        "inverse-on-surface": "#2c3137",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#ffddb7",
+                        "on-secondary-container": "#684100",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "surface": "#0f1419",
+                        "on-tertiary": "#2f3131",
+                        "on-secondary-fixed": "#2a1700",
+                        "surface-container-highest": "#31353b",
+                        "surface-container-high": "#262a30",
+                        "surface-container-lowest": "#0a0f14",
+                        "on-primary-fixed": "#000d5f",
+                        "inverse-primary": "#4655b7",
+                        "primary-container": "#00157f",
+                        "tertiary-fixed": "#e2e2e2",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#2d3c9e",
+                        "primary": "#bbc3ff",
+                        "secondary-fixed-dim": "#ffb95c",
+                        "on-background": "#dfe2ea",
+                        "error": "#ffb4ab",
+                        "primary-fixed": "#dfe0ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "40px",
+                        "xs": "4px",
+                        "base": "8px",
+                        "md": "24px",
+                        "margin-mobile": "20px",
+                        "sm": "12px",
+                        "margin-desktop": "120px",
+                        "xl": "64px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-sm": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .id-card-frame {
+            border: 2px solid transparent;
+        }
+        .corner-top-left { border-top: 4px solid #ffffff; border-left: 4px solid #ffffff; width: 40px; height: 40px; border-radius: 8px 0 0 0; }
+        .corner-top-right { border-top: 4px solid #ffffff; border-right: 4px solid #ffffff; width: 40px; height: 40px; border-radius: 0 8px 0 0; }
+        .corner-bottom-left { border-bottom: 4px solid #ffffff; border-left: 4px solid #ffffff; width: 40px; height: 40px; border-radius: 0 0 0 8px; }
+        .corner-bottom-right { border-bottom: 4px solid #ffffff; border-right: 4px solid #ffffff; width: 40px; height: 40px; border-radius: 0 0 8px 0; }
+        
+        .scan-line {
+            background: linear-gradient(to right, transparent, #ffa504, transparent);
+            box-shadow: 0 0 15px #ffa504;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen overflow-hidden flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex justify-between items-center px-margin-mobile h-16 w-full z-50 fixed top-0 bg-background/20 backdrop-blur-md">
+<div class="flex items-center gap-base">
+<button class="text-primary hover:opacity-80 transition-opacity flex items-center justify-center p-2 rounded-full active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-secondary">Osusu</h1>
+</div>
+<button class="text-primary hover:opacity-80 transition-opacity flex items-center justify-center p-2 rounded-full active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="flash_on">flash_on</span>
+</button>
+</header>
+<!-- Camera Viewport Container -->
+<main class="relative flex-1 flex flex-col items-center justify-center bg-primary-container overflow-hidden">
+<!-- Camera Feed Placeholder (Using data-alt as requested) -->
+<div class="absolute inset-0 z-0">
+<img alt="Identity Verification" class="w-full h-full object-cover opacity-60 mix-blend-overlay" data-alt="A cinematic, low-angle perspective of a high-tech identity verification interface. The scene is dominated by a deep imperial blue color palette with sharp, clinical lighting. Semi-transparent digital overlays and data streams float in the periphery. A soft bokeh effect suggests a modern, secure fintech environment. The atmosphere is professional, ultra-secure, and sleek, evoking a sense of high-end digital vault technology." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZ1By5D_WVMU9tsuo-8J9vrOW4-QqMrCVKvjhL3hjLLlcUnDoI9RPEvt0ZpeD5LANBq_QygxzZgmf8lrxP_g1IzY3_WFx_rzum4pH0NrrqEwXNsbZ4GsJnXG4tjV9YB5ePIii57XSGLTr3KDa_r_oXHb-LUk7CzPI5z9eImBwjZ0hymAjpsn6FpsaINBzy5PiIVyi2vjX2q_WRty7MykFsp6SNkEEMn0tt5tqVrGJ4HbbOjd12PdzbF0dlytgbfKPO40DaX9GvPFo"/>
+</div>
+<!-- Scanning Overlay Interface -->
+<div class="relative z-10 w-full max-w-md px-margin-mobile flex flex-col items-center gap-xl">
+<!-- Scan Guide Container -->
+<div class="relative w-full aspect-[1.586/1] flex items-center justify-center">
+<!-- Corners -->
+<div class="absolute top-0 left-0 corner-top-left"></div>
+<div class="absolute top-0 right-0 corner-top-right"></div>
+<div class="absolute bottom-0 left-0 corner-bottom-left"></div>
+<div class="absolute bottom-0 right-0 corner-bottom-right"></div>
+<!-- Scanning Line -->
+<div class="absolute top-1/2 left-0 w-full h-[3px] scan-line z-20"></div>
+<!-- Inner Frame Placeholder -->
+<div class="w-full h-full rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-white/20 text-6xl" data-icon="credit_card">credit_card</span>
+</div>
+</div>
+<!-- Instruction Text -->
+<div class="text-center">
+<p class="font-headline-md text-headline-md text-on-primary-fixed mb-base">Align the front of your ID</p>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-[280px] mx-auto">Make sure all details are clear and within the frame for instant verification.</p>
+</div>
+</div>
+<!-- Shutter Controls -->
+<div class="absolute bottom-0 left-0 w-full p-xl flex flex-col items-center justify-center z-30">
+<div class="relative group">
+<!-- Ring Glow -->
+<div class="absolute -inset-4 bg-secondary-container/20 rounded-full blur-xl group-active:scale-90 transition-transform"></div>
+<!-- Outer Ring -->
+<div class="relative w-20 h-20 rounded-full border-4 border-white flex items-center justify-center cursor-pointer transition-transform active:scale-90 duration-200">
+<!-- Shutter Inner Button -->
+<div class="w-16 h-16 rounded-full bg-white group-hover:scale-95 transition-transform shadow-lg"></div>
+</div>
+</div>
+<button class="mt-lg font-label-md text-label-md text-secondary uppercase tracking-widest hover:opacity-80 transition-opacity">
+                Manual Upload
+            </button>
+</div>
+</main>
+<!-- Navigation Shell suppressed for transactional scan screen per 'Shell Visibility & Relevance' mandate -->
+</body></html>

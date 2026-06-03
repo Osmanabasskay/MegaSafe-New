@@ -9,24 +9,24 @@ import {
   Edit,
   Mail,
   Phone,
-  Shield,
-  TrendingUp,
-  Users,
 } from 'lucide-react-native';
-import { useAuthStore } from '../../stores/authStore';
-import { useAppDataStore } from '../../stores/appDataStore';
-import { listGroupsForUser } from '../../lib/groupService';
+import { useAuthStore } from '../../src/store/authStore';
+import { useAppDataStore } from '../../src/store/appDataStore';
+import { darkColors, lightColors } from '../../src/theme/colors';
+import { listGroupsForUser } from '../../src/services/groupService';
 import {
   getCredentialDisplayName,
   getProfileInitials,
   isPlaceholderProfileName,
   normalizeProfileName,
-} from '../../lib/profileName';
+} from '../../src/utils/profileName';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { profile, savingsGoals, vaultTransactions, initializeForUser } = useAppDataStore();
+  const { profile, savingsGoals, vaultTransactions, initializeForUser, preferences } = useAppDataStore();
+  const isDark = preferences.darkMode;
+  const C = isDark ? darkColors : lightColors;
   const [groupCount, setGroupCount] = useState(0);
 
   useEffect(() => {
@@ -62,26 +62,27 @@ export default function ProfileScreen() {
     [savingsGoals]
   );
 
+  // Phase 3: icons removed from stats — clean text-only layout
   const profileStats = [
-    { label: 'Groups', value: String(groupCount), icon: <Users size={16} color="#F97316" /> },
-    { label: 'Active Goals', value: String(activeGoals), icon: <TrendingUp size={16} color="#1D4ED8" /> },
-    { label: 'Total Saved', value: `NLe ${Math.max(0, totalSaved).toFixed(2)}`, icon: <Shield size={16} color="#10B981" /> },
+    { label: 'Groups', value: String(groupCount) },
+    { label: 'Active Goals', value: String(activeGoals) },
+    { label: 'Total Saved', value: `NLe ${Math.max(0, totalSaved).toFixed(2)}` },
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bg }]}>
+      <View style={[styles.header, { backgroundColor: C.bg }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
           <ArrowLeft size={24} color="#F97316" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={[styles.headerTitle, { color: C.text }]}>Profile</Text>
         <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/components/profile-edit')}>
           <Edit size={20} color="#F97316" />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroCard}>
+        <View style={[styles.heroCard, { backgroundColor: C.card }]}>
           <View style={styles.avatarWrap}>
             {profile.avatarUrl ? (
               <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
@@ -100,50 +101,48 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.name}>
+          <Text style={[styles.name, { color: C.text }]}>
             {isPlaceholderProfileName(profile.fullName)
               ? getCredentialDisplayName(profile.email, profile.phone)
               : normalizeProfileName(profile.fullName)}
           </Text>
-          <View style={styles.verifyBadge}>
-            <Shield size={12} color="#10B981" />
+          <View style={[styles.verifyBadge, { backgroundColor: isDark ? '#065F46' : '#D1FAE5' }]}>
             <Text style={styles.verifyText}>{profile.verificationStatus}</Text>
           </View>
-          <Text style={styles.memberSince}>Member since {profile.memberSince}</Text>
+          <Text style={[styles.memberSince, { color: C.textSub }]}>Member since {profile.memberSince}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact</Text>
-          <View style={styles.card}>
+        <View style={[styles.section, { marginTop: 20 }]}>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Contact</Text>
+          <View style={[styles.card, { backgroundColor: C.card }]}>
             <View style={styles.row}>
-              <Mail size={18} color="#6B7280" />
-              <Text style={styles.rowText}>{profile.email || 'No email available'}</Text>
+              <Mail size={18} color={C.textSub} />
+              <Text style={[styles.rowText, { color: C.text }]}>{profile.email || 'No email available'}</Text>
             </View>
             <View style={styles.row}>
-              <Phone size={18} color="#6B7280" />
-              <Text style={styles.rowText}>{profile.phone || 'No phone number set'}</Text>
+              <Phone size={18} color={C.textSub} />
+              <Text style={[styles.rowText, { color: C.text }]}>{profile.phone || 'No phone number set'}</Text>
             </View>
             <View style={styles.row}>
-              <Calendar size={18} color="#6B7280" />
-              <Text style={styles.rowText}>Referral code: {profile.referralCode}</Text>
+              <Calendar size={18} color={C.textSub} />
+              <Text style={[styles.rowText, { color: C.text }]}>Referral code: {profile.referralCode}</Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Stats</Text>
+        <View style={[styles.section, { marginTop: 20 }]}>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Stats</Text>
           <View style={styles.statsGrid}>
             {profileStats.map((item) => (
-              <View style={styles.statCard} key={item.label}>
-                <View style={styles.statIcon}>{item.icon}</View>
-                <Text style={styles.statValue}>{item.value}</Text>
-                <Text style={styles.statLabel}>{item.label}</Text>
+              <View style={[styles.statCard, { backgroundColor: C.card }]} key={item.label}>
+                <Text style={[styles.statValue, { color: C.text }]}>{item.value}</Text>
+                <Text style={[styles.statLabel, { color: C.textSub }]}>{item.label}</Text>
               </View>
             ))}
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View style={[styles.section, { marginTop: 20 }]}>
           <TouchableOpacity style={styles.ctaButton} onPress={() => router.push('/components/settings')}>
             <Text style={styles.ctaText}>Manage Profile & Security</Text>
           </TouchableOpacity>
@@ -156,10 +155,8 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
     paddingVertical: 14,
     flexDirection: 'row',
@@ -173,7 +170,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1E2B5A',
   },
   scrollView: {
     flex: 1,
@@ -182,7 +178,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     marginTop: 20,
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     padding: 20,
   },
@@ -222,40 +217,33 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1E2B5A',
     marginBottom: 6,
   },
   verifyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#D1FAE5',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 10,
     marginBottom: 6,
   },
   verifyText: {
-    marginLeft: 4,
     color: '#10B981',
     fontSize: 12,
     fontWeight: '600',
   },
   memberSince: {
     fontSize: 13,
-    color: '#6B7280',
   },
   section: {
-    marginTop: 20,
     marginHorizontal: 24,
   },
   sectionTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1E2B5A',
     marginBottom: 10,
   },
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 14,
   },
@@ -266,34 +254,28 @@ const styles = StyleSheet.create({
   },
   rowText: {
     marginLeft: 10,
-    color: '#374151',
     fontSize: 14,
   },
   statsGrid: {
     flexDirection: 'row',
     gap: 10,
+    marginBottom: 6,
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 8,
   },
-  statIcon: {
-    marginBottom: 6,
-  },
   statValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1E2B5A',
-    marginBottom: 3,
+    marginBottom: 4,
     textAlign: 'center',
   },
   statLabel: {
     fontSize: 11,
-    color: '#6B7280',
     textAlign: 'center',
   },
   ctaButton: {
@@ -309,4 +291,3 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 });
-

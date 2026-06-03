@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, supabaseConfigured } from './supabase';
 import { uploadFromUri } from './storageUpload';
-import { toBackendError } from './backendErrors';
+import { toBackendError, logDbError } from './backendErrors';
 import type {
   ContributorAssignment,
   Frequency,
@@ -12,7 +12,7 @@ import type {
   PayoutOrder,
 } from '../types/group';
 
-const LOCAL_GROUPS_KEY = 'megasafe:groups:v1';
+const LOCAL_GROUPS_KEY = 'miosusu:groups:v1';
 
 export interface CreateGroupInput {
   userId: string;
@@ -341,10 +341,10 @@ async function fetchApprovedMemberCounts(groupIds: string[]): Promise<Map<string
 
   try {
     const { data, error } = await supabase
-      .from('group_memberships')
+      .from('osusu_group_members')
       .select('group_id')
       .in('group_id', cleaned)
-      .eq('status', 'approved');
+      .eq('is_active', true);
 
     if (error) throw new Error(error.message);
 
@@ -499,18 +499,26 @@ export async function createGroup(input: CreateGroupInput): Promise<{
     // generates server-side invite code, and audits atomically.
     // Direct INSERT is no longer permitted here to prevent bypassing validations.
     const { data: rpcData, error: rpcError } = await supabase.rpc('create_osusu_group', {
-      p_name:                   payload.name,
-      p_description:            payload.description,
-      p_contribution_amount:    payload.contribution_amount,
-      p_frequency:              payload.frequency,
-      p_max_members:            payload.max_members,
-      p_cycle_start_date:       payload.cycle_start_date ?? null,
-      p_total_cycles:           payload.total_cycles ?? null,
-      p_invite_code:            payload.invite_code ?? null,
-      p_join_requires_approval: payload.join_requires_approval ?? false,
+      p_name:               payload.name,
+      p_description:        payload.description,
+      p_contribution_amount: payload.contribution_amount,
+      p_frequency:          payload.frequency,
+      p_max_members:        payload.max_members,
+      p_cycle_start_date:   payload.cycle_start_date ?? null,
+      p_total_cycles:       payload.total_cycles ?? null,
     });
 
-    if (rpcError) throw new Error(rpcError.message);
+    if (rpcError) {
+      logDbError('create_osusu_group RPC', 'osusu_groups', {
+        p_name:                payload.name,
+        p_frequency:           payload.frequency,
+        p_contribution_amount: payload.contribution_amount,
+        p_max_members:         payload.max_members,
+        p_cycle_start_date:    payload.cycle_start_date,
+        p_total_cycles:        payload.total_cycles,
+      }, rpcError);
+      throw new Error(rpcError.message);
+    }
 
     const result = rpcData as Record<string, unknown>;
     if (result?.error) throw new Error(result.error as string);
@@ -524,7 +532,10 @@ export async function createGroup(input: CreateGroupInput): Promise<{
       .eq('id', groupId)
       .single();
 
-    if (fetchError) throw new Error(fetchError.message);
+    if (fetchError) {
+      logDbError('fetch osusu_groups after create', 'osusu_groups', { id: groupId }, fetchError);
+      throw new Error(fetchError.message);
+    }
 
     let normalized = normalizeGroupRow(groupRow);
     if (!normalized) throw new Error('Group was created but could not be loaded back.');
@@ -566,10 +577,10 @@ export async function listGroupsForUser(userId: string): Promise<{
           .eq('created_by', userId)
           .order('created_at', { ascending: false }),
         supabase
-          .from('group_memberships')
+          .from('osusu_group_members')
           .select('group_id')
-          .eq('member_id', userId)
-          .eq('status', 'approved'),
+          .eq('user_id', userId)
+          .eq('is_active', true),
       ]);
 
       if (createdResponse.error) throw new Error(createdResponse.error.message);
@@ -725,31 +736,31 @@ export async function fetchGroupMembers(groupId: string): Promise<{
 
   try {
     const { data, error } = await supabase
-      .from('group_memberships')
-      .select('id,member_id,payout_position,joined_at,created_at')
+      .from('osusu_group_members')
+      .select('id,user_id,payout_position,joined_at')
       .eq('group_id', groupId)
+      .eq('is_active', true)
       .order('joined_at', { ascending: true });
 
     if (error) throw new Error(error.message);
 
     const memberships = (data ?? []) as Array<{
       id: string;
-      member_id: string;
+      user_id: string;
       payout_position: number | null;
-      joined_at: string | null;
-      created_at: string;
+      joined_at: string;
     }>;
 
-    const profiles = await fetchProfilesByIds(memberships.map((member) => member.member_id));
+    const profiles = await fetchProfilesByIds(memberships.map((member) => member.user_id));
 
     return {
       members: memberships.map((member, index) => ({
         id: member.id,
-        userId: member.member_id,
-        displayName: formatProfileName(profiles.get(member.member_id), `Member ${index + 1}`),
-        phone: profiles.get(member.member_id)?.phone ?? null,
+        userId: member.user_id,
+        displayName: formatProfileName(profiles.get(member.user_id), `Member ${index + 1}`),
+        phone: profiles.get(member.user_id)?.phone ?? null,
         payoutPosition: member.payout_position,
-        joinedAt: member.joined_at ?? member.created_at,
+        joinedAt: member.joined_at,
       })),
       error: null,
     };
@@ -766,8 +777,8 @@ export async function fetchGroupContributions(groupId: string): Promise<{
 
   try {
     const { data, error } = await supabase
-      .from('contributions')
-      .select('id,member_id,amount,contribution_period,collection_method,status,created_at,receipt_number')
+      .from('contribution_payments')
+      .select('id,member_id,amount,payment_method,status,created_at,receipt_number,collected_at')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false });
 
@@ -778,8 +789,8 @@ export async function fetchGroupContributions(groupId: string): Promise<{
         id: asText(item.id, createLocalId('contribution')),
         memberId: asText(item.member_id),
         amount: asNumber(item.amount, 0),
-        contributionPeriod: asText(item.contribution_period, 'Current cycle'),
-        collectionMethod: asText(item.collection_method, 'unknown'),
+        contributionPeriod: asText(item.collected_at, asText(item.created_at, 'Current cycle')),
+        collectionMethod: asText(item.payment_method, 'unknown'),
         status: (asText(item.status, 'pending') as GroupContributionSummary['status']),
         createdAt: asText(item.created_at, new Date().toISOString()),
         receiptNumber: typeof item.receipt_number === 'string' ? item.receipt_number : null,
@@ -832,23 +843,23 @@ export async function fetchMemberContributionCoverage(params: {
 
   try {
     const { data, error } = await supabase
-      .from('contributions')
-      .select('contribution_period,created_at')
+      .from('contribution_payments')
+      .select('collected_at,created_at')
       .eq('group_id', params.groupId)
       .eq('member_id', params.memberId)
-      .in('status', ['pending', 'collected', 'verified'])
-      .order('created_at', { ascending: false });
+      .in('status', ['pending', 'submitted', 'approved'])
+      .order('collected_at', { ascending: false });
 
     if (error) throw new Error(error.message);
 
     let latest: { period: string; endDate: string; time: number } | null = null;
     for (const row of (data ?? []) as Array<Record<string, unknown>>) {
-      const period = asText(row.contribution_period);
-      const endDate = parseContributionPeriodEnd(period);
-      if (!endDate) continue;
+      const rawDate = asText(row.collected_at, asText(row.created_at));
+      if (!rawDate) continue;
+      const endDate = rawDate.slice(0, 10);
       const time = new Date(`${endDate}T00:00:00`).getTime();
       if (!Number.isFinite(time)) continue;
-      if (!latest || time > latest.time) latest = { period, endDate, time };
+      if (!latest || time > latest.time) latest = { period: endDate, endDate, time };
     }
 
     if (!latest) return { coverage: empty, error: null };
@@ -948,28 +959,28 @@ export async function fetchGroupContributors(groupId: string): Promise<{
 
   try {
     const { data, error } = await supabase
-      .from('group_memberships')
-      .select('id,member_id,payout_position')
+      .from('osusu_group_members')
+      .select('id,user_id,payout_position')
       .eq('group_id', groupId)
-      .in('status', ['approved', 'pending'])
+      .eq('is_active', true)
       .order('payout_position', { ascending: true, nullsFirst: false });
 
     if (error) throw new Error(error.message);
 
     const memberships = (data ?? []) as Array<{
       id: string;
-      member_id: string;
+      user_id: string;
       payout_position: number | null;
     }>;
 
-    const profiles = await fetchProfilesByIds(memberships.map((m) => m.member_id));
+    const profiles = await fetchProfilesByIds(memberships.map((m) => m.user_id));
 
     return {
       contributors: memberships.map((m, index) => ({
         membershipId: m.id,
-        userId: m.member_id,
-        displayName: formatProfileName(profiles.get(m.member_id), `Contributor ${index + 1}`),
-        phone: profiles.get(m.member_id)?.phone ?? null,
+        userId: m.user_id,
+        displayName: formatProfileName(profiles.get(m.user_id), `Contributor ${index + 1}`),
+        phone: profiles.get(m.user_id)?.phone ?? null,
         payoutPosition: m.payout_position,
       })),
       error: null,
@@ -994,16 +1005,13 @@ export interface RecordCollectorContributionInput {
   memberId: string;
   collectorUserId: string;
   amount: number;
-  contributionPeriod: string;
-  collectionMethod: 'cash_collected' | 'orange_money' | 'afrimoney' | 'qmoney';
+  /** UUID from payment_periods table — required by the live DB RPC */
+  periodId: string;
+  /** Display label for the period (UI only, not sent to DB) */
+  contributionPeriod?: string;
+  collectionMethod: 'cash' | 'orange_money' | 'afrimoney' | 'qmoney' | 'bank_transfer';
   notes?: string;
-  memberSecretCode: string;
-  collectorSecretCode?: string;
-  paymentDate?: string;
-  fromDate?: string;
-  toDate?: string;
-  durationCount?: number;
-  durationUnit?: 'day' | 'week' | 'month';
+  idempotencyKey?: string;
 }
 
 /**
@@ -1029,22 +1037,14 @@ export async function recordCollectorContribution(input: RecordCollectorContribu
   }
 
   try {
-    const { data, error } = await supabase.rpc('record_physical_collection', {
-      p_group_id:           input.groupId,
-      p_member_id:          input.memberId,
-      p_amount:             input.amount,
-      p_period:             input.contributionPeriod,
-      p_from_date:          input.fromDate ?? null,
-      p_to_date:            input.toDate ?? null,
-      p_method:             input.collectionMethod,
-      p_member_secret_code: input.memberSecretCode,
-      p_collector_passcode: input.collectorSecretCode ?? null,
-      // Generate a real idempotency key so duplicate submissions on network
-      // retry don't create double financial records. Previously null, which
-      // defeated the RPC's duplicate-detection entirely (null != null in SQL).
-      p_idempotency_key:    crypto.randomUUID(),
-      p_notes:              input.notes ?? null,
-      p_cycle_number:       1,
+    const { data, error } = await supabase.rpc('initiate_group_payment', {
+      p_group_id:        input.groupId,
+      p_member_id:       input.memberId,
+      p_period_id:       input.periodId,
+      p_amount:          input.amount,
+      p_payment_method:  input.collectionMethod,
+      p_idempotency_key: input.idempotencyKey ?? crypto.randomUUID(),
+      p_notes:           input.notes ?? null,
     });
 
     if (error) throw error;
@@ -1079,9 +1079,10 @@ export async function fetchActiveCollectorsForGroup(groupId: string): Promise<{
 
   try {
     const { data, error } = await supabase
-      .from('collectors')
+      .from('collector_group_view')
       .select('id,profile_id,collector_display_name,collector_photo_url,is_active,created_at')
       .eq('group_id', groupId)
+      .eq('assignment_status', 'active')
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
@@ -1123,9 +1124,10 @@ export async function fetchActiveCollectorForGroup(groupId: string): Promise<{
 
   try {
     const { data, error } = await supabase
-      .from('collectors')
+      .from('collector_group_view')
       .select('id,profile_id,collector_display_name,collector_photo_url,is_active')
       .eq('group_id', groupId)
+      .eq('assignment_status', 'active')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -1159,6 +1161,41 @@ export async function fetchActiveCollectorForGroup(groupId: string): Promise<{
     };
   } catch (error) {
     return { collector: null, error: toBackendError(error, 'Fetch active collector') };
+  }
+}
+
+/**
+ * Returns the UUID of the earliest open payment period for a group.
+ * The collector screen needs this to pass p_period_id to initiate_group_payment.
+ */
+export async function fetchActivePeriodForGroup(groupId: string): Promise<{
+  periodId: string | null;
+  periodLabel: string | null;
+  error: Error | null;
+}> {
+  if (!supabaseConfigured) return { periodId: null, periodLabel: null, error: null };
+
+  try {
+    const { data, error } = await supabase
+      .from('payment_periods')
+      .select('id,period_label,period_start,period_end,status')
+      .eq('group_id', groupId)
+      .eq('status', 'open')
+      .order('period_start', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) return { periodId: null, periodLabel: null, error: null };
+
+    const row = data as Record<string, unknown>;
+    return {
+      periodId:    row.id as string,
+      periodLabel: (row.period_label as string) ?? null,
+      error:       null,
+    };
+  } catch (err) {
+    return { periodId: null, periodLabel: null, error: toBackendError(err, 'Fetch active period') };
   }
 }
 

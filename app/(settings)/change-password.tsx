@@ -20,10 +20,19 @@ import {
   X,
   AlertTriangle,
 } from 'lucide-react-native';
+import { useAuthStore } from '../../src/store/authStore';
+import { supabase, supabaseConfigured } from '../../src/services/supabase';
+import { useAppDataStore } from '../../src/store/appDataStore';
+import { darkColors, lightColors } from '../../src/theme/colors';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuthStore();
+  const { preferences } = useAppDataStore();
+  const isDark = preferences.darkMode;
+  const C = isDark ? darkColors : lightColors;
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -45,7 +54,7 @@ export default function ChangePasswordScreen() {
 
   const passwordRequirements = validatePassword(newPassword);
   const isPasswordValid = Object.values(passwordRequirements).every(Boolean);
-  const canSubmit = currentPassword && newPassword && confirmPassword && 
+  const canSubmit = currentPassword && newPassword && confirmPassword &&
                    newPassword === confirmPassword && isPasswordValid;
 
   const handleChangePassword = async () => {
@@ -55,22 +64,40 @@ export default function ChangePasswordScreen() {
     }
 
     setIsLoading(true);
-    
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      if (!supabaseConfigured || !user?.email) {
+        Alert.alert('Error', 'Password changes require an active email session.');
+        return;
+      }
+
+      const { error: reauthError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+      if (reauthError) {
+        Alert.alert('Error', 'Current password is incorrect.');
+        return;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) {
+        Alert.alert('Error', 'Failed to change password. Please try again.');
+        return;
+      }
+      await supabase.auth.signOut({ scope: 'global' });
+
       Alert.alert(
         'Success',
         'Your password has been changed successfully.',
         [
           {
             text: 'OK',
-            onPress: () => router.back(),
+            onPress: () => router.replace('/(auth)/login'),
           },
         ]
       );
-      
+
       // Clear form
       setCurrentPassword('');
       setNewPassword('');
@@ -89,42 +116,43 @@ export default function ChangePasswordScreen() {
       ) : (
         <X size={16} color="#EF4444" />
       )}
-      <Text style={[styles.requirementText, met && styles.requirementMet]}>
+      <Text style={[styles.requirementText, { color: C.textSub }, met && styles.requirementMet]}>
         {text}
       </Text>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bg }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: C.bg }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color="#F97316" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Change Password</Text>
+        <Text style={[styles.headerTitle, { color: C.text }]}>Change Password</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Security Notice */}
-        <View style={styles.noticeCard}>
+        <View style={[styles.noticeCard, { backgroundColor: isDark ? '#431407' : '#FFF7ED' }]}>
           <AlertTriangle size={24} color="#F97316" />
-          <Text style={styles.noticeTitle}>Security Notice</Text>
-          <Text style={styles.noticeText}>
+          <Text style={[styles.noticeTitle, { color: C.text }]}>Security Notice</Text>
+          <Text style={[styles.noticeText, { color: C.textSub }]}>
             For your security, please choose a strong password that you haven't used before.
           </Text>
         </View>
 
         {/* Current Password */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Current Password</Text>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Current Password</Text>
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: C.inputBg, color: C.text }]}
               value={currentPassword}
               onChangeText={setCurrentPassword}
               placeholder="Enter current password"
+              placeholderTextColor={C.textMuted}
               secureTextEntry={!showCurrentPassword}
               autoCapitalize="none"
             />
@@ -133,9 +161,9 @@ export default function ChangePasswordScreen() {
               onPress={() => setShowCurrentPassword(!showCurrentPassword)}
             >
               {showCurrentPassword ? (
-                <EyeOff size={20} color="#6B7280" />
+                <EyeOff size={20} color={C.textMuted} />
               ) : (
-                <Eye size={20} color="#6B7280" />
+                <Eye size={20} color={C.textMuted} />
               )}
             </TouchableOpacity>
           </View>
@@ -143,13 +171,14 @@ export default function ChangePasswordScreen() {
 
         {/* New Password */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>New Password</Text>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>New Password</Text>
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: C.inputBg, color: C.text }]}
               value={newPassword}
               onChangeText={setNewPassword}
               placeholder="Enter new password"
+              placeholderTextColor={C.textMuted}
               secureTextEntry={!showNewPassword}
               autoCapitalize="none"
             />
@@ -158,16 +187,16 @@ export default function ChangePasswordScreen() {
               onPress={() => setShowNewPassword(!showNewPassword)}
             >
               {showNewPassword ? (
-                <EyeOff size={20} color="#6B7280" />
+                <EyeOff size={20} color={C.textMuted} />
               ) : (
-                <Eye size={20} color="#6B7280" />
+                <Eye size={20} color={C.textMuted} />
               )}
             </TouchableOpacity>
           </View>
 
           {/* Password Requirements */}
-          <View style={styles.requirementsCard}>
-            <Text style={styles.requirementsTitle}>Password Requirements:</Text>
+          <View style={[styles.requirementsCard, { backgroundColor: C.iconBg }]}>
+            <Text style={[styles.requirementsTitle, { color: C.text }]}>Password Requirements:</Text>
             <RequirementItem met={passwordRequirements.length} text="At least 8 characters" />
             <RequirementItem met={passwordRequirements.uppercase} text="One uppercase letter" />
             <RequirementItem met={passwordRequirements.lowercase} text="One lowercase letter" />
@@ -178,13 +207,14 @@ export default function ChangePasswordScreen() {
 
         {/* Confirm Password */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Confirm New Password</Text>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Confirm New Password</Text>
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: C.inputBg, color: C.text }]}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               placeholder="Confirm new password"
+              placeholderTextColor={C.textMuted}
               secureTextEntry={!showConfirmPassword}
               autoCapitalize="none"
             />
@@ -193,15 +223,15 @@ export default function ChangePasswordScreen() {
               onPress={() => setShowConfirmPassword(!showConfirmPassword)}
             >
               {showConfirmPassword ? (
-                <EyeOff size={20} color="#6B7280" />
+                <EyeOff size={20} color={C.textMuted} />
               ) : (
-                <Eye size={20} color="#6B7280" />
+                <Eye size={20} color={C.textMuted} />
               )}
             </TouchableOpacity>
           </View>
 
           {/* Password Match Indicator */}
-          {confirmPassword && (
+          {confirmPassword ? (
             <View style={styles.matchIndicator}>
               {newPassword === confirmPassword ? (
                 <>
@@ -215,7 +245,7 @@ export default function ChangePasswordScreen() {
                 </>
               )}
             </View>
-          )}
+          ) : null}
         </View>
 
         {/* Change Password Button */}
@@ -224,7 +254,7 @@ export default function ChangePasswordScreen() {
             styles.changeButton,
             canSubmit && !isLoading ? styles.changeButtonActive : styles.changeButtonDisabled,
           ]}
-          onPress={handleChangePassword}
+          onPress={() => void handleChangePassword()}
           disabled={!canSubmit || isLoading}
         >
           <Text style={[
@@ -236,19 +266,19 @@ export default function ChangePasswordScreen() {
         </TouchableOpacity>
 
         {/* Additional Security Tips */}
-        <View style={styles.tipsSection}>
-          <Text style={styles.tipsTitle}>Security Tips</Text>
+        <View style={[styles.tipsSection, { backgroundColor: C.iconBg }]}>
+          <Text style={[styles.tipsTitle, { color: C.text }]}>Security Tips</Text>
           <View style={styles.tipItem}>
-            <Lock size={16} color="#6B7280" />
-            <Text style={styles.tipText}>Use a unique password for MegaSafe</Text>
+            <Lock size={16} color={C.textMuted} />
+            <Text style={[styles.tipText, { color: C.textSub }]}>Use a unique password for Mi Osusu</Text>
           </View>
           <View style={styles.tipItem}>
-            <Lock size={16} color="#6B7280" />
-            <Text style={styles.tipText}>Avoid using personal information</Text>
+            <Lock size={16} color={C.textMuted} />
+            <Text style={[styles.tipText, { color: C.textSub }]}>Avoid using personal information</Text>
           </View>
           <View style={styles.tipItem}>
-            <Lock size={16} color="#6B7280" />
-            <Text style={styles.tipText}>Consider using a password manager</Text>
+            <Lock size={16} color={C.textMuted} />
+            <Text style={[styles.tipText, { color: C.textSub }]}>Consider using a password manager</Text>
           </View>
         </View>
       </ScrollView>
@@ -259,7 +289,6 @@ export default function ChangePasswordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -267,7 +296,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
   },
   backButton: {
     marginRight: 16,
@@ -275,7 +303,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1E2B5A',
     flex: 1,
   },
   headerSpacer: {
@@ -285,7 +312,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   noticeCard: {
-    backgroundColor: '#FFF7ED',
     margin: 24,
     borderRadius: 16,
     padding: 20,
@@ -294,13 +320,11 @@ const styles = StyleSheet.create({
   noticeTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1E2B5A',
     marginTop: 12,
     marginBottom: 8,
   },
   noticeText: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -311,19 +335,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1E2B5A',
     marginBottom: 12,
   },
   inputContainer: {
     position: 'relative',
   },
   input: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#1E2B5A',
     paddingRight: 50,
   },
   eyeIcon: {
@@ -332,7 +353,6 @@ const styles = StyleSheet.create({
     top: 14,
   },
   requirementsCard: {
-    backgroundColor: '#F3F4F6',
     padding: 16,
     borderRadius: 12,
     marginTop: 12,
@@ -340,7 +360,6 @@ const styles = StyleSheet.create({
   requirementsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1E2B5A',
     marginBottom: 12,
   },
   requirementItem: {
@@ -350,7 +369,6 @@ const styles = StyleSheet.create({
   },
   requirementText: {
     fontSize: 14,
-    color: '#6B7280',
     marginLeft: 8,
   },
   requirementMet: {
@@ -397,13 +415,11 @@ const styles = StyleSheet.create({
   tipsSection: {
     margin: 24,
     padding: 16,
-    backgroundColor: '#F3F4F6',
     borderRadius: 12,
   },
   tipsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1E2B5A',
     marginBottom: 12,
   },
   tipItem: {
@@ -413,9 +429,7 @@ const styles = StyleSheet.create({
   },
   tipText: {
     fontSize: 14,
-    color: '#6B7280',
     marginLeft: 8,
     flex: 1,
   },
 });
-

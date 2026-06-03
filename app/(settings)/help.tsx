@@ -14,7 +14,6 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowLeft,
-  HelpCircle,
   Phone,
   Mail,
   MessageCircle,
@@ -26,10 +25,15 @@ import {
   Users,
   Send,
 } from 'lucide-react-native';
+import { useAppDataStore } from '../../src/store/appDataStore';
+import { darkColors, lightColors } from '../../src/theme/colors';
 
 export default function HelpCenterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isDark = useAppDataStore((s) => s.preferences.darkMode);
+  const C = isDark ? darkColors : lightColors;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [contactForm, setContactForm] = useState({
@@ -43,11 +47,11 @@ export default function HelpCenterScreen() {
     {
       id: 'getting-started',
       title: 'Getting Started',
-      icon: <Users size={20} color="#6B7280" />,
+      icon: <Users size={20} color={C.textSub} />,
       items: [
         {
           question: 'How do I create an account?',
-          answer: 'To create an account, download the MegaSafe app and tap on "Sign Up". Follow the registration process by providing your personal information and verifying your identity.',
+          answer: 'To create an account, download the Mi Osusu app and tap on "Sign Up". Follow the registration process by providing your personal information and verifying your identity.',
         },
         {
           question: 'What documents do I need for KYC?',
@@ -62,7 +66,7 @@ export default function HelpCenterScreen() {
     {
       id: 'account-security',
       title: 'Account & Security',
-      icon: <Shield size={20} color="#6B7280" />,
+      icon: <Shield size={20} color={C.textSub} />,
       items: [
         {
           question: 'How do I enable two-factor authentication?',
@@ -81,7 +85,7 @@ export default function HelpCenterScreen() {
     {
       id: 'transactions',
       title: 'Transactions & Payments',
-      icon: <CreditCard size={20} color="#6B7280" />,
+      icon: <CreditCard size={20} color={C.textSub} />,
       items: [
         {
           question: 'How do I add funds to my account?',
@@ -100,7 +104,7 @@ export default function HelpCenterScreen() {
     {
       id: 'groups',
       title: 'Groups & Collections',
-      icon: <Users size={20} color="#6B7280" />,
+      icon: <Users size={20} color={C.textSub} />,
       items: [
         {
           question: 'How do I create a collection group?',
@@ -118,20 +122,21 @@ export default function HelpCenterScreen() {
     },
   ];
 
+  // Phase 6: Updated phone number to +23288938326
   const contactOptions = [
     {
       title: 'Phone Support',
       description: 'Mon-Fri, 9AM-6PM GMT',
       icon: <Phone size={20} color="#F97316" />,
-      action: '+232 76 123 456',
-      onPress: () => Linking.openURL('tel:+23276123456'),
+      action: '+232 88 938 326',
+      onPress: () => void Linking.openURL('tel:+23288938326'),
     },
     {
       title: 'Email Support',
       description: 'We respond within 24 hours',
       icon: <Mail size={20} color="#F97316" />,
-      action: 'support@megasafe.sl',
-      onPress: () => Linking.openURL('mailto:support@megasafe.sl'),
+      action: 'support@miosusu.sl',
+      onPress: () => void Linking.openURL('mailto:support@miosusu.sl'),
     },
     {
       title: 'Live Chat',
@@ -151,7 +156,6 @@ export default function HelpCenterScreen() {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
-    
     Alert.alert(
       'Support Request Sent',
       'We\'ll get back to you within 24 hours.',
@@ -166,32 +170,36 @@ export default function HelpCenterScreen() {
     );
   };
 
-  const filteredCategories = helpCategories.map(category => ({
-    ...category,
-    items: category.items.filter(item =>
-      item.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.answer.toLowerCase().includes(searchQuery.toLowerCase())
-    ),
-  })).filter(category => category.items.length > 0 || !searchQuery);
+  const filteredCategories = helpCategories
+    .map((category) => ({
+      ...category,
+      items: category.items.filter(
+        (item) =>
+          item.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.answer.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    }))
+    .filter((category) => category.items.length > 0 || !searchQuery);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bg }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: C.bg }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color="#F97316" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Help Center</Text>
+        <Text style={[styles.headerTitle, { color: C.text }]}>Help Center</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <Search size={20} color="#6B7280" />
+        <View style={[styles.searchContainer, { backgroundColor: C.card }]}>
+          <Search size={20} color={C.textSub} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: C.text }]}
             placeholder="Search for help..."
+            placeholderTextColor={C.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -199,36 +207,44 @@ export default function HelpCenterScreen() {
 
         {/* Quick Contact Options */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact Support</Text>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Contact Support</Text>
           {contactOptions.map((option, index) => (
-            <TouchableOpacity key={index} style={styles.contactCard} onPress={option.onPress}>
-              <View style={styles.contactIcon}>{option.icon}</View>
+            <TouchableOpacity
+              key={index}
+              style={[styles.contactCard, { backgroundColor: C.card }]}
+              onPress={option.onPress}
+            >
+              <View style={[styles.contactIcon, { backgroundColor: isDark ? '#431407' : '#FFF7ED' }]}>
+                {option.icon}
+              </View>
               <View style={styles.contactContent}>
-                <Text style={styles.contactTitle}>{option.title}</Text>
-                <Text style={styles.contactDescription}>{option.description}</Text>
+                <Text style={[styles.contactTitle, { color: C.text }]}>{option.title}</Text>
+                <Text style={[styles.contactDescription, { color: C.textSub }]}>{option.description}</Text>
                 <Text style={styles.contactAction}>{option.action}</Text>
               </View>
-              <ChevronRight size={20} color="#9CA3AF" />
+              <ChevronRight size={20} color={C.textMuted} />
             </TouchableOpacity>
           ))}
         </View>
 
         {/* FAQ Categories */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Frequently Asked Questions</Text>
           {filteredCategories.map((category) => (
-            <View key={category.id} style={styles.categoryCard}>
+            <View key={category.id} style={[styles.categoryCard, { backgroundColor: C.card }]}>
               <TouchableOpacity
                 style={styles.categoryHeader}
                 onPress={() => toggleCategory(category.id)}
               >
                 <View style={styles.categoryLeft}>
-                  <View style={styles.categoryIcon}>{category.icon}</View>
-                  <Text style={styles.categoryTitle}>{category.title}</Text>
+                  <View style={[styles.categoryIcon, { backgroundColor: C.iconBg }]}>
+                    {category.icon}
+                  </View>
+                  <Text style={[styles.categoryTitle, { color: C.text }]}>{category.title}</Text>
                 </View>
                 <ChevronRight
                   size={20}
-                  color="#6B7280"
+                  color={C.textSub}
                   style={[
                     styles.chevron,
                     expandedCategory === category.id && styles.chevronRotated,
@@ -237,11 +253,17 @@ export default function HelpCenterScreen() {
               </TouchableOpacity>
 
               {expandedCategory === category.id && (
-                <View style={styles.categoryContent}>
+                <View style={[styles.categoryContent, { borderTopColor: C.border }]}>
                   {category.items.map((item, index) => (
-                    <View key={index} style={styles.faqItem}>
-                      <Text style={styles.faqQuestion}>{item.question}</Text>
-                      <Text style={styles.faqAnswer}>{item.answer}</Text>
+                    <View
+                      key={index}
+                      style={[
+                        styles.faqItem,
+                        index < category.items.length - 1 && { borderBottomWidth: 1, borderBottomColor: C.border },
+                      ]}
+                    >
+                      <Text style={[styles.faqQuestion, { color: C.text }]}>{item.question}</Text>
+                      <Text style={[styles.faqAnswer, { color: C.textSub }]}>{item.answer}</Text>
                     </View>
                   ))}
                 </View>
@@ -252,47 +274,51 @@ export default function HelpCenterScreen() {
 
         {/* Contact Form */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Send us a Message</Text>
-          <View style={styles.formCard}>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Send us a Message</Text>
+          <View style={[styles.formCard, { backgroundColor: C.card }]}>
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Name *</Text>
+              <Text style={[styles.inputLabel, { color: C.text }]}>Name *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: C.inputBg, color: C.text }]}
                 value={contactForm.name}
                 onChangeText={(text) => setContactForm({ ...contactForm, name: text })}
                 placeholder="Your full name"
+                placeholderTextColor={C.textMuted}
               />
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email *</Text>
+              <Text style={[styles.inputLabel, { color: C.text }]}>Email *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: C.inputBg, color: C.text }]}
                 value={contactForm.email}
                 onChangeText={(text) => setContactForm({ ...contactForm, email: text })}
                 placeholder="your.email@example.com"
+                placeholderTextColor={C.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Subject</Text>
+              <Text style={[styles.inputLabel, { color: C.text }]}>Subject</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: C.inputBg, color: C.text }]}
                 value={contactForm.subject}
                 onChangeText={(text) => setContactForm({ ...contactForm, subject: text })}
                 placeholder="How can we help you?"
+                placeholderTextColor={C.textMuted}
               />
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Message *</Text>
+              <Text style={[styles.inputLabel, { color: C.text }]}>Message *</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[styles.input, styles.textArea, { backgroundColor: C.inputBg, color: C.text }]}
                 value={contactForm.message}
                 onChangeText={(text) => setContactForm({ ...contactForm, message: text })}
                 placeholder="Describe your issue or question in detail..."
+                placeholderTextColor={C.textMuted}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
@@ -308,26 +334,28 @@ export default function HelpCenterScreen() {
 
         {/* Additional Resources */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Additional Resources</Text>
-          
-          <TouchableOpacity style={styles.resourceCard}>
-            <FileText size={20} color="#6B7280" />
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Additional Resources</Text>
+
+          <TouchableOpacity style={[styles.resourceCard, { backgroundColor: C.card }]}>
+            <FileText size={20} color={C.textSub} />
             <View style={styles.resourceContent}>
-              <Text style={styles.resourceTitle}>User Guide</Text>
-              <Text style={styles.resourceDescription}>Complete guide to using MegaSafe</Text>
+              <Text style={[styles.resourceTitle, { color: C.text }]}>User Guide</Text>
+              <Text style={[styles.resourceDescription, { color: C.textSub }]}>Complete guide to using Mi Osusu</Text>
             </View>
-            <ChevronRight size={20} color="#9CA3AF" />
+            <ChevronRight size={20} color={C.textMuted} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.resourceCard}>
-            <FileText size={20} color="#6B7280" />
+          <TouchableOpacity style={[styles.resourceCard, { backgroundColor: C.card }]}>
+            <FileText size={20} color={C.textSub} />
             <View style={styles.resourceContent}>
-              <Text style={styles.resourceTitle}>Video Tutorials</Text>
-              <Text style={styles.resourceDescription}>Step-by-step video guides</Text>
+              <Text style={[styles.resourceTitle, { color: C.text }]}>Video Tutorials</Text>
+              <Text style={[styles.resourceDescription, { color: C.textSub }]}>Step-by-step video guides</Text>
             </View>
-            <ChevronRight size={20} color="#9CA3AF" />
+            <ChevronRight size={20} color={C.textMuted} />
           </TouchableOpacity>
         </View>
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -336,7 +364,6 @@ export default function HelpCenterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -344,7 +371,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
   },
   backButton: {
     marginRight: 16,
@@ -352,7 +378,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1E2B5A',
     flex: 1,
   },
   headerSpacer: {
@@ -364,7 +389,6 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     margin: 24,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -374,7 +398,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
-    color: '#1E2B5A',
   },
   section: {
     marginHorizontal: 24,
@@ -383,13 +406,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1E2B5A',
     marginBottom: 16,
   },
   contactCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -398,7 +419,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFF7ED',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -409,12 +429,10 @@ const styles = StyleSheet.create({
   contactTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1E2B5A',
     marginBottom: 4,
   },
   contactDescription: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 2,
   },
   contactAction: {
@@ -423,7 +441,6 @@ const styles = StyleSheet.create({
     color: '#F97316',
   },
   categoryCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     marginBottom: 12,
     overflow: 'hidden',
@@ -443,7 +460,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -451,7 +467,6 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1E2B5A',
   },
   chevron: {
     transform: [{ rotate: '0deg' }],
@@ -462,23 +477,22 @@ const styles = StyleSheet.create({
   categoryContent: {
     paddingHorizontal: 16,
     paddingBottom: 16,
+    borderTopWidth: 1,
+    paddingTop: 8,
   },
   faqItem: {
-    marginBottom: 16,
+    paddingVertical: 12,
   },
   faqQuestion: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1E2B5A',
     marginBottom: 8,
   },
   faqAnswer: {
     fontSize: 14,
-    color: '#6B7280',
     lineHeight: 20,
   },
   formCard: {
-    backgroundColor: '#FFFFFF',
     padding: 20,
     borderRadius: 12,
   },
@@ -488,16 +502,13 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1E2B5A',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#F3F4F6',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#1E2B5A',
   },
   textArea: {
     height: 100,
@@ -510,17 +521,16 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     marginTop: 8,
+    gap: 8,
   },
   submitButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
-    marginLeft: 8,
   },
   resourceCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -532,12 +542,9 @@ const styles = StyleSheet.create({
   resourceTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1E2B5A',
     marginBottom: 4,
   },
   resourceDescription: {
     fontSize: 14,
-    color: '#6B7280',
   },
 });
-

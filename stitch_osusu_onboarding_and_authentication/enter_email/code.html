@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Osusu - Enter Email</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#690005",
+                        "secondary": "#ffcb8d",
+                        "tertiary": "#c6c6c7",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "on-secondary": "#462a00",
+                        "on-surface-variant": "#c6c5d4",
+                        "on-primary-container": "#7887ec",
+                        "tertiary-container": "#262828",
+                        "on-primary": "#102287",
+                        "surface-tint": "#bbc3ff",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "inverse-surface": "#dfe2ea",
+                        "outline-variant": "#454652",
+                        "outline": "#8f8f9e",
+                        "surface-bright": "#353940",
+                        "surface-container": "#1c2026",
+                        "background": "#0f1419",
+                        "surface-dim": "#0f1419",
+                        "primary-fixed-dim": "#bbc3ff",
+                        "on-tertiary-container": "#8e8f8f",
+                        "surface-container-low": "#181c21",
+                        "secondary-container": "#ffa504",
+                        "on-surface": "#dfe2ea",
+                        "surface-variant": "#31353b",
+                        "inverse-on-surface": "#2c3137",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#ffddb7",
+                        "on-secondary-container": "#684100",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "surface": "#0f1419",
+                        "on-tertiary": "#2f3131",
+                        "on-secondary-fixed": "#2a1700",
+                        "surface-container-highest": "#31353b",
+                        "surface-container-high": "#262a30",
+                        "surface-container-lowest": "#0a0f14",
+                        "on-primary-fixed": "#000d5f",
+                        "inverse-primary": "#4655b7",
+                        "primary-container": "#00157f",
+                        "tertiary-fixed": "#e2e2e2",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#2d3c9e",
+                        "primary": "#bbc3ff",
+                        "secondary-fixed-dim": "#ffb95c",
+                        "on-background": "#dfe2ea",
+                        "error": "#ffb4ab",
+                        "primary-fixed": "#dfe0ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "40px",
+                        "xs": "4px",
+                        "base": "8px",
+                        "md": "24px",
+                        "margin-mobile": "20px",
+                        "sm": "12px",
+                        "margin-desktop": "120px",
+                        "xl": "64px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-sm": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom Orange for Primary Button per request */
+        .btn-primary-orange {
+            background-color: #FFA500;
+            color: #FFFFFF;
+            transition: all 0.2s ease-in-out;
+        }
+        .btn-primary-orange:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(255, 165, 0, 0.2);
+        }
+        .btn-primary-orange:active {
+            transform: scale(0.95);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-white antialiased font-body-md text-primary-container selection:bg-secondary-container">
+<!-- TopAppBar Shell Mapping -->
+<header class="flex justify-between items-center px-margin-mobile h-16 w-full fixed top-0 bg-white z-50">
+<div class="flex items-center gap-base">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-container transition-colors active:scale-95">
+<span class="material-symbols-outlined text-primary-container" data-icon="arrow_back">arrow_back</span>
+</button>
+</div>
+<div class="flex items-center">
+<span class="text-headline-md font-headline-md font-bold text-secondary-container">Osusu</span>
+</div>
+<div class="w-10"></div> <!-- Spacer for symmetry -->
+</header>
+<!-- Main Canvas -->
+<main class="min-h-screen flex flex-col pt-24 px-margin-mobile md:px-0 md:items-center">
+<div class="w-full max-w-md">
+<!-- Header Section -->
+<section class="mb-lg">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary-container mb-xs">
+                    What's your email?
+                </h1>
+<p class="font-body-md text-body-md text-outline">
+                    We'll send you a verification code.
+                </p>
+</section>
+<!-- Form Section -->
+<section class="space-y-md">
+<div class="relative group">
+<label class="sr-only" for="email">Email Address</label>
+<div class="relative flex items-center">
+<input class="w-full h-16 px-md bg-white border-[1.5px] border-primary-container/20 rounded-xl font-body-md text-primary-container placeholder:text-outline/50 focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all duration-200" id="email" name="email" placeholder="amina.chen@example.com" type="email" value="amina.chen@example.com"/>
+<!-- Live Validation Checkmark (Green) -->
+<div class="absolute right-md flex items-center">
+<span class="material-symbols-outlined text-[#10B981] font-bold" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+</div>
+<!-- Primary Button -->
+<button class="w-full h-14 rounded-xl btn-primary-orange font-headline-md flex items-center justify-center gap-base">
+                    Verify Email
+                </button>
+</section>
+<!-- Decorative/Contextual Element: Minimalist Digital Vault aesthetic -->
+<section class="mt-xl flex flex-col items-center">
+<div class="w-full p-md rounded-2xl bg-surface-container-lowest border border-outline-variant/10 shadow-[0_10px_30px_rgba(0,21,127,0.03)] overflow-hidden relative">
+<div class="flex items-center gap-md relative z-10">
+<div class="w-12 h-12 rounded-full bg-secondary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-fixed" data-icon="lock">lock</span>
+</div>
+<div>
+<p class="font-label-md text-primary-container font-semibold">End-to-End Encryption</p>
+<p class="font-label-sm text-outline">Your personal data is protected by bank-grade security protocols.</p>
+</div>
+</div>
+<!-- Subtle pattern background -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-container opacity-[0.02] -mr-16 -mt-16 rounded-full"></div>
+</div>
+</section>
+<!-- Support Footer -->
+<footer class="mt-lg text-center">
+<p class="font-label-sm text-outline">
+                    Having trouble? <a class="text-primary-container font-bold hover:underline" href="#">Contact Support</a>
+</p>
+</footer>
+</div>
+</main>
+<!-- Side Graphic for Desktop screens to maintain premium aesthetic -->
+<aside class="hidden lg:flex fixed top-0 right-0 h-full w-[40%] bg-primary-container items-center justify-center p-xl overflow-hidden">
+<div class="relative z-10 text-white max-w-sm">
+<h2 class="font-headline-xl text-headline-xl mb-md leading-tight">Secure &amp; Modern Contributions.</h2>
+<p class="font-body-lg text-primary/80 mb-lg">Osusu brings the tradition of communal savings into the digital age with transparency and security.</p>
+<!-- Floating Card Effect -->
+<div class="backdrop-blur-xl bg-white/10 border border-white/20 p-md rounded-2xl shadow-2xl">
+<div class="flex items-center gap-base mb-base">
+<div class="w-8 h-8 rounded-full bg-[#FFA500]"></div>
+<div class="h-2 w-24 bg-white/20 rounded-full"></div>
+</div>
+<div class="space-y-sm">
+<div class="h-3 w-full bg-white/10 rounded-full"></div>
+<div class="h-3 w-2/3 bg-white/10 rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Abstract Brand Shape -->
+<div class="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#FFA500] rounded-full mix-blend-soft-light opacity-20 filter blur-3xl"></div>
+<div class="absolute top-[-10%] left-[-10%] w-[400px] h-[400px] bg-[#bbc3ff] rounded-full mix-blend-overlay opacity-10 filter blur-3xl"></div>
+</aside>
+<!-- Navigation Shell Hidden for Transactional Screen per Destination Rule -->
+</body></html>

@@ -9,6 +9,25 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Build / coverage output (regenerable — never commit)
+coverage/
+.next/
+apps/*/.next/
+out/
+
+# Backend tooling caches (Supabase backend is canonical; Convex is unused)
+.convex/
+convex/
+
+# AI / agent tooling caches (machine-local, not project source)
+.agents/
+.codex/
+.claude/skills/
+
+# Test runner scratch
+testsprite_tests/tmp/
+*.log
+
 # Native
 .kotlin/
 *.orig.*
@@ -30,8 +49,11 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# local env files — IMPORTANT: .env must be listed explicitly
+# .env*.local matches .env.local etc but NOT bare `.env`
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo

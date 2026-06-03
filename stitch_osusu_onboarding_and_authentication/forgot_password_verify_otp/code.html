@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Glassmorphism utility */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-variant": "#31353b",
+                        "on-secondary-fixed": "#2a1700",
+                        "on-error-container": "#ffdad6",
+                        "inverse-primary": "#4655b7",
+                        "background": "#0f1419",
+                        "surface-container-lowest": "#0a0f14",
+                        "surface-dim": "#0f1419",
+                        "on-surface-variant": "#c6c5d4",
+                        "inverse-surface": "#dfe2ea",
+                        "tertiary-fixed": "#e2e2e2",
+                        "primary-fixed": "#dfe0ff",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "on-background": "#dfe2ea",
+                        "outline-variant": "#454652",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "tertiary-container": "#262828",
+                        "error": "#ffb4ab",
+                        "secondary-container": "#ffa504",
+                        "surface-container-high": "#262a30",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "on-tertiary-container": "#8e8f8f",
+                        "on-secondary-container": "#684100",
+                        "on-primary-container": "#7887ec",
+                        "surface-bright": "#353940",
+                        "on-primary": "#102287",
+                        "on-secondary": "#462a00",
+                        "secondary-fixed-dim": "#ffb95c",
+                        "primary-fixed-dim": "#bbc3ff",
+                        "surface-container": "#1c2026",
+                        "on-surface": "#dfe2ea",
+                        "surface": "#0f1419",
+                        "on-primary-fixed-variant": "#2d3c9e",
+                        "primary": "#bbc3ff",
+                        "primary-container": "#00157f",
+                        "secondary": "#ffcb8d",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#ffddb7",
+                        "inverse-on-surface": "#2c3137",
+                        "surface-container-highest": "#31353b",
+                        "outline": "#8f8f9e",
+                        "tertiary": "#c6c6c7",
+                        "surface-tint": "#bbc3ff",
+                        "on-error": "#690005",
+                        "surface-container-low": "#181c21",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "on-tertiary": "#2f3131",
+                        "on-primary-fixed": "#000d5f"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "24px",
+                        "sm": "12px",
+                        "margin-mobile": "20px",
+                        "lg": "40px",
+                        "xs": "4px",
+                        "base": "8px",
+                        "margin-desktop": "120px",
+                        "gutter": "16px",
+                        "xl": "64px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col items-center">
+<!-- Top App Bar (Shared Component) -->
+<header class="flex items-center w-full px-margin-mobile h-16 fixed top-0 z-50 bg-background">
+<div class="flex items-center gap-4">
+<button class="hover:opacity-80 transition-opacity active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-primary text-headline-md">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-secondary">Osusu</h1>
+</div>
+</header>
+<main class="w-full max-w-[480px] px-margin-mobile pt-32 flex flex-col items-center">
+<!-- Illustration Section -->
+<div class="mb-lg flex flex-col items-center">
+<div class="relative w-48 h-48 mb-md rounded-full bg-primary-container flex items-center justify-center overflow-hidden">
+<img alt="Security Illustration" class="w-32 h-32 object-contain" data-alt="A sophisticated 3D digital illustration of a metallic vault lock integrated with a digital envelope, floating in a dark imperial blue space. The style is ultra-modern with glassmorphism textures and soft glowing orange highlights. The lighting is dramatic and high-contrast, casting a soft ambient glow that reflects the premium corporate fintech aesthetic. The scene communicates trust and high-level security for a financial application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDF1ZZfTbPZ8SvvF15HkqyFVFK3TuEGkjcJx9PLSQdPTvRb_VhCPTyY5NESgBg9g5hFACcbXZkQXQdxKU8IT5ZfKitaVktyK6iUQirB-Z8mqbzeS_yCzAyYJgkOJ8i5k08HcTXQRSiPHYQ7fRsjoCe536_dqwEImodCGMgkuXWN7XPDO22JnHcRxpVsVasaEI4yEHfkCVI7j34L6gv-Zv_aChalaTrPgAL5RzZS0nsaNFD-YEgZrnpslxwmCPvcz-m3tOgYr_YI3DM"/>
+<!-- Tonal layering circle effects -->
+<div class="absolute inset-0 border border-white/10 rounded-full"></div>
+</div>
+<div class="text-center space-y-sm">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-on-surface">Verify your email</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-[320px]">
+                    We've sent a 6-digit verification code to <span class="text-secondary font-semibold">sa***@example.com</span>
+</p>
+</div>
+</div>
+<!-- OTP Input Section -->
+<form class="w-full space-y-xl">
+<div class="flex justify-between gap-2 md:gap-gutter">
+<!-- 6 Individual Digit Inputs -->
+<input class="w-12 h-16 md:w-14 md:h-16 text-center font-headline-md text-headline-md bg-white/10 border border-white/20 rounded-xl focus:border-secondary-container focus:ring-1 focus:ring-secondary-container transition-all text-on-surface outline-none" maxlength="1" type="text" value="4"/>
+<input class="w-12 h-16 md:w-14 md:h-16 text-center font-headline-md text-headline-md bg-white/10 border border-white/20 rounded-xl focus:border-secondary-container focus:ring-1 focus:ring-secondary-container transition-all text-on-surface outline-none" maxlength="1" type="text" value="8"/>
+<input class="w-12 h-16 md:w-14 md:h-16 text-center font-headline-md text-headline-md bg-white/10 border border-white/20 rounded-xl focus:border-secondary-container focus:ring-1 focus:ring-secondary-container transition-all text-on-surface outline-none" maxlength="1" placeholder="·" type="text"/>
+<input class="w-12 h-16 md:w-14 md:h-16 text-center font-headline-md text-headline-md bg-white/10 border border-white/20 rounded-xl focus:border-secondary-container focus:ring-1 focus:ring-secondary-container transition-all text-on-surface outline-none" maxlength="1" placeholder="·" type="text"/>
+<input class="w-12 h-16 md:w-14 md:h-16 text-center font-headline-md text-headline-md bg-white/10 border border-white/20 rounded-xl focus:border-secondary-container focus:ring-1 focus:ring-secondary-container transition-all text-on-surface outline-none" maxlength="1" placeholder="·" type="text"/>
+<input class="w-12 h-16 md:w-14 md:h-16 text-center font-headline-md text-headline-md bg-white/10 border border-white/20 rounded-xl focus:border-secondary-container focus:ring-1 focus:ring-secondary-container transition-all text-on-surface outline-none" maxlength="1" placeholder="·" type="text"/>
+</div>
+<!-- Countdown Timer -->
+<div class="flex flex-col items-center gap-xs">
+<p class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1">
+                    Didn't receive the code?
+                </p>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[18px]">schedule</span>
+<span class="font-label-sm text-label-sm text-secondary">Resend code in 0:59</span>
+</div>
+</div>
+<!-- Action Button -->
+<div class="pt-md">
+<button class="w-full bg-secondary-container text-on-secondary-container py-4 rounded-xl font-headline-md text-headline-md hover:opacity-90 active:scale-[0.98] transition-all shadow-[0_10px_30px_rgba(255,165,0,0.2)]" type="submit">
+                    Verify &amp; Continue
+                </button>
+</div>
+</form>
+<!-- Help Link -->
+<div class="mt-lg">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-secondary transition-colors underline underline-offset-4" href="#">
+                Try another way
+            </a>
+</div>
+</main>
+<!-- Background Decorative Elements (Glassmorphism & Tonal Layering) -->
+<div class="fixed top-[-10%] right-[-10%] w-[400px] h-[400px] bg-primary-container/20 blur-[100px] rounded-full -z-10"></div>
+<div class="fixed bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-secondary-container/10 blur-[80px] rounded-full -z-10"></div>
+</body></html>

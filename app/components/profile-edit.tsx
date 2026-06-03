@@ -11,18 +11,38 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { ArrowLeft, Save } from 'lucide-react-native';
-import { useAuthStore } from '../../stores/authStore';
-import { useAppDataStore } from '../../stores/appDataStore';
-import { upsertBasicProfile } from '../../lib/profileService';
-import { getCredentialDisplayName, normalizeProfileName } from '../../lib/profileName';
+import { useAuthStore } from '../../src/store/authStore';
+import { useAppDataStore } from '../../src/store/appDataStore';
+import { darkColors, lightColors } from '../../src/theme/colors';
+import { upsertBasicProfile } from '../../src/services/profileService';
+import { getCredentialDisplayName, normalizeProfileName } from '../../src/utils/profileName';
 
 const emailPattern = /^\S+@\S+\.\S+$/;
+
+async function confirmSensitiveProfileChange(): Promise<boolean> {
+  const hasHardware = await LocalAuthentication.hasHardwareAsync();
+  const enrolled = await LocalAuthentication.isEnrolledAsync();
+  if (!hasHardware || !enrolled) {
+    Alert.alert('Verification required', 'Set up device biometrics or passcode before changing profile contact details.');
+    return false;
+  }
+
+  const result = await LocalAuthentication.authenticateAsync({
+    promptMessage: 'Confirm profile change',
+    cancelLabel: 'Cancel',
+    disableDeviceFallback: false,
+  });
+  return result.success;
+}
 
 export default function ProfileEditScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { profile, updateProfile, linkPhoneNumber } = useAppDataStore();
+  const { profile, updateProfile, linkPhoneNumber, preferences } = useAppDataStore();
+  const isDark = preferences.darkMode;
+  const C = isDark ? darkColors : lightColors;
 
   const initialName = useMemo(() => {
     const normalized = normalizeProfileName(profile.fullName);
@@ -47,6 +67,13 @@ export default function ProfileEditScreen() {
     if (trimmedEmail && !emailPattern.test(trimmedEmail)) {
       Alert.alert('Invalid details', 'Enter a valid email address.');
       return;
+    }
+    if (
+      trimmedEmail !== (profile.email ?? '').trim().toLowerCase() ||
+      trimmedPhone !== (profile.phone ?? '').trim()
+    ) {
+      const verified = await confirmSensitiveProfileChange();
+      if (!verified) return;
     }
 
     setSaving(true);
@@ -91,44 +118,44 @@ export default function ProfileEditScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bg }]}>
+      <View style={[styles.header, { backgroundColor: C.bg }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
           <ArrowLeft size={22} color="#F97316" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <Text style={[styles.headerTitle, { color: C.text }]}>Edit Profile</Text>
         <View style={styles.iconButton} />
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.card}>
-          <Text style={styles.label}>Full Name</Text>
+        <View style={[styles.card, { backgroundColor: C.bgSoft }]}>
+          <Text style={[styles.label, { color: C.textSub }]}>Full Name</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: C.inputBg, color: C.text }]}
             value={fullName}
             onChangeText={setFullName}
             placeholder="Your full name"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={C.textMuted}
           />
 
-          <Text style={styles.label}>Email</Text>
+          <Text style={[styles.label, { color: C.textSub }]}>Email</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: C.inputBg, color: C.text }]}
             value={email}
             onChangeText={setEmail}
             placeholder="name@example.com"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={C.textMuted}
             autoCapitalize="none"
             keyboardType="email-address"
           />
 
-          <Text style={styles.label}>Phone Number</Text>
+          <Text style={[styles.label, { color: C.textSub }]}>Phone Number</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: C.inputBg, color: C.text }]}
             value={phone}
             onChangeText={setPhone}
             placeholder="+23276123456"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={C.textMuted}
             keyboardType="phone-pad"
           />
 
@@ -151,7 +178,6 @@ export default function ProfileEditScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -159,7 +185,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
   },
   iconButton: {
     width: 32,
@@ -178,23 +203,19 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   card: {
-    backgroundColor: '#F8FAFC',
     borderRadius: 16,
     padding: 16,
   },
   label: {
-    color: '#6B7280',
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 6,
     marginTop: 8,
   },
   input: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    color: '#1F2937',
     fontSize: 15,
   },
   saveButton: {

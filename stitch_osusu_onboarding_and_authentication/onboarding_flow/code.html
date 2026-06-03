@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Osusu Onboarding</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom hide scrollbar for the carousel */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#690005",
+                        "secondary": "#ffcb8d",
+                        "tertiary": "#c6c6c7",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "on-secondary": "#462a00",
+                        "on-surface-variant": "#c6c5d4",
+                        "on-primary-container": "#7887ec",
+                        "tertiary-container": "#262828",
+                        "on-primary": "#102287",
+                        "surface-tint": "#bbc3ff",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "inverse-surface": "#dfe2ea",
+                        "outline-variant": "#454652",
+                        "outline": "#8f8f9e",
+                        "surface-bright": "#353940",
+                        "surface-container": "#1c2026",
+                        "background": "#0f1419",
+                        "surface-dim": "#0f1419",
+                        "primary-fixed-dim": "#bbc3ff",
+                        "on-tertiary-container": "#8e8f8f",
+                        "surface-container-low": "#181c21",
+                        "secondary-container": "#ffa504",
+                        "on-surface": "#dfe2ea",
+                        "surface-variant": "#31353b",
+                        "inverse-on-surface": "#2c3137",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#ffddb7",
+                        "on-secondary-container": "#684100",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "surface": "#0f1419",
+                        "on-tertiary": "#2f3131",
+                        "on-secondary-fixed": "#2a1700",
+                        "surface-container-highest": "#31353b",
+                        "surface-container-high": "#262a30",
+                        "surface-container-lowest": "#0a0f14",
+                        "on-primary-fixed": "#000d5f",
+                        "inverse-primary": "#4655b7",
+                        "primary-container": "#00157f",
+                        "tertiary-fixed": "#e2e2e2",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#2d3c9e",
+                        "primary": "#bbc3ff",
+                        "secondary-fixed-dim": "#ffb95c",
+                        "on-background": "#dfe2ea",
+                        "error": "#ffb4ab",
+                        "primary-fixed": "#dfe0ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "40px",
+                        "xs": "4px",
+                        "base": "8px",
+                        "md": "24px",
+                        "margin-mobile": "20px",
+                        "sm": "12px",
+                        "margin-desktop": "120px",
+                        "xl": "64px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-sm": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-primary-container text-on-surface font-body-md overflow-hidden">
+<!-- Onboarding Container -->
+<div class="relative min-h-screen w-full flex flex-col items-center justify-between py-xl px-margin-mobile">
+<!-- Header Controls -->
+<div class="w-full max-w-lg flex justify-between items-center z-20">
+<h1 class="font-headline-md text-headline-md text-secondary">Osusu</h1>
+<button class="font-label-md text-label-md text-on-primary-container bg-white/10 px-md py-xs rounded-full hover:opacity-80 transition-opacity">
+                Skip
+            </button>
+</div>
+<!-- Carousel Content (Mobile-first vertical stack) -->
+<div class="relative w-full max-w-screen-xl flex-1 flex flex-col md:flex-row items-center justify-center gap-xl mt-lg">
+<!-- Left Side: Phone Mockup (Stationary for impact) -->
+<div class="relative w-[280px] h-[580px] md:w-[320px] md:h-[650px] bg-background border-[8px] border-surface-variant rounded-[3rem] shadow-2xl flex flex-col overflow-hidden group">
+<!-- Phone Inner Content -->
+<div class="flex-1 flex flex-col p-base gap-base">
+<!-- App Interface Simulation -->
+<div class="w-full h-8 flex justify-between items-center px-base">
+<span class="text-[10px] text-on-surface-variant">9:41</span>
+<div class="flex gap-1">
+<span class="material-symbols-outlined text-[12px] text-on-surface-variant">signal_cellular_alt</span>
+<span class="material-symbols-outlined text-[12px] text-on-surface-variant">wifi</span>
+<span class="material-symbols-outlined text-[12px] text-on-surface-variant">battery_full</span>
+</div>
+</div>
+<!-- App Header -->
+<div class="px-base py-xs flex items-center justify-between">
+<div class="w-8 h-8 rounded-full bg-secondary-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-base">person</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+</div>
+<!-- App Content: Contribution Card -->
+<div class="mt-base p-md bg-surface-container rounded-xl border border-outline-variant/30 space-y-base">
+<div class="flex justify-between items-center">
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Global Circle</p>
+<span class="px-2 py-0.5 rounded bg-secondary-container/10 text-secondary text-[10px] font-bold">ACTIVE</span>
+</div>
+<p class="font-headline-md text-headline-md text-secondary">₦1,250,000</p>
+<div class="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+<div class="bg-secondary-container h-full w-3/4"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant">Next payout: Oct 24th</p>
+</div>
+<!-- Floating Exchange Rate Card (Integrated) -->
+<div class="mt-md p-base bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl flex items-center justify-between shadow-xl">
+<div class="flex items-center gap-base">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-base">currency_exchange</span>
+</div>
+<div>
+<p class="text-[10px] text-white/60">Live Rate</p>
+<p class="font-label-md text-label-md text-white">USD / NGN</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-bold text-secondary text-sm">₦1,645.20</p>
+<p class="text-[8px] text-emerald-400">+0.45%</p>
+</div>
+</div>
+<!-- App Bottom Nav -->
+<div class="mt-auto h-12 flex justify-around items-center border-t border-outline-variant/30">
+<span class="material-symbols-outlined text-secondary text-lg">grid_view</span>
+<span class="material-symbols-outlined text-on-surface-variant text-lg">groups</span>
+<span class="material-symbols-outlined text-on-surface-variant text-lg">account_balance_wallet</span>
+<span class="material-symbols-outlined text-on-surface-variant text-lg">person</span>
+</div>
+</div>
+<!-- Abstract Overlay Graphics -->
+<div class="absolute inset-0 pointer-events-none bg-gradient-to-tr from-secondary/10 to-transparent"></div>
+</div>
+<!-- Right Side: Content Carousel -->
+<div class="w-full md:w-1/2 flex flex-col items-center md:items-start text-center md:text-left gap-xl">
+<!-- Carousel Wrapper (Simulating JS carousel with horizontal scroll) -->
+<div class="flex no-scrollbar overflow-x-auto snap-x snap-mandatory w-full max-w-md">
+<!-- Slide 1 -->
+<div class="min-w-full snap-center space-y-md">
+<h2 class="font-headline-xl text-headline-lg-mobile md:text-headline-xl text-white">Save with Community</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-sm">Join verified savings circles and harness the power of social finance to achieve your goals faster than ever.</p>
+</div>
+</div>
+<!-- Feature Highlighters (Progressive display) -->
+<div class="grid grid-cols-2 gap-md w-full max-w-sm">
+<div class="flex items-start gap-base">
+<span class="material-symbols-outlined text-secondary">verified</span>
+<span class="font-label-md text-label-md text-white/80">Verified Circles</span>
+</div>
+<div class="flex items-start gap-base">
+<span class="material-symbols-outlined text-secondary">trending_up</span>
+<span class="font-label-md text-label-md text-white/80">Compound Returns</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer: Pagination & CTA -->
+<div class="w-full max-w-lg flex flex-col items-center gap-lg z-20">
+<!-- Pagination Dots -->
+<div class="flex gap-3">
+<div class="w-8 h-2 rounded-full bg-secondary-container"></div>
+<div class="w-2 h-2 rounded-full bg-white/20"></div>
+<div class="w-2 h-2 rounded-full bg-white/20"></div>
+<div class="w-2 h-2 rounded-full bg-white/20"></div>
+<div class="w-2 h-2 rounded-full bg-white/20"></div>
+<div class="w-2 h-2 rounded-full bg-white/20"></div>
+</div>
+<!-- Action Button -->
+<button class="w-full bg-secondary-container hover:bg-secondary-container/90 text-on-secondary-container font-headline-md py-4 rounded-xl shadow-[0_10px_30px_rgba(255,165,0,0.3)] transition-all active:scale-95 flex items-center justify-center gap-base">
+                Next Step
+                <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<!-- Background Atmospheric Elements -->
+<div class="absolute top-0 right-0 w-[500px] h-[500px] bg-secondary/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4"></div>
+<div class="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/20 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/4"></div>
+</div>
+<!-- Hidden Slide Previews for Concept Reference (Standard List Replacement) -->
+<!-- Slide 2 Template: Automated Contributions -->
+<div class="hidden">
+<h2 class="font-headline-xl">Automated Contributions</h2>
+<p>Set and forget. We handle your daily, weekly, or monthly deductions seamlessly.</p>
+</div>
+<!-- Slide 3 Template: Safe & Secure -->
+<div class="hidden">
+<h2 class="font-headline-xl">Safe &amp; Secure</h2>
+<p>Bank-grade encryption and multi-sig security protocols protecting every naira.</p>
+</div>
+<!-- Slide 4 Template: Transparent Fees -->
+<div class="hidden">
+<h2 class="font-headline-xl">Transparent Fees</h2>
+<p>No hidden charges. See exactly where every penny of your contribution goes.</p>
+</div>
+<!-- Slide 5 Template: Flexible Withdrawals -->
+<div class="hidden">
+<h2 class="font-headline-xl">Flexible Withdrawals</h2>
+<p>Life happens. Access your share of the pool with zero stress when your turn comes.</p>
+</div>
+<!-- Slide 6 Template: Grow Your Wealth -->
+<div class="hidden">
+<h2 class="font-headline-xl">Grow Your Wealth</h2>
+<p>Unlock credit facilities and investment opportunities based on your contribution score.</p>
+</div>
+</body></html>

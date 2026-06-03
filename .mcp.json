@@ -1,0 +1,30 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=upuhjekwmtjnjksqikdu"
+    },
+    "convex": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "convex@latest",
+        "mcp",
+        "start"
+      ],
+      "env": {
+        "CONVEX_DEPLOYMENT": "standing-albatross-753"
+      }
+    },
+    "TestSprite": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@testsprite/testsprite-mcp@latest"
+      ],
+      "env": {
+        "API_KEY": "${TESTSPRITE_API_KEY}"
+      }
+    }
+  }
+}

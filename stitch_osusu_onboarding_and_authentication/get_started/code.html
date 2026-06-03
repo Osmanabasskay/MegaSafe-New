@@ -1,0 +1,166 @@
+<html class="dark"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-error": "#690005",
+            "secondary": "#ffcb8d",
+            "tertiary": "#c6c6c7",
+            "on-secondary-fixed-variant": "#653e00",
+            "on-tertiary-fixed": "#1a1c1c",
+            "on-secondary": "#462a00",
+            "on-surface-variant": "#c6c5d4",
+            "on-primary-container": "#7887ec",
+            "tertiary-container": "#262828",
+            "on-primary": "#102287",
+            "surface-tint": "#bbc3ff",
+            "tertiary-fixed-dim": "#c6c6c7",
+            "inverse-surface": "#dfe2ea",
+            "outline-variant": "#454652",
+            "outline": "#8f8f9e",
+            "surface-bright": "#353940",
+            "surface-container": "#1c2026",
+            "background": "#0f1419",
+            "surface-dim": "#0f1419",
+            "primary-fixed-dim": "#bbc3ff",
+            "on-tertiary-container": "#8e8f8f",
+            "surface-container-low": "#181c21",
+            "secondary-container": "#ffa504",
+            "on-surface": "#dfe2ea",
+            "surface-variant": "#31353b",
+            "inverse-on-surface": "#2c3137",
+            "error-container": "#93000a",
+            "secondary-fixed": "#ffddb7",
+            "on-secondary-container": "#684100",
+            "on-tertiary-fixed-variant": "#454747",
+            "surface": "#0f1419",
+            "on-tertiary": "#2f3131",
+            "on-secondary-fixed": "#2a1700",
+            "surface-container-highest": "#31353b",
+            "surface-container-high": "#262a30",
+            "surface-container-lowest": "#0a0f14",
+            "on-primary-fixed": "#000d5f",
+            "inverse-primary": "#4655b7",
+            "primary-container": "#00157f",
+            "tertiary-fixed": "#e2e2e2",
+            "on-error-container": "#ffdad6",
+            "on-primary-fixed-variant": "#2d3c9e",
+            "primary": "#bbc3ff",
+            "secondary-fixed-dim": "#ffb95c",
+            "on-background": "#dfe2ea",
+            "error": "#ffb4ab",
+            "primary-fixed": "#dfe0ff"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "lg": "40px",
+            "xs": "4px",
+            "base": "8px",
+            "md": "24px",
+            "margin-mobile": "20px",
+            "sm": "12px",
+            "margin-desktop": "120px",
+            "xl": "64px",
+            "gutter": "16px"
+          },
+          "fontFamily": {
+            "headline-md": ["Hanken Grotesk"],
+            "label-sm": ["Inter"],
+            "headline-lg": ["Hanken Grotesk"],
+            "headline-lg-mobile": ["Hanken Grotesk"],
+            "headline-xl": ["Hanken Grotesk"],
+            "body-md": ["Inter"],
+            "label-md": ["Inter"],
+            "body-lg": ["Inter"]
+          },
+          "fontSize": {
+            "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+            "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+            "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+            "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+            "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+            "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+            "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+            "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-primary-container text-on-primary font-body-md overflow-hidden">
+<div class="relative flex flex-col h-screen w-full max-w-md mx-auto md:max-w-4xl md:flex-row items-stretch justify-center">
+<!-- Background Decor -->
+<div class="absolute inset-0 overflow-hidden pointer-events-none">
+<div class="absolute -top-[10%] -left-[10%] w-[60%] h-[60%] bg-secondary/10 rounded-full blur-[120px]"></div>
+<div class="absolute -bottom-[10%] -right-[10%] w-[60%] h-[60%] bg-primary/10 rounded-full blur-[120px]"></div>
+</div>
+<!-- Top Half: Brand Identity (Mobile) / Left Side (Desktop) -->
+<div class="flex-1 flex flex-col items-center justify-center p-md text-center z-10">
+<div class="mb-base p-6 rounded-full glass-effect shadow-2xl">
+<span class="material-symbols-outlined text-secondary text-[64px]" style="font-variation-settings: 'FILL' 1;">
+          account_balance
+        </span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-primary-container tracking-tighter mb-xs">
+        Osusu
+      </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-[280px] opacity-80">
+        Empowering communal wealth through modern digital contributions.
+      </p>
+</div>
+<!-- Bottom Half: Actions (Mobile) / Right Side (Desktop) -->
+<div class="flex-1 flex flex-col justify-end md:justify-center p-margin-mobile md:p-xl gap-base z-10 mb-xl md:mb-0">
+<div class="w-full space-y-md md:space-y-lg">
+<!-- Sign Up Primary Action -->
+<button class="w-full bg-secondary-container text-on-secondary-container font-headline-md text-headline-md py-4 rounded-xl shadow-[0_10px_30px_rgba(255,165,4,0.3)] active:scale-95 transition-all duration-150">
+          Sign Up
+        </button>
+<!-- Log In Secondary Action -->
+<button class="w-full bg-transparent border-2 border-white/20 text-on-surface font-headline-md text-headline-md py-4 rounded-xl hover:bg-white/5 active:scale-95 transition-all duration-150">
+          Log In
+        </button>
+<!-- Terms & Privacy -->
+<div class="text-center mt-base">
+<p class="font-label-sm text-label-sm text-on-surface-variant/60">
+            By continuing, you agree to our <br class="hidden md:block"/>
+<span class="text-secondary cursor-pointer hover:underline">Terms of Service</span> and 
+            <span class="text-secondary cursor-pointer hover:underline">Privacy Policy</span>
+</p>
+</div>
+</div>
+</div>
+<!-- Visual Anchor / Hero Image (Desktop Only) -->
+<div class="hidden md:flex absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none opacity-20">
+<img class="w-full h-full object-cover" data-alt="A futuristic and sophisticated 3D visualization of interconnected digital nodes and geometric floating cubes in a deep imperial blue void. The lighting is focused and dramatic, highlighting sharp edges with a subtle orange glow that matches the brand identity. The composition is clean and minimalist, conveying a sense of secure financial infrastructure and communal technology. High-contrast surfaces and soft atmospheric fog create a premium, fintech aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbDITHxB3YLTnE962hUBsnbj8nTiPq1oazxdiicsuwOEtYvY0_jK07-iXSuEXmD0E9ePtNZLikU2TGSZZ4HNogaX6KDCi8AwhHrBwrRtb_B8XgQgdFTH57vGzxqD5Rgk4xVwwDEdfX4_TwJn29z77b2Gih_rJxZ-GYeIu_MqpxInVV4GndCMMYqSo-ddrECA8dkBTY5gdhPs9zgg6pwq_q24DCBB7TW8hE9h2_73HbP7UR_-wxYS6Sf3ImoNa4jp38Ci_HDGz31Ps"/>
+</div>
+</div>
+</body></html>

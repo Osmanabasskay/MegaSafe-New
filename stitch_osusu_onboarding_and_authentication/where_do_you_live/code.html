@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Residency &amp; Nationality | Osusu</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#690005",
+                        "secondary": "#ffcb8d",
+                        "tertiary": "#c6c6c7",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "on-secondary": "#462a00",
+                        "on-surface-variant": "#c6c5d4",
+                        "on-primary-container": "#7887ec",
+                        "tertiary-container": "#262828",
+                        "on-primary": "#102287",
+                        "surface-tint": "#bbc3ff",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "inverse-surface": "#dfe2ea",
+                        "outline-variant": "#454652",
+                        "outline": "#8f8f9e",
+                        "surface-bright": "#353940",
+                        "surface-container": "#1c2026",
+                        "background": "#0f1419",
+                        "surface-dim": "#0f1419",
+                        "primary-fixed-dim": "#bbc3ff",
+                        "on-tertiary-container": "#8e8f8f",
+                        "surface-container-low": "#181c21",
+                        "secondary-container": "#ffa504",
+                        "on-surface": "#dfe2ea",
+                        "surface-variant": "#31353b",
+                        "inverse-on-surface": "#2c3137",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#ffddb7",
+                        "on-secondary-container": "#684100",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "surface": "#0f1419",
+                        "on-tertiary": "#2f3131",
+                        "on-secondary-fixed": "#2a1700",
+                        "surface-container-highest": "#31353b",
+                        "surface-container-high": "#262a30",
+                        "surface-container-lowest": "#0a0f14",
+                        "on-primary-fixed": "#000d5f",
+                        "inverse-primary": "#4655b7",
+                        "primary-container": "#00157f",
+                        "tertiary-fixed": "#e2e2e2",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#2d3c9e",
+                        "primary": "#bbc3ff",
+                        "secondary-fixed-dim": "#ffb95c",
+                        "on-background": "#dfe2ea",
+                        "error": "#ffb4ab",
+                        "primary-fixed": "#dfe0ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "40px",
+                        "xs": "4px",
+                        "base": "8px",
+                        "md": "24px",
+                        "margin-mobile": "20px",
+                        "sm": "12px",
+                        "margin-desktop": "120px",
+                        "xl": "64px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-sm": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FFFFFF;
+        }
+        .form-shadow {
+            box-shadow: 0 10px 30px rgba(0, 21, 127, 0.05);
+        }
+        .focus-ring:focus-within {
+            border-color: #00157f !important;
+            border-width: 1.5px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen flex flex-col items-center">
+<!-- TopAppBar Section -->
+<header class="flex justify-between items-center px-margin-mobile h-16 w-full bg-white fixed top-0 z-50">
+<div class="flex items-center gap-base">
+<button class="hover:opacity-80 transition-opacity p-2 -ml-2">
+<span class="material-symbols-outlined text-primary-container" data-icon="arrow_back">arrow_back</span>
+</button>
+<span class="text-headline-md font-headline-md font-bold text-primary-container">Osusu</span>
+</div>
+<div class="w-10"></div> <!-- Spacer for balance -->
+</header>
+<!-- Main Canvas -->
+<main class="w-full max-w-lg mt-16 px-margin-mobile flex-1 flex flex-col pt-lg">
+<!-- Hero Illustration / Visual Context -->
+<div class="mb-lg rounded-xl overflow-hidden aspect-[16/9] relative form-shadow">
+<img alt="World map" class="w-full h-full object-cover" data-alt="A clean, minimalist digital map of the world rendered in a sophisticated glassmorphism style. The map features subtle, glowing nodes connecting major global hubs, with a color palette of deep imperial blue and crisp whites. The lighting is soft and high-key, creating a professional and secure fintech atmosphere. The overall mood is one of global connectivity and digital trust." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-tGhdsRkAuCN6DLKb5qI5z-I497q9eNO7h9MT4TRWsFcRBupjz8T-TqEB4As9uLn2b7mJHJrbRxb3UmVVzIC36cfeM_O4E5zaUZJ8nQGb1Th6FxCDC_7vSWei3d9AMMHsktC016e02MNpPvVNq4TtA1hBXBdAkTkudJhGDiRu9K5GN4BGqhFI3WbV8klAmZZGP-ZkGD_mG5LLWs7FAE4hcNKRFWLoMHyPMQdUurX5i60oA-84AbcdJukfL_d5N3OblLmSqavgpK4"/>
+<div class="absolute inset-0 bg-gradient-to-t from-primary-container/20 to-transparent"></div>
+</div>
+<!-- Page Header -->
+<section class="mb-md">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary-container mb-xs md:font-headline-lg md:text-headline-lg">
+                Residency &amp; Nationality
+            </h1>
+<p class="font-body-md text-body-md text-outline">
+                To ensure compliance with financial regulations, please confirm your primary location and citizenship.
+            </p>
+</section>
+<!-- Form Section -->
+<div class="space-y-md">
+<!-- Country of Residence Selector -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-md text-label-md text-primary-container ml-1">Country of Residence</label>
+<div class="relative group focus-ring border-[1.5px] border-outline-variant/30 rounded-xl bg-white transition-all">
+<div class="flex items-center px-md py-4 cursor-pointer">
+<div class="w-6 h-6 flex items-center justify-center mr-sm">
+<img alt="Nigeria Flag" class="w-6 h-4 object-cover rounded-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiV9X3hFyuLyd_XhcEDBKDEn07WO9M8Gs_ZTJsL8rBAJEbKplrMDTegDALWk1jXKHa8xERkVJqCE6MKMwOT6s5fnantmjaIhIH2PeEWweElexA00Zrscz-eCS6QOYA72nB_HGj_lZ2ZGiSWp20_5rHjWs5GEgTZgRLu33VSCfR0Ta2yTWR4djH65nXPNzrJFEOWiZ-DsB8VsNMUmapk8_Yw3fhzfX3XqSo6o8JwrtMRDy7QMZ5CeZ6FlAFqlu6zaK6as1fx7qCVLg"/>
+</div>
+<span class="flex-1 font-body-md text-body-md text-on-surface-variant/80">Nigeria</span>
+<span class="material-symbols-outlined text-outline" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Nationality Selector -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-md text-label-md text-primary-container ml-1">Nationality</label>
+<div class="relative group focus-ring border-[1.5px] border-outline-variant/30 rounded-xl bg-white transition-all">
+<div class="flex items-center px-md py-4 cursor-pointer">
+<div class="w-6 h-6 flex items-center justify-center mr-sm">
+<img alt="Nigeria Flag" class="w-6 h-4 object-cover rounded-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaAPrtsTuE5wJExjymF-bF3xSL1BuNSzzCtXtjJ4sSXhC3lrN7wF54L5otmuB10jt5eXy5BbE6RiTva4iQbu6mzvQ-2s9ApETLdLKWNje5oQOQx9bgTIJ9PpUAO28f1FhTSwyfYMwLKvm8Iz_uSMYlgwfyFpuThStkAqNGWlHne_4oK6H3raZ4ltUunAgF2prF2Yd2lB367NWhLUd4nQ6NkR38r_N6mwerR7A8ruvd87Fi09gqNjaBmhvBazWNpo0Gc-qLNZ1ANKw"/>
+</div>
+<input class="flex-1 bg-transparent border-none focus:ring-0 p-0 font-body-md text-body-md text-on-surface-variant/80 placeholder:text-outline-variant" placeholder="Search Nationality..." type="text" value="Nigerian"/>
+<span class="material-symbols-outlined text-outline" data-icon="search">search</span>
+</div>
+</div>
+</div>
+<!-- Informational Chip -->
+<div class="p-base bg-secondary/10 rounded-lg flex items-start gap-sm border border-secondary/20">
+<span class="material-symbols-outlined text-on-secondary-container text-[20px] mt-0.5" data-icon="info">info</span>
+<p class="font-label-sm text-label-sm text-on-secondary-container">
+                    Your residency determines the specific Osusu pools and contribution limits available to you in your region.
+                </p>
+</div>
+</div>
+<!-- Sticky Bottom Action (Responsive) -->
+<div class="mt-xl mb-lg">
+<button class="w-full h-14 bg-secondary-container text-white font-label-md text-label-md font-bold rounded-xl shadow-lg active:scale-[0.98] transition-transform flex items-center justify-center gap-base">
+                Continue
+                <span class="material-symbols-outlined text-[20px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<p class="text-center mt-md font-label-sm text-label-sm text-outline">
+                Step 2 of 5: Personal Details
+            </p>
+</div>
+</main>
+<!-- Decorative Element for Premium Feel -->
+<div class="fixed bottom-0 right-0 w-64 h-64 opacity-[0.03] pointer-events-none">
+<svg viewbox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+<path d="M47.5,-58.2C61.4,-49.1,72.4,-34.5,77.3,-18.2C82.2,-1.9,81,16.2,73.5,31.7C66.1,47.2,52.3,60.1,36.5,67.6C20.7,75.1,2.8,77.3,-15.7,73.6C-34.2,69.9,-53.4,60.3,-64.5,45.1C-75.7,29.9,-78.9,9.1,-74.6,-9.3C-70.3,-27.7,-58.5,-43.7,-43.8,-52.6C-29.2,-61.5,-11.6,-63.3,3.7,-67.7C19.1,-72.1,33.5,-67.2,47.5,-58.2Z" fill="#00157f" transform="translate(100 100)"></path>
+</svg>
+</div>
+</body></html>

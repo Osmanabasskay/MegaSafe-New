@@ -11,24 +11,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   ArrowLeft,
-  Bell,
   Calendar,
   Check,
   DollarSign,
   Info,
   ShieldAlert,
   Trash2,
-  Users,
 } from 'lucide-react-native';
-import { useAppDataStore, type NotificationType } from '../../stores/appDataStore';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { useAppDataStore, type NotificationType } from '../../src/store/appDataStore';
+import { darkColors, lightColors } from '../../src/theme/colors';
 
 type NotificationFilter = 'all' | 'unread' | NotificationType;
 
 const iconByType: Record<NotificationType, React.ReactNode> = {
   collection_reminder: <Calendar size={18} color="#F59E0B" />,
   payment_received: <DollarSign size={18} color="#10B981" />,
-  group_invite: <Users size={18} color="#F97316" />,
-  join_approved: <Users size={18} color="#10B981" />,
+  group_invite: <FontAwesome name="group" size={18} color="#F97316" />,
+  join_approved: <FontAwesome name="group" size={18} color="#10B981" />,
   dispute_update: <ShieldAlert size={18} color="#EF4444" />,
   payout_scheduled: <Calendar size={18} color="#1D4ED8" />,
   system_alert: <Info size={18} color="#6B7280" />,
@@ -70,7 +70,10 @@ export default function NotificationsScreen() {
     markNotificationRead,
     markAllNotificationsRead,
     removeNotification,
+    preferences,
   } = useAppDataStore();
+  const isDark = preferences.darkMode;
+  const C = isDark ? darkColors : lightColors;
 
   const unreadCount = useMemo(
     () => notifications.filter((item) => !item.read).length,
@@ -110,13 +113,13 @@ export default function NotificationsScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bg }]}>
+      <View style={[styles.header, { backgroundColor: C.bg }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
           <ArrowLeft size={24} color="#F97316" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.title}>Notifications</Text>
+          <Text style={[styles.title, { color: C.text }]}>Notifications</Text>
           {unreadCount > 0 ? (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{Math.min(unreadCount, 99)}</Text>
@@ -128,14 +131,14 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView horizontal style={styles.filterRow} showsHorizontalScrollIndicator={false}>
+      <ScrollView horizontal style={[styles.filterRow, { backgroundColor: C.bg }]} showsHorizontalScrollIndicator={false}>
         {filterPills.map((pill) => (
           <TouchableOpacity
             key={pill.id}
-            style={[styles.filterPill, filter === pill.id && styles.filterPillActive]}
+            style={[styles.filterPill, { backgroundColor: C.iconBg }, filter === pill.id && styles.filterPillActive]}
             onPress={() => setFilter(pill.id)}
           >
-            <Text style={[styles.filterText, filter === pill.id && styles.filterTextActive]}>
+            <Text style={[styles.filterText, { color: C.textSub }, filter === pill.id && styles.filterTextActive]}>
               {pill.label}
             </Text>
             <View style={styles.filterCount}>
@@ -153,16 +156,16 @@ export default function NotificationsScreen() {
       >
         {filtered.length === 0 ? (
           <View style={styles.emptyWrap}>
-            <Bell size={44} color="#9CA3AF" />
-            <Text style={styles.emptyTitle}>No notifications</Text>
-            <Text style={styles.emptyText}>You are all caught up.</Text>
+            <FontAwesome name="bell-o" size={44} color={C.textMuted} />
+            <Text style={[styles.emptyTitle, { color: C.text }]}>No notifications</Text>
+            <Text style={[styles.emptyText, { color: C.textSub }]}>You are all caught up.</Text>
           </View>
         ) : (
           filtered.map((item) => {
             const icon = iconByType[item.type] ?? <Info size={18} color="#6B7280" />;
             const color = colorByType[item.type] ?? '#6B7280';
             return (
-              <View key={item.id} style={[styles.card, !item.read && styles.unreadCard]}>
+              <View key={item.id} style={[styles.card, { backgroundColor: C.card }, !item.read && styles.unreadCard]}>
                 <TouchableOpacity
                   style={styles.cardMain}
                   onPress={() => handlePress(item.id, item.actionPath)}
@@ -170,11 +173,11 @@ export default function NotificationsScreen() {
                   <View style={[styles.cardIcon, { backgroundColor: `${color}18` }]}>{icon}</View>
                   <View style={styles.cardBody}>
                     <View style={styles.cardTitleRow}>
-                      <Text style={styles.cardTitle}>{item.title}</Text>
+                      <Text style={[styles.cardTitle, { color: C.text }]}>{item.title}</Text>
                       {!item.read ? <View style={styles.unreadDot} /> : null}
                     </View>
-                    <Text style={styles.cardMessage}>{item.message}</Text>
-                    <Text style={styles.cardTime}>{toRelativeTime(item.createdAt)}</Text>
+                    <Text style={[styles.cardMessage, { color: C.textSub }]}>{item.message}</Text>
+                    <Text style={[styles.cardTime, { color: C.textMuted }]}>{toRelativeTime(item.createdAt)}</Text>
                   </View>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => removeNotification(item.id)} style={styles.deleteBtn}>

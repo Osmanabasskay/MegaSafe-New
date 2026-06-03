@@ -1,382 +1,541 @@
-import React, { useState } from 'react';
+/**
+ * Login screen — secured, rate-limited, generic error messages.
+ *
+ * Security model:
+ *  • All errors map to MSG_LOGIN_FAILED — never reveals whether account exists.
+ *  • In-memory rate limiter: 5 attempts / 15 min → progressive lockout.
+ *  • Submit button disabled until inputs pass client-side validation.
+ *  • No raw Supabase messages shown in production.
+ *  • Passwords are never logged anywhere.
+ */
+import React, { useState, useCallback } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   ScrollView,
-  Image,
   StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Session } from '@supabase/supabase-js';
-import { useAuthStore } from '../../stores/authStore';
-import { useAppDataStore } from '../../stores/appDataStore';
-import { supabase, supabaseConfigured } from '../../lib/supabase';
-import { signInWithGoogle } from '../../lib/auth/googleOAuth';
-import { normalizePhoneE164, isValidE164 } from '../../lib/auth/phone';
-import { fetchProfile } from '../../lib/profileService';
+import { ArrowLeft } from 'lucide-react-native';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { useAuthStore } from '../../src/store/authStore';
+import { useAppDataStore } from '../../src/store/appDataStore';
+import { darkColors, lightColors } from '../../src/theme/colors';
+import { supabase, supabaseConfigured } from '../../src/services/supabase';
+import { signInWithGoogle } from '../../src/services/auth/googleOAuth';
+import { normalizeToSierraLeone, isValidSierraLeonePhone } from '../../src/services/auth/phone';
+import { fetchProfile } from '../../src/services/profileService';
 import {
   getCredentialDisplayName,
   isPlaceholderProfileName,
   normalizeProfileName,
-} from '../../lib/profileName';
-import { Shield, Mail, Lock, ChevronRight, Smartphone, Eye, EyeOff } from 'lucide-react-native';
+} from '../../src/utils/profileName';
+import {
+  emailSchema,
+  isValidSierraLeonePhone as isValidPhone,
+} from '../../src/utils/validation/auth';
+import {
+  recordAttempt,
+  recordSuccess,
+  isBlocked,
+  getRemainingSeconds,
+} from '../../src/utils/auth/rateLimiter';
+import {
+  MSG_LOGIN_FAILED,
+  MSG_RATE_LIMITED,
+  MSG_NETWORK,
+  toSafeAuthError,
+} from '../../src/utils/auth/authErrors';
+
+const RATE_KEY = 'login';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { setSession, setUser } = useAuthStore();
-  const { initializeForUser, updateProfile } = useAppDataStore();
-  const [authMode, setAuthMode] = useState<'email' | 'phone'>('email');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
+  const { initializeForUser, updateProfile, preferences } = useAppDataStore();
+  const isDark = preferences.darkMode;
 
-  const clearErrorOnChange = () => {
-    if (errorMessage) setErrorMessage(null);
+  const C = {
+    bg:           isDark ? darkColors.bg : '#FAF7F2',
+    orange:       '#F97316',
+    navy:         '#1E2B5A',
+    text:         isDark ? darkColors.text : '#111827',
+    sub:          isDark ? darkColors.textSub : '#6B7280',
+    inputBg:      'transparent' as const,
+    border:       isDark ? darkColors.borderStrong : lightColors.borderStrong,
+    card:         isDark ? darkColors.card : '#FFFFFF',
+    modeToggleBg: isDark ? darkColors.iconBg : '#F3F4F6',
+    placeholder:  isDark ? darkColors.textMuted : '#9CA3AF',
+    white:        isDark ? darkColors.card : '#FFFFFF',
   };
 
+  const [authMode,       setAuthMode]       = useState<'email' | 'phone'>('email');
+  // Email mode state
+  const [email,          setEmail]          = useState('');
+  const [password,       setPassword]       = useState('');
+  // Phone mode state — user enters only the 8 local digits
+  const [localDigits,    setLocalDigits]    = useState('');
+  // Common state
+  const [isLoading,      setIsLoading]      = useState(false);
+  const [isGoogleLoading,setIsGoogleLoading]= useState(false);
+  const [errorMessage,   setErrorMessage]   = useState<string | null>(null);
+  const [showPassword,   setShowPassword]   = useState(false);
+  const [lockedSecs,     setLockedSecs]     = useState(0);
+
+  const clearError = () => { if (errorMessage) setErrorMessage(null); };
+
+  // ── Input validation (determines if submit is enabled) ───────────────────
+  const emailValid = authMode === 'email'
+    ? emailSchema.safeParse(email.trim()).success && password.length >= 8
+    : false;
+
+  const phoneValid = authMode === 'phone'
+    ? isValidPhone(normalizeToSierraLeone(localDigits))
+    : false;
+
+  const canSubmit = !isLoading && !isGoogleLoading && lockedSecs === 0
+    && (authMode === 'email' ? emailValid : phoneValid);
+
+  // ── Phone input handler — numeric only, max 8 digits ────────────────────
+  const handlePhoneChange = (text: string) => {
+    const digits = text.replace(/\D/g, '').slice(0, 8);
+    setLocalDigits(digits);
+    clearError();
+  };
+
+  // ── Lockout countdown ticker ─────────────────────────────────────────────
+  const startLockoutTicker = useCallback((initialSecs: number) => {
+    setLockedSecs(initialSecs);
+    const tick = setInterval(() => {
+      setLockedSecs(prev => {
+        if (prev <= 1) { clearInterval(tick); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  // ── Pre-request rate-limit check ─────────────────────────────────────────
+  const checkRateLimit = (): boolean => {
+    if (isBlocked(RATE_KEY)) {
+      const secs = getRemainingSeconds(RATE_KEY);
+      setLockedSecs(secs);
+      setErrorMessage(`${MSG_RATE_LIMITED} (${secs}s)`);
+      startLockoutTicker(secs);
+      return false;
+    }
+    const { blocked, remainingSeconds } = recordAttempt(RATE_KEY);
+    if (blocked) {
+      setErrorMessage(`${MSG_RATE_LIMITED} (${remainingSeconds}s)`);
+      startLockoutTicker(remainingSeconds);
+      return false;
+    }
+    return true;
+  };
+
+  // ── Profile sync after successful auth ───────────────────────────────────
   const syncProfileFromSession = async (session: Session) => {
     initializeForUser(session.user);
-
-    const metadata = (session.user.user_metadata ?? {}) as Record<string, unknown>;
-    const metadataName = normalizeProfileName(
-      (typeof metadata.full_name === 'string' && metadata.full_name) ||
-        (typeof metadata.name === 'string' && metadata.name) ||
-        [metadata.first_name, metadata.last_name]
-          .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    const meta = (session.user.user_metadata ?? {}) as Record<string, unknown>;
+    const metaName = normalizeProfileName(
+      (typeof meta.full_name === 'string' && meta.full_name) ||
+        (typeof meta.name === 'string' && meta.name) ||
+        [meta.first_name, meta.last_name]
+          .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
           .join(' ')
     );
-    const credentialName = getCredentialDisplayName(session.user.email, session.user.phone);
-
+    const credName = getCredentialDisplayName(session.user.email, session.user.phone);
     updateProfile({
-      fullName: !isPlaceholderProfileName(metadataName) ? metadataName : credentialName,
-      email: session.user.email ?? undefined,
-      phone: session.user.phone ?? undefined,
+      fullName: !isPlaceholderProfileName(metaName) ? metaName : credName,
+      email:    session.user.email ?? undefined,
+      phone:    session.user.phone ?? undefined,
     });
-
     const { profile } = await fetchProfile(session.user.id);
     if (!profile) return;
-
     const remoteName = normalizeProfileName(
       [profile.first_name, profile.last_name]
-        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
         .join(' ')
     );
-    const resolvedName = !isPlaceholderProfileName(remoteName)
-      ? remoteName
-      : !isPlaceholderProfileName(metadataName)
-        ? metadataName
-        : credentialName;
-
     updateProfile({
-      fullName: resolvedName,
-      email: profile.email ?? session.user.email ?? undefined,
-      phone: profile.phone ?? session.user.phone ?? undefined,
+      fullName: !isPlaceholderProfileName(remoteName)
+        ? remoteName
+        : !isPlaceholderProfileName(metaName)
+          ? metaName
+          : credName,
+      email:              profile.email ?? session.user.email ?? undefined,
+      phone:              profile.phone ?? session.user.phone ?? undefined,
       verificationStatus: profile.kyc_status === 'approved' ? 'Verified' : 'Pending',
     });
   };
 
+  // ── Email / password login ───────────────────────────────────────────────
   const handleEmailLogin = async () => {
     setErrorMessage(null);
-    const trimmed = email.trim();
-    if (!trimmed || !password) {
+
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail || !password) {
       setErrorMessage('Please enter your email and password.');
       return;
     }
-
-    if (!supabaseConfigured) {
-      setErrorMessage(
-        'Supabase is not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to .env, then restart Expo with: npx expo start -c'
-      );
+    if (!emailSchema.safeParse(trimmedEmail).success) {
+      setErrorMessage('Please enter a valid email address.');
       return;
     }
+    if (!supabaseConfigured) {
+      setErrorMessage('Supabase is not configured. Add keys to .env and restart.');
+      return;
+    }
+    if (!checkRateLimit()) return;
 
     setIsLoading(true);
-    let data: Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['data'];
-    let error: Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['error'];
     try {
-      const result = await supabase.auth.signInWithPassword({
-        email: trimmed,
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
         password,
       });
-      data = result.data;
-      error = result.error;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (/network|failed|fetch/i.test(msg)) {
-        setErrorMessage(
-          'Cannot reach Supabase. Check your internet connection, VPN/firewall, and EXPO_PUBLIC_SUPABASE_URL in .env.'
-        );
-      } else {
-        setErrorMessage(msg);
-      }
       setIsLoading(false);
-      return;
-    }
-    setIsLoading(false);
 
-    if (error) {
-      setErrorMessage(error.message);
-      return;
-    }
-
-    if (data.session) {
-      setSession(data.session);
-      setUser(data.session.user);
-      await syncProfileFromSession(data.session);
-      router.replace('/(main)/home');
+      if (error) {
+        setErrorMessage(toSafeAuthError(error, 'login'));
+        return;
+      }
+      if (data.session) {
+        recordSuccess(RATE_KEY);
+        setSession(data.session);
+        setUser(data.session.user);
+        await syncProfileFromSession(data.session);
+        router.replace('/(main)/home');
+      }
+    } catch (e) {
+      setIsLoading(false);
+      const msg = e instanceof Error ? e.message : String(e);
+      setErrorMessage(
+        /network|failed|fetch|abort/i.test(msg) ? MSG_NETWORK : MSG_LOGIN_FAILED
+      );
     }
   };
 
+  // ── Phone OTP login ──────────────────────────────────────────────────────
   const handleSendPhoneOtp = async () => {
     setErrorMessage(null);
+
     if (!supabaseConfigured) {
-      setErrorMessage(
-        'Supabase is not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to .env, then restart Expo with: npx expo start -c'
-      );
+      setErrorMessage('Supabase is not configured.');
       return;
     }
 
-    const normalized = normalizePhoneE164(phone);
-    if (!isValidE164(normalized)) {
-      setErrorMessage('Enter a valid number with country code (e.g. +233201234567).');
+    const normalized = normalizeToSierraLeone(localDigits);
+    if (!isValidSierraLeonePhone(normalized)) {
+      setErrorMessage('Enter a valid Sierra Leone number (e.g. 76 123 456)');
       return;
     }
+    if (!checkRateLimit()) return;
 
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOtp({
         phone: normalized,
-        options: { shouldCreateUser: true },
+        options: { shouldCreateUser: false }, // Login only — do not create ghost accounts
       });
       setIsLoading(false);
+
       if (error) {
-        setErrorMessage(error.message);
+        // Do NOT reveal whether the number is registered
+        setErrorMessage('We could not send a verification code. Please try again.');
         return;
       }
       router.push({
         pathname: '/(auth)/otp',
         params: { phone: encodeURIComponent(normalized) },
       });
-    } catch (e) {
+    } catch {
       setIsLoading(false);
-      const msg = e instanceof Error ? e.message : String(e);
-      if (/network|failed|fetch/i.test(msg)) {
-        setErrorMessage(
-          'Cannot reach Supabase. Check connectivity and Phone provider settings in the Supabase dashboard.'
-        );
-      } else {
-        setErrorMessage(msg);
-      }
+      setErrorMessage('We could not send a verification code. Please try again.');
     }
   };
 
+  // ── Google OAuth ─────────────────────────────────────────────────────────
   const handleGoogle = async () => {
     setErrorMessage(null);
     if (!supabaseConfigured) {
-      setErrorMessage(
-        'Supabase is not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to .env, then restart Expo with: npx expo start -c'
-      );
+      setErrorMessage('Supabase is not configured.');
       return;
     }
-
     setIsGoogleLoading(true);
     try {
       const { session, error, cancelled } = await signInWithGoogle();
-      if (cancelled) {
-        setIsGoogleLoading(false);
-        return;
-      }
+      if (cancelled) { setIsGoogleLoading(false); return; }
       if (error) {
-        setErrorMessage(error.message);
+        // Google errors may contain OAuth details — show generic message
+        setErrorMessage(toSafeAuthError(error, 'login'));
         setIsGoogleLoading(false);
         return;
       }
       if (session) {
+        recordSuccess(RATE_KEY);
         setSession(session);
         setUser(session.user);
         await syncProfileFromSession(session);
         router.replace('/(main)/home');
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setErrorMessage(msg);
+      setErrorMessage(toSafeAuthError(e, 'login'));
     }
     setIsGoogleLoading(false);
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+        style={{ flex: 1 }}
       >
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={s.scroll}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.logoWrap}>
-            <View style={styles.logoBadge}>
-              <Image
-                source={require('../../assets/MegaSafe Logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.title}>MegaSafe</Text>
-            <Text style={styles.subtitle}>Save Together, Grow Together</Text>
+          {/* Decorative orange blob */}
+          <View pointerEvents="none" style={s.blobTopRight} />
+
+          {/* ── Header ───────────────────────────────── */}
+          <View style={s.header}>
+            <TouchableOpacity
+              style={s.backBtn}
+              onPress={() =>
+                router.canGoBack()
+                  ? router.back()
+                  : router.replace('/welcome')
+              }
+            >
+              <ArrowLeft size={20} color={C.orange} />
+            </TouchableOpacity>
+            <Text style={s.wordmark}>Mi Osusu</Text>
+            <View style={{ width: 38 }} />
           </View>
 
-          <View style={styles.formCard}>
-            <View style={styles.modeWrap}>
-              <TouchableOpacity
-                onPress={() => {
-                  setAuthMode('email');
-                  clearErrorOnChange();
-                }}
-                style={[styles.modeBtn, authMode === 'email' && styles.modeBtnActive]}
-              >
-                <Text style={[styles.modeText, authMode === 'email' && styles.modeTextActive]}>Email</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  setAuthMode('phone');
-                  clearErrorOnChange();
-                }}
-                style={[styles.modeBtn, authMode === 'phone' && styles.modeBtnActive]}
-              >
-                <Text style={[styles.modeText, authMode === 'phone' && styles.modeTextActive]}>Phone</Text>
-              </TouchableOpacity>
-            </View>
+          {/* ── Hero ─────────────────────────────────── */}
+          <View style={s.hero}>
+            <Text style={[s.heroTitle, { color: C.text }]}>Welcome back</Text>
+            <Text style={[s.heroSub, { color: C.sub }]}>
+              Sign in to manage your{'\n'}contributions
+            </Text>
+          </View>
 
-            {authMode === 'email' ? (
-              <>
-                <Text style={styles.inputLabel}>Email Address</Text>
-                <View style={styles.inputWrap}>
-                  <Mail size={18} color="#9CA3AF" />
+          {/* ── Mode toggle ──────────────────────────── */}
+          <View style={[s.modeToggle, { backgroundColor: C.modeToggleBg }]}>
+            {(['email', 'phone'] as const).map(m => (
+              <TouchableOpacity
+                key={m}
+                style={[s.modeBtn, authMode === m && s.modeBtnActive]}
+                onPress={() => { setAuthMode(m); clearError(); }}
+              >
+                <Text style={[s.modeBtnText, authMode === m && s.modeBtnTextActive]}>
+                  {m === 'email' ? 'Email' : 'Phone'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* ── Form ─────────────────────────────────── */}
+          {authMode === 'email' ? (
+            <>
+              {/* Email field */}
+              <View style={s.fieldBlock}>
+                <Text style={[s.fieldLabel, { color: C.text }]}>Email</Text>
+                <View style={s.fieldRow}>
+                  <FontAwesome
+                    name="envelope-o"
+                    size={17}
+                    color={C.placeholder}
+                    style={s.fieldIcon}
+                  />
                   <TextInput
-                    style={styles.input}
-                    placeholder="Secure email"
-                    placeholderTextColor="#9CA3AF"
+                    style={[s.fieldInput, { color: C.text }]}
+                    placeholder="Enter your email"
+                    placeholderTextColor={C.placeholder}
                     keyboardType="email-address"
                     autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="email"
+                    textContentType="emailAddress"
+                    maxLength={254}
                     value={email}
-                    onChangeText={(t) => {
-                      setEmail(t);
-                      clearErrorOnChange();
-                    }}
+                    onChangeText={t => { setEmail(t); clearError(); }}
                   />
                 </View>
+                <View style={s.fieldUnderline} />
+              </View>
 
-                <Text style={styles.inputLabel}>Passphrase</Text>
-                <View style={styles.inputWrap}>
-                  <Lock size={18} color="#9CA3AF" />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="********"
-                    placeholderTextColor="#9CA3AF"
-                    secureTextEntry={!showPassword}
-                    value={password}
-                    onChangeText={(t) => {
-                      setPassword(t);
-                      clearErrorOnChange();
-                    }}
-                  />
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                    {showPassword ? <EyeOff size={18} color="#9CA3AF" /> : <Eye size={18} color="#9CA3AF" />}
+              {/* Password field */}
+              <View style={s.fieldBlock}>
+                <View style={s.passwordLabelRow}>
+                  <Text style={[s.fieldLabel, { color: C.text }]}>Password</Text>
+                  <TouchableOpacity
+                    onPress={() => router.push('/(auth)/forgot-password')}
+                  >
+                    <Text style={s.forgotLink}>Forgot password?  ›</Text>
                   </TouchableOpacity>
                 </View>
-
-                <TouchableOpacity style={styles.forgotRow} onPress={() => router.push('/(auth)/forgot-password')}>
-                  <Text style={styles.forgotText}>Forgot Access Key?</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={handleEmailLogin}
-                  disabled={isLoading || isGoogleLoading}
-                  style={styles.primaryButton}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <>
-                      <Text style={styles.primaryButtonText}>Sign In</Text>
-                      <ChevronRight size={18} color="white" />
-                    </>
-                  )}
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={styles.inputLabel}>Mobile Number</Text>
-                <View style={styles.inputWrap}>
-                  <Smartphone size={18} color="#9CA3AF" />
+                <View style={s.fieldRow}>
+                  <FontAwesome
+                    name="lock"
+                    size={18}
+                    color={C.placeholder}
+                    style={s.fieldIcon}
+                  />
                   <TextInput
-                    style={styles.input}
-                    placeholder="+233201234567"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="phone-pad"
-                    autoCapitalize="none"
-                    value={phone}
-                    onChangeText={(t) => {
-                      setPhone(t);
-                      clearErrorOnChange();
-                    }}
+                    style={[s.fieldInput, { color: C.text }]}
+                    placeholder="Enter your password"
+                    placeholderTextColor={C.placeholder}
+                    secureTextEntry={!showPassword}
+                    autoComplete="current-password"
+                    textContentType="password"
+                    maxLength={128}
+                    value={password}
+                    onChangeText={t => { setPassword(t); clearError(); }}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(v => !v)}
+                    style={s.eyeBtn}
+                  >
+                    <FontAwesome
+                      name={showPassword ? 'eye-slash' : 'eye'}
+                      size={18}
+                      color={C.placeholder}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <View style={s.fieldUnderline} />
+              </View>
+
+              {errorMessage ? (
+                <Text style={s.errorText}>{errorMessage}</Text>
+              ) : null}
+
+              <TouchableOpacity
+                style={[s.cta, !canSubmit && s.ctaDisabled]}
+                onPress={handleEmailLogin}
+                disabled={!canSubmit}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={C.white} />
+                ) : (
+                  <Text style={s.ctaText}>
+                    {lockedSecs > 0 ? `Wait ${lockedSecs}s…` : 'Log In'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              {/* Phone field — fixed +232 prefix, user types 8 digits */}
+              <View style={s.fieldBlock}>
+                <Text style={[s.fieldLabel, { color: C.text }]}>Mobile Number</Text>
+                <View style={s.fieldRow}>
+                  {/* Sierra Leone flag */}
+                  <Text style={s.flag}>🇸🇱</Text>
+                  <Text style={[s.countryCode, { color: C.text }]}>+232</Text>
+                  <View style={[s.dividerLine, { backgroundColor: C.border }]} />
+                  <TextInput
+                    style={[s.fieldInput, { color: C.text }]}
+                    placeholder="76 123 456"
+                    placeholderTextColor={C.placeholder}
+                    keyboardType="number-pad"
+                    maxLength={8}
+                    value={localDigits}
+                    onChangeText={handlePhoneChange}
+                    autoComplete="tel"
+                    textContentType="telephoneNumber"
                   />
                 </View>
+                <View style={s.fieldUnderline} />
+                <Text style={[s.fieldHint, { color: C.sub }]}>
+                  Enter your 8-digit Sierra Leone number
+                </Text>
+              </View>
 
-                <TouchableOpacity
-                  onPress={handleSendPhoneOtp}
-                  disabled={isLoading || isGoogleLoading}
-                  style={styles.primaryButton}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <>
-                      <Text style={styles.primaryButtonText}>Send verification code</Text>
-                      <ChevronRight size={18} color="white" />
-                    </>
-                  )}
-                </TouchableOpacity>
+              {errorMessage ? (
+                <Text style={s.errorText}>{errorMessage}</Text>
+              ) : null}
+
+              <TouchableOpacity
+                style={[s.cta, !canSubmit && s.ctaDisabled]}
+                onPress={handleSendPhoneOtp}
+                disabled={!canSubmit}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={C.white} />
+                ) : (
+                  <Text style={s.ctaText}>
+                    {lockedSecs > 0 ? `Wait ${lockedSecs}s…` : 'Send Verification Code'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* ── OR divider ───────────────────────────── */}
+          <View style={s.divider}>
+            <View style={[s.dividerFull, { backgroundColor: C.border }]} />
+            <Text style={s.dividerText}>OR</Text>
+            <View style={[s.dividerFull, { backgroundColor: C.border }]} />
+          </View>
+
+          {/* ── Continue with Google ─────────────────── */}
+          <TouchableOpacity
+            style={[
+              s.googleBtn,
+              { backgroundColor: C.card, borderColor: C.border },
+              (isLoading || isGoogleLoading) && s.ctaDisabled,
+            ]}
+            onPress={handleGoogle}
+            disabled={isLoading || isGoogleLoading}
+          >
+            {isGoogleLoading ? (
+              <ActivityIndicator color={C.sub} />
+            ) : (
+              <>
+                <FontAwesome name="google" size={18} color="#4285F4" />
+                <Text style={[s.googleText, { color: C.text }]}>
+                  Continue with Google
+                </Text>
               </>
             )}
+          </TouchableOpacity>
 
-            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-
-            <View style={styles.separatorRow}>
-              <View style={styles.separatorLine} />
-              <Text style={styles.separatorText}>or continue with</Text>
-              <View style={styles.separatorLine} />
-            </View>
-
-            <TouchableOpacity onPress={handleGoogle} disabled={isLoading || isGoogleLoading} style={styles.googleBtn}>
-              {isGoogleLoading ? (
-                <ActivityIndicator color="#1f2937" />
-              ) : (
-                <>
-                  <Shield size={16} color="#1f2937" />
-                  <Text style={styles.googleText}>Continue with Google</Text>
-                </>
-              )}
+          {/* ── Sign up link ─────────────────────────── */}
+          <View style={s.bottomRow}>
+            <Text style={[s.bottomText, { color: C.sub }]}>
+              Don't have an account?{' '}
+            </Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/intro')}>
+              <Text style={s.bottomLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.bottomRow}>
-            <Text style={styles.bottomText}>Unregistered entity? </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-              <Text style={styles.bottomLink}>Sign Up</Text>
-            </TouchableOpacity>
+          {/* Decorative wave lines */}
+          <View pointerEvents="none" style={s.waveWrap}>
+            <View style={[s.waveLine, { bottom: 30, opacity: 0.18 }]} />
+            <View
+              style={[
+                s.waveLine,
+                { bottom: 16, opacity: 0.12, transform: [{ scaleX: 0.9 }] },
+              ]}
+            />
+            <View
+              style={[
+                s.waveLine,
+                { bottom: 2, opacity: 0.08, transform: [{ scaleX: 0.8 }] },
+              ]}
+            />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -384,169 +543,117 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
+const s = StyleSheet.create({
+  safe:   { flex: 1, backgroundColor: '#FAF7F2' },
+  scroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 60 },
+
+  blobTopRight: {
+    position: 'absolute',
+    top: -60, right: -60,
+    width: 240, height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(249,115,22,0.13)',
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 28,
-    justifyContent: 'center',
-  },
-  logoWrap: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  logoBadge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FFF7ED',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  logo: {
-    width: 54,
-    height: 54,
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: '#1E2B5A',
-  },
-  subtitle: {
-    marginTop: 4,
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  formCard: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 20,
-    padding: 18,
-  },
-  modeWrap: {
+
+  header: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 14,
-  },
-  modeBtn: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 9,
-    borderRadius: 10,
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    paddingBottom: 28,
   },
-  modeBtnActive: {
+  backBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(249,115,22,0.1)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  wordmark: { fontSize: 20, fontWeight: '800', color: '#F97316' },
+
+  hero:      { marginBottom: 28 },
+  heroTitle: {
+    fontSize: 34, fontWeight: '800', color: '#111827',
+    letterSpacing: -0.5, marginBottom: 8,
+  },
+  heroSub: { fontSize: 16, color: '#6B7280', lineHeight: 24 },
+
+  modeToggle: {
+    flexDirection: 'row', backgroundColor: '#F3F4F6',
+    borderRadius: 14, padding: 4, marginBottom: 28,
+  },
+  modeBtn:           { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 11 },
+  modeBtnActive:     {
     backgroundColor: '#F97316',
+    shadowColor: '#F97316', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
   },
-  modeText: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '600',
+  modeBtnText:       { color: '#9CA3AF', fontWeight: '600', fontSize: 15 },
+  modeBtnTextActive: { color: '#FFFFFF', fontWeight: '700' },
+
+  fieldBlock:   { marginBottom: 20 },
+  fieldLabel:   { fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 10 },
+  fieldRow:     { flexDirection: 'row', alignItems: 'center', paddingBottom: 8 },
+  fieldIcon:    { marginRight: 12 },
+  fieldInput:   { flex: 1, fontSize: 15, color: '#111827', paddingVertical: 0 },
+  fieldUnderline: { height: 1.5, backgroundColor: '#F97316', borderRadius: 1 },
+  fieldHint:    { fontSize: 11, color: '#9CA3AF', marginTop: 4 },
+
+  // Phone prefix row
+  flag:        { fontSize: 20, marginRight: 6 },
+  countryCode: { fontSize: 15, fontWeight: '700', marginRight: 8 },
+  dividerLine: { width: 1, height: 18, marginRight: 10 },
+
+  passwordLabelRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 10,
   },
-  modeTextActive: {
-    color: '#FFFFFF',
+  forgotLink: { color: '#F97316', fontSize: 13, fontWeight: '600' },
+  eyeBtn:     { paddingLeft: 10, paddingVertical: 2 },
+
+  errorText: { color: '#EF4444', fontSize: 13, marginBottom: 12, marginTop: -6 },
+
+  cta: {
+    backgroundColor: '#F97316', borderRadius: 16, height: 56,
+    alignItems: 'center', justifyContent: 'center', marginTop: 8,
+    shadowColor: '#F97316', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 10, elevation: 6,
   },
-  inputLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '600',
-    marginBottom: 6,
-    marginTop: 4,
-  },
-  inputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 52,
-    marginBottom: 10,
-  },
-  input: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 15,
-    color: '#111827',
-  },
-  forgotRow: {
-    alignItems: 'flex-end',
-    marginBottom: 8,
-  },
-  forgotText: {
-    color: '#F97316',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  primaryButton: {
-    backgroundColor: '#F97316',
-    borderRadius: 12,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 4,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  errorText: {
-    marginTop: 10,
-    color: '#DC2626',
-    fontSize: 13,
-  },
-  separatorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 12,
-  },
-  separatorLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  separatorText: {
-    marginHorizontal: 8,
-    color: '#9CA3AF',
-    fontSize: 11,
-    textTransform: 'uppercase',
-    fontWeight: '600',
-  },
+  ctaDisabled: { opacity: 0.45, shadowOpacity: 0 },
+  ctaText:     { color: '#FFFFFF', fontWeight: '800', fontSize: 17 },
+
+  divider:     { flexDirection: 'row', alignItems: 'center', marginVertical: 22, gap: 12 },
+  dividerFull: { flex: 1, height: 1, backgroundColor: '#E5E7EB' },
+  dividerText: { color: '#9CA3AF', fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+
   googleBtn: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 12, borderRadius: 16, height: 56, borderWidth: 1.5,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 4, elevation: 2, marginBottom: 24,
   },
-  googleText: {
-    color: '#1f2937',
-    fontWeight: '700',
-    fontSize: 14,
+  googleText: { fontWeight: '700', fontSize: 15 },
+
+  securityRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderRadius: 16, padding: 16, marginBottom: 24,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  bottomRow: {
-    marginTop: 16,
-    flexDirection: 'row',
-    justifyContent: 'center',
+  securityIconWrap: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(249,115,22,0.1)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  bottomText: {
-    color: '#6B7280',
-    fontSize: 13,
-  },
-  bottomLink: {
-    color: '#1D4ED8',
-    fontSize: 13,
-    fontWeight: '700',
+  securityTitle: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
+  securitySub:   { fontSize: 12, color: '#9CA3AF' },
+
+  bottomRow:  { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  bottomText: { fontSize: 14 },
+  bottomLink: { color: '#F97316', fontSize: 14, fontWeight: '700' },
+
+  waveWrap: { position: 'relative', height: 50, overflow: 'hidden', marginTop: 8 },
+  waveLine: {
+    position: 'absolute', left: -20, right: -20,
+    height: 40, borderRadius: 40,
+    borderWidth: 2, borderColor: '#F97316', backgroundColor: 'transparent',
   },
 });

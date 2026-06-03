@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#690005",
+                        "secondary": "#ffcb8d",
+                        "tertiary": "#c6c6c7",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "on-secondary": "#462a00",
+                        "on-surface-variant": "#c6c5d4",
+                        "on-primary-container": "#7887ec",
+                        "tertiary-container": "#262828",
+                        "on-primary": "#102287",
+                        "surface-tint": "#bbc3ff",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "inverse-surface": "#dfe2ea",
+                        "outline-variant": "#454652",
+                        "outline": "#8f8f9e",
+                        "surface-bright": "#353940",
+                        "surface-container": "#1c2026",
+                        "background": "#0f1419",
+                        "surface-dim": "#0f1419",
+                        "primary-fixed-dim": "#bbc3ff",
+                        "on-tertiary-container": "#8e8f8f",
+                        "surface-container-low": "#181c21",
+                        "secondary-container": "#ffa504",
+                        "on-surface": "#dfe2ea",
+                        "surface-variant": "#31353b",
+                        "inverse-on-surface": "#2c3137",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#ffddb7",
+                        "on-secondary-container": "#684100",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "surface": "#0f1419",
+                        "on-tertiary": "#2f3131",
+                        "on-secondary-fixed": "#2a1700",
+                        "surface-container-highest": "#31353b",
+                        "surface-container-high": "#262a30",
+                        "surface-container-lowest": "#0a0f14",
+                        "on-primary-fixed": "#000d5f",
+                        "inverse-primary": "#4655b7",
+                        "primary-container": "#00157f",
+                        "tertiary-fixed": "#e2e2e2",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#2d3c9e",
+                        "primary": "#bbc3ff",
+                        "secondary-fixed-dim": "#ffb95c",
+                        "on-background": "#dfe2ea",
+                        "error": "#ffb4ab",
+                        "primary-fixed": "#dfe0ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "40px",
+                        "xs": "4px",
+                        "base": "8px",
+                        "md": "24px",
+                        "margin-mobile": "20px",
+                        "sm": "12px",
+                        "margin-desktop": "120px",
+                        "xl": "64px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-sm": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .high-contrast-shadow {
+            box-shadow: 0 10px 30px rgba(0, 21, 127, 0.05);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-white font-body-md text-on-surface selection:bg-secondary-container">
+<!-- Top App Bar -->
+<header class="bg-background dark:bg-surface-dim flex justify-between items-center px-margin-mobile h-16 w-full docked full-width top-0 z-50">
+<div class="flex items-center gap-base">
+<button class="text-primary dark:text-primary-fixed-dim hover:opacity-80 transition-opacity active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="text-headline-md font-headline-md font-bold text-secondary dark:text-secondary-fixed">Osusu</h1>
+</div>
+<div class="text-on-surface-variant font-label-md text-label-md">Step 2 of 3</div>
+</header>
+<main class="min-h-screen pt-24 pb-lg px-margin-mobile flex flex-col items-center justify-center bg-white">
+<div class="w-full max-w-[440px]">
+<!-- Header Section -->
+<div class="mb-lg text-center md:text-left">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-primary-container mb-xs">Secure your account</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Choose a strong password to protect your Osusu savings and contributions.</p>
+</div>
+<!-- Password Form Card -->
+<div class="bg-white p-md rounded-xl high-contrast-shadow border border-outline-variant/10">
+<div class="space-y-md">
+<!-- Input Group -->
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-primary-container block" for="password">New Password</label>
+<div class="relative">
+<input class="w-full h-14 px-md rounded-lg border-[1.5px] border-primary-container focus:ring-2 focus:ring-secondary focus:border-secondary outline-none transition-all font-body-md text-primary-container" id="password" placeholder="••••••••" type="password"/>
+<button class="absolute right-md top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+</button>
+</div>
+</div>
+<!-- Strength Bar -->
+<div class="space-y-xs">
+<div class="flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Password Strength</span>
+<span class="font-label-sm text-label-sm text-secondary-container">Fair</span>
+</div>
+<div class="flex gap-xs h-2">
+<div class="flex-1 bg-secondary-container rounded-full"></div>
+<div class="flex-1 bg-secondary-container rounded-full"></div>
+<div class="flex-1 bg-tertiary rounded-full"></div>
+<div class="flex-1 bg-tertiary rounded-full"></div>
+</div>
+</div>
+<!-- Requirements Checklist -->
+<div class="space-y-sm pt-base border-t border-outline-variant/10">
+<div class="flex items-center gap-sm group">
+<div class="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center transition-all">
+<span class="material-symbols-outlined text-[14px] text-white font-bold" data-icon="check" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface group-hover:text-primary transition-colors">At least 8 characters</span>
+</div>
+<div class="flex items-center gap-sm group">
+<div class="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center transition-all">
+<span class="material-symbols-outlined text-[14px] text-white font-bold" data-icon="check" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface group-hover:text-primary transition-colors">One uppercase letter</span>
+</div>
+<div class="flex items-center gap-sm group">
+<div class="w-5 h-5 rounded-full border-[1.5px] border-outline-variant flex items-center justify-center transition-all">
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant group-hover:text-primary transition-colors">One numerical digit</span>
+</div>
+<div class="flex items-center gap-sm group">
+<div class="w-5 h-5 rounded-full border-[1.5px] border-outline-variant flex items-center justify-center transition-all">
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant group-hover:text-primary transition-colors">One special character (!@#$)</span>
+</div>
+<div class="flex items-center gap-sm group">
+<div class="w-5 h-5 rounded-full border-[1.5px] border-outline-variant flex items-center justify-center transition-all">
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant group-hover:text-primary transition-colors">No common words (e.g. password)</span>
+</div>
+</div>
+</div>
+<!-- Action Button -->
+<div class="mt-lg">
+<button class="w-full h-14 bg-secondary-container text-on-secondary-container font-headline-md text-headline-md rounded-xl hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-sm shadow-lg shadow-secondary-container/20">
+                        Set Password
+                        <span class="material-symbols-outlined" data-icon="lock">lock</span>
+</button>
+</div>
+</div>
+<!-- Support Footer -->
+<div class="mt-md text-center">
+<p class="font-label-md text-label-md text-on-surface-variant">Having trouble? <a class="text-primary-container font-bold hover:underline" href="#">Contact Security Support</a></p>
+</div>
+</div>
+</main>
+<!-- Contextual Graphic (Desktop Only) -->
+<div class="hidden lg:block fixed right-0 top-0 w-1/3 h-full bg-primary-container">
+<div class="relative w-full h-full flex flex-col items-center justify-center p-xl text-center">
+<div class="absolute inset-0 opacity-20 pointer-events-none" style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 32px 32px;"></div>
+<img class="w-64 h-64 object-contain mb-lg rounded-2xl shadow-2xl" data-alt="A futuristic digital vault icon glowing in deep imperial blue and orange hues, representing high-end financial security and communal trust. The visual style is professional and corporate modern with sharp glassmorphism elements, soft atmospheric lighting, and high-contrast surfaces that evoke a sense of impenetrable digital safety." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA60Z4Wn2RPl2_VkY-rDMvoJXYmBAcyjkwus1I_9zMW_iRD6h78ABzR1LkaHfFXAUP_YqVhntnvU5N_gP0CcVzIebQ6Z7iqP5lqeK-O50-dFY7pz--h4edXWhe7P1XZ4bQomDXf35BFP-snJcnmAiTzRcKFxuzz73sBeMPuJhkhH3mNBi5I2cNSp6CHxeQ5QvWZ4mkdDAWqV0zgQbm-2l8DyMHVHxz1AtLd8ee29fTAM-sNKPC08Z1oG-AaVFMzkCX4TByH0D6TX0k"/>
+<h3 class="font-headline-lg text-headline-lg text-white mb-base">Military-Grade Security</h3>
+<p class="font-body-lg text-body-lg text-primary/80">Your funds and data are protected by state-of-the-art encryption protocols, ensuring peace of mind for every contribution.</p>
+</div>
+</div>
+<!-- Hidden Drawer Structure for Semantic Logic -->
+<div class="hidden" id="drawer">
+<!-- Drawer would map to settings/security context -->
+</div>
+</body></html>

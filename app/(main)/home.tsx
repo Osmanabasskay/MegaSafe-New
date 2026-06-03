@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   Alert,
   Animated,
   Dimensions,
+  Easing,
   FlatList,
+  Image,
   Modal,
   ScrollView,
   StatusBar,
@@ -23,7 +26,6 @@ import {
   Lock,
   MapPin,
   MoreHorizontal,
-  PiggyBank,
   TrendingUp,
   Users,
 } from 'lucide-react-native';
@@ -40,6 +42,9 @@ const BANNER_SLIDES = [
     title: 'Proudly Sierra\nLeone First',
     sub: 'Orange Money, AfriMoney,\nQ Money — all in one place.',
     btn: 'Learn more',
+    image: require('../../assets/home-hero/proudly-sierra-leonean-first.jpg'),
+    accent: '#F97316',
+    darkBg: '#111827',
   },
   {
     id: '2',
@@ -49,6 +54,9 @@ const BANNER_SLIDES = [
     title: 'Save with Your\nCircle',
     sub: 'Join Osusu groups with family,\nfriends & colleagues.',
     btn: 'Start a group',
+    image: require('../../assets/home-hero/save-with-your-circle.jpg'),
+    accent: '#2563EB',
+    darkBg: '#0B1220',
   },
   {
     id: '3',
@@ -58,6 +66,9 @@ const BANNER_SLIDES = [
     title: 'Bank-Grade\nSecurity',
     sub: 'End-to-end encrypted.\nYour money is always safe.',
     btn: 'Learn more',
+    image: require('../../assets/home-hero/bank-grade-security.jpg'),
+    accent: '#1E2B5A',
+    darkBg: '#020617',
   },
   {
     id: '4',
@@ -67,6 +78,9 @@ const BANNER_SLIDES = [
     title: 'Track Every\nContribution',
     sub: 'Full transparency on every\npayout and cycle.',
     btn: 'See details',
+    image: require('../../assets/home-hero/track-every-contribution.jpg'),
+    accent: '#F97316',
+    darkBg: '#1E293B',
   },
 ];
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -153,7 +167,7 @@ function ActionCard({ iconBg, icon, title, subtitle, arrowColor, onPress, cardBg
         <Text style={[styles.actionCardTitle, { color: titleColor }]}>{title}</Text>
         <Text style={styles.actionCardSub}>{subtitle}</Text>
         <View style={[styles.actionArrow, { borderColor: arrowColor + '30' }]}>
-          <ChevronRight size={13} color={arrowColor} />
+          <ChevronRight size={11} color={arrowColor} />
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -184,17 +198,64 @@ export default function HomeScreen() {
   const [activeBanner, setActiveBanner] = useState(0);
   const bannerRef = useRef<FlatList>(null);
   const bannerTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const [reduceMotion, setReduceMotion] = useState(false);
 
-  useEffect(() => {
+  const stopBannerTimer = useCallback(() => {
+    if (bannerTimer.current) {
+      clearInterval(bannerTimer.current);
+      bannerTimer.current = null;
+    }
+  }, []);
+
+  const startBannerTimer = useCallback(() => {
+    stopBannerTimer();
+    if (reduceMotion) return;
     bannerTimer.current = setInterval(() => {
       setActiveBanner((prev) => {
         const next = (prev + 1) % BANNER_SLIDES.length;
         bannerRef.current?.scrollToIndex({ index: next, animated: true });
         return next;
       });
-    }, 3500);
-    return () => { if (bannerTimer.current) clearInterval(bannerTimer.current); };
+    }, 5200);
+  }, [reduceMotion, stopBannerTimer]);
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion).catch(() => {});
+    const sub = AccessibilityInfo.addEventListener?.('reduceMotionChanged', setReduceMotion);
+    return () => sub?.remove?.();
   }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      stopBannerTimer();
+      floatAnim.stopAnimation();
+      return;
+    }
+    startBannerTimer();
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: 1,
+          duration: 2600,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 2600,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => {
+      stopBannerTimer();
+      loop.stop();
+    };
+  }, [floatAnim, reduceMotion, startBannerTimer, stopBannerTimer]);
 
   const joinDate = useMemo(() => {
     const raw = (user as { created_at?: string } | null)?.created_at;
@@ -270,6 +331,90 @@ export default function HomeScreen() {
 
   const openStatement = () => { setSelectedMonthKey(null); setStatementOpen(true); };
   const closeStatement = () => { setStatementOpen(false); setSelectedMonthKey(null); };
+  const heroFloatStyle = useMemo(() => ({
+    transform: [
+      {
+        translateY: reduceMotion
+          ? 0
+          : floatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }),
+      },
+      {
+        scale: reduceMotion
+          ? 1
+          : floatAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.012] }),
+      },
+    ],
+  }), [floatAnim, reduceMotion]);
+
+  const onHeroMomentumEnd = useCallback((e: { nativeEvent: { contentOffset: { x: number } } }) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 32));
+    setActiveBanner(idx);
+    startBannerTimer();
+  }, [startBannerTimer]);
+
+  const goToHeroSlide = useCallback((index: number) => {
+    stopBannerTimer();
+    setActiveBanner(index);
+    bannerRef.current?.scrollToIndex({ index, animated: !reduceMotion });
+    setTimeout(startBannerTimer, 1800);
+  }, [reduceMotion, startBannerTimer, stopBannerTimer]);
+
+  const renderHeroSlide = useCallback(({ item, index }: { item: typeof BANNER_SLIDES[number]; index: number }) => {
+    const inputRange = [
+      (index - 1) * (SCREEN_WIDTH - 32),
+      index * (SCREEN_WIDTH - 32),
+      (index + 1) * (SCREEN_WIDTH - 32),
+    ];
+    const slideOpacity = reduceMotion
+      ? 1
+      : scrollX.interpolate({ inputRange, outputRange: [0.72, 1, 0.72], extrapolate: 'clamp' });
+    const slideScale = reduceMotion
+      ? 1
+      : scrollX.interpolate({ inputRange, outputRange: [0.96, 1, 0.96], extrapolate: 'clamp' });
+    const imageTranslateX = reduceMotion
+      ? 0
+      : scrollX.interpolate({ inputRange, outputRange: [16, 0, -16], extrapolate: 'clamp' });
+    const cardBg = isDark ? item.darkBg : C.card;
+    const activeAccent = isDark ? item.accent : item.accent;
+
+    return (
+      <Animated.View
+        style={[
+          styles.bannerSlide,
+          {
+            backgroundColor: cardBg,
+            borderColor: isDark ? 'rgba(255,255,255,0.08)' : C.border,
+            opacity: slideOpacity,
+            transform: [{ scale: slideScale }],
+          },
+        ]}
+        accessible
+        accessibilityRole="imagebutton"
+        accessibilityLabel={`${item.title.replace(/\n/g, ' ')}. ${item.sub.replace(/\n/g, ' ')}`}
+      >
+        <View style={[styles.bannerAura, { backgroundColor: activeAccent }]} pointerEvents="none" />
+        <Animated.View style={[styles.bannerImageLayer, heroFloatStyle, { transform: [...(heroFloatStyle.transform as any), { translateX: imageTranslateX }] }]}>
+          <Image
+            source={item.image}
+            style={styles.bannerImage}
+            resizeMode="cover"
+            accessibilityIgnoresInvertColors
+            accessibilityLabel={item.title.replace(/\n/g, ' ')}
+          />
+        </Animated.View>
+        <View style={styles.bannerBottomShade} pointerEvents="none" />
+        <View style={[styles.bannerCaption, { backgroundColor: isDark ? 'rgba(2,6,23,0.7)' : 'rgba(255,255,255,0.78)' }]}>
+          <Text style={[styles.bannerEyebrow, { color: activeAccent }]}>Mi Osusu</Text>
+          <Text style={[styles.bannerTitle, { color: isDark ? '#FFFFFF' : C.text }]} numberOfLines={1}>
+            {item.title.replace(/\n/g, ' ')}
+          </Text>
+          <Text style={[styles.bannerSub, { color: isDark ? 'rgba(255,255,255,0.72)' : C.textSub }]} numberOfLines={2}>
+            {item.sub.replace(/\n/g, ' ')}
+          </Text>
+        </View>
+      </Animated.View>
+    );
+  }, [C.border, C.card, C.text, C.textSub, heroFloatStyle, isDark, reduceMotion, scrollX]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: C.bg }]} edges={['bottom']}>
@@ -329,7 +474,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/(main)/groups')}
               activeOpacity={0.8}
             >
-              <FontAwesome name="group" size={26} color="rgba(255,255,255,0.85)" />
+              <FontAwesome name="group" size={20} color="rgba(255,255,255,0.85)" />
               <Text style={styles.ovStatVal}>{groupCount}</Text>
               <Text style={styles.ovStatLbl}>Osusu Groups</Text>
             </TouchableOpacity>
@@ -341,7 +486,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/(main)/savings')}
               activeOpacity={0.8}
             >
-              <MaterialIcons name="savings" size={26} color="rgba(255,255,255,0.85)" />
+              <MaterialIcons name="savings" size={20} color="rgba(255,255,255,0.85)" />
               <Text style={styles.ovStatVal}>{activeGoalCount}</Text>
               <Text style={styles.ovStatLbl}>Active Goals</Text>
             </TouchableOpacity>
@@ -353,7 +498,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/(main)/vault')}
               activeOpacity={0.8}
             >
-              <FontAwesome name="bank" size={26} color="rgba(255,255,255,0.85)" />
+              <FontAwesome name="bank" size={20} color="rgba(255,255,255,0.85)" />
               <Text style={styles.ovStatVal} numberOfLines={1} adjustsFontSizeToFit>
                 {balanceVisible
                   ? `NLe ${vaultBalance.toLocaleString('en-SL', { maximumFractionDigits: 0 })}`
@@ -374,7 +519,7 @@ export default function HomeScreen() {
         <View style={styles.actionCardsRow}>
           <ActionCard
             iconBg="transparent"
-            icon={<FontAwesome name="group" size={26} color="#111827" />}
+            icon={<FontAwesome name="group" size={20} color="#111827" />}
             title="Osusu"
             subtitle="Manage your contributions"
             arrowColor="#111827"
@@ -385,7 +530,7 @@ export default function HomeScreen() {
           />
           <ActionCard
             iconBg="transparent"
-            icon={<MaterialIcons name="savings" size={26} color="#111827" />}
+            icon={<MaterialIcons name="savings" size={20} color="#111827" />}
             title="Savings"
             subtitle="Grow your money safely"
             arrowColor="#111827"
@@ -396,7 +541,7 @@ export default function HomeScreen() {
           />
           <ActionCard
             iconBg="transparent"
-            icon={<FontAwesome name="bank" size={24} color="#111827" />}
+            icon={<FontAwesome name="bank" size={19} color="#111827" />}
             title="Vault"
             subtitle="Secure your future"
             arrowColor="#111827"
@@ -411,7 +556,7 @@ export default function HomeScreen() {
             BANNER CAROUSEL
         ══════════════════════════════════════════════ */}
         <View style={styles.bannerWrapper}>
-          <FlatList
+          <Animated.FlatList
             ref={bannerRef}
             data={BANNER_SLIDES}
             keyExtractor={(item) => item.id}
@@ -419,49 +564,34 @@ export default function HomeScreen() {
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             scrollEnabled
+            decelerationRate="fast"
+            removeClippedSubviews
+            initialNumToRender={1}
+            maxToRenderPerBatch={2}
+            windowSize={3}
+            onScrollBeginDrag={stopBannerTimer}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+              { useNativeDriver: true },
+            )}
+            scrollEventThrottle={16}
             getItemLayout={(_, index) => ({
               length: SCREEN_WIDTH - 32,
               offset: (SCREEN_WIDTH - 32) * index,
               index,
             })}
-            onMomentumScrollEnd={(e) => {
-              const idx = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 32));
-              setActiveBanner(idx);
-              if (bannerTimer.current) clearInterval(bannerTimer.current);
-              bannerTimer.current = setInterval(() => {
-                setActiveBanner((prev) => {
-                  const next = (prev + 1) % BANNER_SLIDES.length;
-                  bannerRef.current?.scrollToIndex({ index: next, animated: true });
-                  return next;
-                });
-              }, 3500);
-            }}
-            renderItem={({ item }) => {
-              const IconComp = item.icon;
-              return (
-                <View style={[styles.bannerSlide, { backgroundColor: item.bg }]}>
-                  <View style={styles.bannerRing1} pointerEvents="none" />
-                  <View style={styles.bannerRing2} pointerEvents="none" />
-                  <View style={styles.bannerContent}>
-                    <View style={styles.bannerPinCircle}>
-                      <IconComp size={20} color={item.iconColor} />
-                    </View>
-                    <Text style={styles.bannerTitle}>{item.title}</Text>
-                    <Text style={styles.bannerSub}>{item.sub}</Text>
-                    <TouchableOpacity style={styles.bannerBtn} activeOpacity={0.85}>
-                      <Text style={styles.bannerBtnText}>{item.btn}</Text>
-                      <ChevronRight size={14} color="#1E2B5A" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            }}
+            onMomentumScrollEnd={onHeroMomentumEnd}
+            renderItem={renderHeroSlide}
           />
           {/* Dot indicators */}
           <View style={styles.bannerDots}>
             {BANNER_SLIDES.map((_, i) => (
-              <View
+              <TouchableOpacity
                 key={i}
+                onPress={() => goToHeroSlide(i)}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel={`Show hero slide ${i + 1} of ${BANNER_SLIDES.length}`}
                 style={[
                   styles.bannerDot,
                   i === activeBanner ? styles.bannerDotActive : styles.bannerDotInactive,
@@ -666,15 +796,15 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   scroll: { flex: 1 },
-  scrollContent: { paddingTop: 16, paddingBottom: 100 },
+  scrollContent: { paddingTop: 10, paddingBottom: 100 },
 
   /* ── Overview card ──────────────────────────────────────────── */
   overviewCard: {
     marginHorizontal: 16,
     backgroundColor: '#F97316',
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 28,
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 14,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -699,30 +829,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 18,
+    marginBottom: 10,
   },
   ovTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.3,
   },
   eyeBtn: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 20,
+    borderRadius: 16,
   },
 
   /* Progress bar */
   ovProgressTrack: {
-    height: 8,
-    borderRadius: 4,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: 'rgba(255,255,255,0.25)',
     overflow: 'hidden',
-    marginBottom: 10,
+    marginBottom: 7,
   },
   ovProgressFill: {
     height: '100%',
@@ -733,15 +863,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 10,
   },
   ovProgressLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: 'rgba(255,255,255,0.72)',
     fontWeight: '500',
   },
   ovProgressPct: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -752,29 +882,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.2)',
-    paddingTop: 16,
+    paddingTop: 10,
   },
   ovStatCol: {
     flex: 1,
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
   },
   ovStatVal: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '800',
     color: '#FFFFFF',
     textAlign: 'center',
     letterSpacing: -0.3,
   },
   ovStatLbl: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.65)',
     textAlign: 'center',
   },
   ovStatDiv: {
     width: 1,
-    height: 44,
+    height: 34,
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
 
@@ -784,10 +914,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginBottom: 14,
+    marginBottom: 8,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '800',
     color: '#1E2B5A',
   },
@@ -801,44 +931,44 @@ const styles = StyleSheet.create({
   actionCardsRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    gap: 10,
-    marginBottom: 28,
+    gap: 8,
+    marginBottom: 14,
   },
   actionCard: {
     flex: 1,
   },
   actionCardInner: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 14,
+    borderRadius: 16,
+    padding: 10,
     borderWidth: 1,
     borderColor: '#F3F4F6',
-    minHeight: 160,
+    minHeight: 104,
   },
   actionIconBox: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 6,
   },
   actionCardTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '800',
     color: '#1E2B5A',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   actionCardSub: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#9CA3AF',
-    lineHeight: 16,
+    lineHeight: 13,
     flex: 1,
   },
   actionArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -853,74 +983,85 @@ const styles = StyleSheet.create({
   },
   bannerSlide: {
     width: SCREEN_WIDTH - 32,
+    height: SCREEN_WIDTH - 32,
     borderRadius: 24,
-    padding: 22,
     overflow: 'hidden',
     position: 'relative',
-    minHeight: 190,
+    borderWidth: 1,
+    shadowColor: '#111827',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 6,
   },
-  bannerRing1: {
-    position: 'absolute', top: -60, right: -60,
-    width: 200, height: 200, borderRadius: 100,
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)',
+  bannerAura: {
+    position: 'absolute',
+    left: -40,
+    right: -40,
+    bottom: -88,
+    height: 170,
+    borderRadius: 90,
+    opacity: 0.14,
   },
-  bannerRing2: {
-    position: 'absolute', top: 20, right: 20,
-    width: 120, height: 120, borderRadius: 60,
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.07)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+  bannerBottomShade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 118,
+    backgroundColor: 'rgba(2,6,23,0.2)',
   },
-  bannerContent: {
-    maxWidth: '70%',
-  },
-  bannerPinCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.6)',
+  bannerImageLayer: {
+    position: 'absolute',
+    left: -18,
+    right: -18,
+    top: -4,
+    bottom: -4,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+  },
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerCaption: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 10,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  bannerEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 3,
   },
   bannerTitle: {
-    fontSize: 21,
+    fontSize: 16,
     fontWeight: '800',
-    color: '#FFFFFF',
-    lineHeight: 27,
-    marginBottom: 8,
+    lineHeight: 20,
+    marginBottom: 2,
   },
   bannerSub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
-    lineHeight: 18,
-    marginBottom: 16,
-  },
-  bannerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    gap: 4,
-  },
-  bannerBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#1E2B5A',
+    fontSize: 11,
+    lineHeight: 15,
   },
   bannerDots: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 12,
+    gap: 8,
+    marginTop: 6,
   },
-  bannerDot: { height: 6, borderRadius: 3 },
-  bannerDotActive: { width: 20, backgroundColor: '#F97316' },
-  bannerDotInactive: { width: 6, backgroundColor: '#D1D5DB' },
+  bannerDot: { height: 8, borderRadius: 4 },
+  bannerDotActive: { width: 26, backgroundColor: '#F97316' },
+  bannerDotInactive: { width: 8, backgroundColor: '#D1D5DB' },
 
   /* ── Floating FAB stack ─────────────────────────────────────── */
   fabStack: {

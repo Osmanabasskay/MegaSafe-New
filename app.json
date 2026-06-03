@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "megasafe-init",
-    "slug": "megasafe-init",
-    "scheme": "megasafe",
+    "name": "Mi Osusu",
+    "slug": "mi-osusu",
+    "scheme": "miosusu",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Mi Osusu needs microphone access to record voice messages in group chats."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +25,10 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -32,7 +38,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "MegaSafe uses the camera for KYC selfies and ID capture.",
+          "cameraPermission": "Mi Osusu uses the camera for KYC selfies and ID capture.",
           "microphonePermission": false
         }
       ]

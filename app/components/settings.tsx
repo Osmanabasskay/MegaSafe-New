@@ -29,11 +29,12 @@ import {
   ShieldCheck,
   User,
 } from 'lucide-react-native';
-import { useAuthStore } from '../../stores/authStore';
-import { useAppDataStore } from '../../stores/appDataStore';
-import { uploadAvatar } from '../../lib/profileService';
-import { supabaseConfigured } from '../../lib/supabase';
-import { getCredentialDisplayName, getProfileFirstName } from '../../lib/profileName';
+import { useAuthStore } from '../../src/store/authStore';
+import { useAppDataStore } from '../../src/store/appDataStore';
+import { darkColors, lightColors } from '../../src/theme/colors';
+import { uploadAvatar } from '../../src/services/profileService';
+import { supabaseConfigured } from '../../src/services/supabase';
+import { getCredentialDisplayName, getProfileFirstName } from '../../src/utils/profileName';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -44,13 +45,16 @@ export default function SettingsScreen() {
     notifications,
     disputes,
     receipts,
-    linkedPhoneNumbers,
+    linkedMobileMoneyAccounts,
     linkedBankAccounts,
     initializeForUser,
     updateProfile,
     updatePreferences,
     setProfileAvatar,
   } = useAppDataStore();
+  const isDark = preferences.darkMode;
+  const C = isDark ? darkColors : lightColors;
+
   const [showPhoneNumber, setShowPhoneNumber] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
@@ -146,7 +150,7 @@ export default function SettingsScreen() {
   const renderHeaderRow = (title: string, icon: React.ReactNode) => (
     <View style={styles.sectionHeader}>
       {icon}
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={[styles.sectionTitle, { color: C.text }]}>{title}</Text>
     </View>
   );
 
@@ -158,33 +162,34 @@ export default function SettingsScreen() {
     right?: React.ReactNode;
     hideChevron?: boolean;
   }) => (
-    <TouchableOpacity style={styles.itemRow} onPress={params.onPress} activeOpacity={0.8}>
+    <TouchableOpacity style={[styles.itemRow, { backgroundColor: C.bg }]} onPress={params.onPress} activeOpacity={0.8}>
       <View style={styles.itemLeft}>
-        <View style={styles.itemIcon}>{params.icon}</View>
+        <View style={[styles.itemIcon, { backgroundColor: C.iconBg }]}>{params.icon}</View>
         <View style={styles.itemTextBlock}>
-          <Text style={styles.itemTitle}>{params.title}</Text>
-          {params.subtitle ? <Text style={styles.itemSubtitle}>{params.subtitle}</Text> : null}
+          <Text style={[styles.itemTitle, { color: C.text }]}>{params.title}</Text>
+          {params.subtitle ? <Text style={[styles.itemSubtitle, { color: C.textSub }]}>{params.subtitle}</Text> : null}
         </View>
       </View>
-      <View>{params.right ?? (!params.hideChevron ? <ChevronRight size={18} color="#9CA3AF" /> : null)}</View>
+      <View>{params.right ?? (!params.hideChevron ? <ChevronRight size={18} color={C.textMuted} /> : null)}</View>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bg }]}>
+      <View style={[styles.header, { backgroundColor: C.bg }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#F97316" />
+          <ArrowLeft size={24} color={C.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={[styles.headerTitle, { color: C.text }]}>Settings</Text>
         <View style={styles.backButton} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* ── Account ── */}
         <View style={styles.section}>
-          {renderHeaderRow('Account', <User size={20} color="#F97316" />)}
+          {renderHeaderRow('Account', <User size={20} color="#000000" />)}
 
-          <View style={styles.profileCard}>
+          <View style={[styles.profileCard, { backgroundColor: C.card }]}>
             <TouchableOpacity onPress={handlePhotoPicker} disabled={isUploadingPhoto} style={styles.avatarWrap}>
               {profile.avatarUrl ? (
                 <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
@@ -202,10 +207,10 @@ export default function SettingsScreen() {
               </View>
             </TouchableOpacity>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{profileFirstName}</Text>
-              <Text style={styles.profileEmail}>{profile.email || 'No email yet'}</Text>
-              <View style={styles.kycBadge}>
-                <ShieldCheck size={12} color="#10B981" />
+              <Text style={[styles.profileName, { color: C.text }]}>{profileFirstName}</Text>
+              <Text style={[styles.profileEmail, { color: C.textSub }]}>{profile.email || 'No email yet'}</Text>
+              {/* Phase 4: Shield/TrustGuard icon removed — text-only KYC badge */}
+              <View style={[styles.kycBadge, { backgroundColor: isDark ? '#065F46' : '#D1FAE5' }]}>
                 <Text style={styles.kycText}>{profile.verificationStatus}</Text>
               </View>
             </View>
@@ -214,34 +219,35 @@ export default function SettingsScreen() {
           {renderItem({
             title: 'Profile',
             subtitle: 'View and edit profile details',
-            icon: <User size={18} color="#6B7280" />,
+            icon: <User size={18} color="#000000" />,
             onPress: () => router.push('/components/profile-edit'),
           })}
           {renderItem({
             title: 'Phone Number',
             subtitle: showPhoneNumber ? profile.phone || 'Not set' : 'Tap to reveal',
-            icon: <Phone size={18} color="#6B7280" />,
+            icon: <Phone size={18} color="#000000" />,
             onPress: () => setShowPhoneNumber((prev) => !prev),
           })}
         </View>
 
+        {/* ── Security ── */}
         <View style={styles.section}>
-          {renderHeaderRow('Security', <Shield size={20} color="#F97316" />)}
+          {renderHeaderRow('Security', <Shield size={20} color="#000000" />)}
           {renderItem({
             title: 'Change Password',
             subtitle: 'Update account password',
-            icon: <Lock size={18} color="#6B7280" />,
+            icon: <Lock size={18} color="#000000" />,
             onPress: () => router.push('/(settings)/change-password'),
           })}
           {renderItem({
             title: 'Two-Factor Authentication',
             subtitle: preferences.twoFactorAuth ? 'Enabled' : 'Disabled',
-            icon: <ShieldCheck size={18} color="#6B7280" />,
+            icon: <ShieldCheck size={18} color="#000000" />,
             right: (
               <Switch
                 value={preferences.twoFactorAuth}
                 onValueChange={(value) => updatePreferences({ twoFactorAuth: value })}
-                trackColor={{ false: '#E5E7EB', true: '#F97316' }}
+                trackColor={{ false: C.switchOff, true: '#F97316' }}
                 thumbColor="#FFFFFF"
               />
             ),
@@ -250,12 +256,12 @@ export default function SettingsScreen() {
           {renderItem({
             title: 'Biometric Authentication',
             subtitle: preferences.biometricAuth ? 'Enabled' : 'Disabled',
-            icon: <Shield size={18} color="#6B7280" />,
+            icon: <Shield size={18} color="#000000" />,
             right: (
               <Switch
                 value={preferences.biometricAuth}
                 onValueChange={(value) => updatePreferences({ biometricAuth: value })}
-                trackColor={{ false: '#E5E7EB', true: '#F97316' }}
+                trackColor={{ false: C.switchOff, true: '#F97316' }}
                 thumbColor="#FFFFFF"
               />
             ),
@@ -263,18 +269,19 @@ export default function SettingsScreen() {
           })}
         </View>
 
+        {/* ── Preferences ── */}
         <View style={styles.section}>
-          {renderHeaderRow('Preferences', <Bell size={20} color="#F97316" />)}
+          {renderHeaderRow('Preferences', <Bell size={20} color="#000000" />)}
           {renderItem({
             title: 'Notifications',
             subtitle: unreadNotifications > 0 ? `${unreadNotifications} unread` : 'All caught up',
-            icon: <Bell size={18} color="#6B7280" />,
+            icon: <Bell size={18} color="#000000" />,
             onPress: () => router.push('/components/notifications'),
             right: (
               <Switch
                 value={preferences.notificationsEnabled}
                 onValueChange={(value) => updatePreferences({ notificationsEnabled: value })}
-                trackColor={{ false: '#E5E7EB', true: '#F97316' }}
+                trackColor={{ false: C.switchOff, true: '#F97316' }}
                 thumbColor="#FFFFFF"
               />
             ),
@@ -283,12 +290,12 @@ export default function SettingsScreen() {
           {renderItem({
             title: 'Dark Mode',
             subtitle: preferences.darkMode ? 'Enabled' : 'Disabled',
-            icon: <Moon size={18} color="#6B7280" />,
+            icon: <Moon size={18} color="#000000" />,
             right: (
               <Switch
                 value={preferences.darkMode}
                 onValueChange={(value) => updatePreferences({ darkMode: value })}
-                trackColor={{ false: '#E5E7EB', true: '#F97316' }}
+                trackColor={{ false: C.switchOff, true: '#F97316' }}
                 thumbColor="#FFFFFF"
               />
             ),
@@ -297,61 +304,64 @@ export default function SettingsScreen() {
           {renderItem({
             title: 'Language',
             subtitle: 'English',
-            icon: <Globe size={18} color="#6B7280" />,
+            icon: <Globe size={18} color="#000000" />,
             hideChevron: true,
           })}
         </View>
 
+        {/* ── Payments ── */}
         <View style={styles.section}>
-          {renderHeaderRow('Payments', <Phone size={20} color="#F97316" />)}
+          {renderHeaderRow('Payments', <Phone size={20} color="#000000" />)}
           {renderItem({
             title: 'Payment Methods',
-            subtitle: `${linkedPhoneNumbers.length} phone • ${linkedBankAccounts.length} bank linked`,
-            icon: <Phone size={18} color="#6B7280" />,
+            subtitle: `${linkedMobileMoneyAccounts.length} mobile money • ${linkedBankAccounts.length} bank linked`,
+            icon: <Phone size={18} color="#000000" />,
             onPress: () => router.push('/components/payment-methods'),
           })}
         </View>
 
+        {/* ── Support ── */}
         <View style={styles.section}>
-          {renderHeaderRow('Support', <HelpCircle size={20} color="#F97316" />)}
+          {renderHeaderRow('Support', <HelpCircle size={20} color="#000000" />)}
           {renderItem({
             title: 'Disputes & Cases',
             subtitle: `${openDisputes} active`,
-            icon: <Shield size={18} color="#6B7280" />,
+            icon: <Shield size={18} color="#000000" />,
             onPress: () => router.push('/components/disputes'),
           })}
           {renderItem({
             title: 'Help Center',
             subtitle: `${openDisputes} active dispute(s)`,
-            icon: <HelpCircle size={18} color="#6B7280" />,
+            icon: <HelpCircle size={18} color="#000000" />,
             onPress: () => router.push('/(settings)/help'),
           })}
           {renderItem({
             title: 'Terms of Service',
-            icon: <Lock size={18} color="#6B7280" />,
+            icon: <Lock size={18} color="#000000" />,
             onPress: () => router.push('/(settings)/terms'),
           })}
           {renderItem({
             title: 'Privacy Policy',
-            icon: <Lock size={18} color="#6B7280" />,
+            icon: <Lock size={18} color="#000000" />,
             onPress: () => router.push('/(settings)/privacy'),
           })}
           {renderItem({
-            title: 'About MegaSafe',
+            title: 'About Mi Osusu',
             subtitle: `${receipts.length} receipts generated`,
-            icon: <Info size={18} color="#6B7280" />,
+            icon: <Info size={18} color="#000000" />,
             onPress: () => router.push('/(settings)/about'),
           })}
           {renderItem({
             title: 'Payment Receipts',
             subtitle: `${receipts.length} stored`,
-            icon: <Info size={18} color="#6B7280" />,
+            icon: <Info size={18} color="#000000" />,
             onPress: () => router.push('/components/receipts'),
           })}
         </View>
 
+        {/* ── Sign Out ── */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.signOutButton} onPress={() => void handleSignOut()}>
+          <TouchableOpacity style={[styles.signOutButton, { backgroundColor: C.card }]} onPress={() => void handleSignOut()}>
             <LogOut size={20} color="#EF4444" />
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
@@ -364,7 +374,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -372,7 +381,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
   },
   backButton: {
     width: 36,
@@ -381,7 +389,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1E2B5A',
   },
   scrollView: {
     flex: 1,
@@ -399,12 +406,10 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 17,
     fontWeight: '700',
-    color: '#1E2B5A',
   },
   profileCard: {
     marginHorizontal: 24,
     marginBottom: 10,
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
@@ -444,31 +449,26 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1E2B5A',
     marginBottom: 2,
   },
   profileEmail: {
     fontSize: 13,
-    color: '#6B7280',
     marginBottom: 6,
   },
   kycBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: '#D1FAE5',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   kycText: {
-    marginLeft: 4,
     color: '#10B981',
     fontSize: 12,
     fontWeight: '600',
   },
   itemRow: {
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 24,
     paddingVertical: 14,
     flexDirection: 'row',
@@ -485,7 +485,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -496,17 +495,14 @@ const styles = StyleSheet.create({
   itemTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1E2B5A',
   },
   itemSubtitle: {
     marginTop: 2,
     fontSize: 12,
-    color: '#6B7280',
   },
   signOutButton: {
     marginHorizontal: 24,
     marginBottom: 24,
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingVertical: 14,
     flexDirection: 'row',
@@ -520,4 +516,3 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 });
-

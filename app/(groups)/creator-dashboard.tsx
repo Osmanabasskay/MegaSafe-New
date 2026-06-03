@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   RefreshControl,
   ScrollView,
   Share,
@@ -10,10 +11,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { AlertTriangle, ArrowLeft, Calendar, Download, ShieldCheck, Users } from 'lucide-react-native';
-import { useAuthStore } from '../../stores/authStore';
-import { useAppDataStore } from '../../stores/appDataStore';
-import { listGroupsForUser } from '../../lib/groupService';
+import { AlertTriangle, ArrowLeft, Calendar, Download, ShieldCheck, Trash2, Users } from 'lucide-react-native';
+import { useAuthStore } from '../../src/store/authStore';
+import { deleteGroup, listGroupsForUser } from '../../src/services/groupService';
+import { getGroupAdminReport } from '../../src/api/reportApi';
 
 interface CreatorGroup {
   id: string;
@@ -21,67 +22,107 @@ interface CreatorGroup {
   members: number;
   contributionAmount: number;
   nextPayout: string;
+  status: string;
 }
 
 export default function CreatorDashboardScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { disputes, vaultTransactions } = useAppDataStore();
   const [groups, setGroups] = useState<CreatorGroup[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+  const [serverStats, setServerStats] = useState({ pendingCount: 0, openDisputes: 0, projectedCycle: 0 });
+
+  const loadCreatorGroups = async () => {
+    if (!user?.id) {
+      setGroups([]);
+      return;
+    }
+
+    const { groups: managed } = await listGroupsForUser(user.id);
+    const creatorGroups = managed
+      .filter((group) => group.role === 'creator' || group.createdBy === user.id)
+      .map((group) => ({
+        id: group.id,
+        name: group.name,
+        members: group.members,
+        contributionAmount: group.contributionAmount,
+        nextPayout: group.nextPayout,
+        status: group.status,
+      }));
+    setGroups(creatorGroups);
+
+    // Fetch server-side aggregates for first group (multi-group support: extend as needed)
+    if (creatorGroups.length > 0) {
+      const { report } = await getGroupAdminReport(creatorGroups[0].id);
+      setServerStats({
+        pendingCount: Number(report?.pending_count ?? 0),
+        openDisputes: Number(report?.open_disputes ?? 0),
+        projectedCycle: Number(report?.projected_cycle_total ?? 0),
+      });
+    }
+  };
 
   useEffect(() => {
-    let mounted = true;
-    const run = async () => {
-      if (!user?.id) return;
-      const { groups: managed } = await listGroupsForUser(user.id);
-      if (!mounted) return;
-      setGroups(
-        managed.map((group) => ({
-          id: group.id,
-          name: group.name,
-          members: group.members,
-          contributionAmount: group.contributionAmount,
-          nextPayout: group.nextPayout,
-        }))
-      );
-    };
-    void run();
-    return () => {
-      mounted = false;
-    };
+    void loadCreatorGroups();
   }, [user?.id]);
-
-  const pendingCollections = useMemo(
-    () =>
-      vaultTransactions.filter(
-        (transaction) => transaction.type === 'contribution' && transaction.status === 'pending'
-      ),
-    [vaultTransactions]
-  );
-  const openDisputes = useMemo(
-    () => disputes.filter((dispute) => dispute.status === 'open' || dispute.status === 'under_review'),
-    [disputes]
-  );
-  const totalProjectedCycle = useMemo(
-    () => groups.reduce((sum, group) => sum + group.members * group.contributionAmount, 0),
-    [groups]
-  );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    await loadCreatorGroups();
     setRefreshing(false);
+  };
+
+  const handleDeleteGroup = (group: CreatorGroup) => {
+    if (!user?.id) {
+      Alert.alert('Sign in required', 'Please sign in again before deleting this group.');
+      return;
+    }
+
+    Alert.alert(
+      'Delete group?',
+      `If "${group.name}" has no members, it will be deleted now. If it has members, the request will be sent to a super admin for approval.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingGroupId(group.id);
+            const { success, outcome, error } = await deleteGroup({ groupId: group.id, userId: user.id });
+            setDeletingGroupId(null);
+
+            if (!success || error) {
+              Alert.alert('Group not deleted', error?.message ?? 'Unable to delete this group.');
+              return;
+            }
+
+            if (outcome === 'pending_super_admin') {
+              setGroups((current) =>
+                current.map((item) => (item.id === group.id ? { ...item, status: 'pending' } : item))
+              );
+              Alert.alert(
+                'Deletion pending',
+                'This group has members, so the deletion request is pending super admin approval.'
+              );
+              return;
+            }
+
+            setGroups((current) => current.filter((item) => item.id !== group.id));
+          },
+        },
+      ]
+    );
   };
 
   const exportReport = async () => {
     const lines = [
-      'MegaSafe Creator Report',
+      'Mi Osusu Creator Report',
       `Generated: ${new Date().toLocaleString()}`,
       `Groups managed: ${groups.length}`,
-      `Projected cycle volume: NLe ${totalProjectedCycle.toFixed(2)}`,
-      `Pending verifications: ${pendingCollections.length}`,
-      `Open disputes: ${openDisputes.length}`,
+      `Projected cycle volume: NLe ${serverStats.projectedCycle.toFixed(2)}`,
+      `Pending verifications: ${serverStats.pendingCount}`,
+      `Open disputes: ${serverStats.openDisputes}`,
       '',
       'Groups:',
       ...groups.map(
@@ -92,7 +133,7 @@ export default function CreatorDashboardScreen() {
       ),
     ];
     await Share.share({
-      title: 'MegaSafe Creator Report',
+      title: 'Mi Osusu Creator Report',
       message: lines.join('\n'),
     });
   };
@@ -123,35 +164,25 @@ export default function CreatorDashboardScreen() {
           <View style={styles.summaryCard}>
             <ShieldCheck size={18} color="#10B981" />
             <Text style={styles.summaryLabel}>Pending Verify</Text>
-            <Text style={styles.summaryValue}>{pendingCollections.length}</Text>
+            <Text style={styles.summaryValue}>{serverStats.pendingCount}</Text>
           </View>
           <View style={styles.summaryCard}>
             <AlertTriangle size={18} color="#EF4444" />
             <Text style={styles.summaryLabel}>Open Disputes</Text>
-            <Text style={styles.summaryValue}>{openDisputes.length}</Text>
+            <Text style={styles.summaryValue}>{serverStats.openDisputes}</Text>
           </View>
         </View>
 
         <View style={styles.totalCard}>
           <Text style={styles.totalTitle}>Projected Collection (Current Cycle)</Text>
-          <Text style={styles.totalValue}>NLe {totalProjectedCycle.toFixed(2)}</Text>
+          <Text style={styles.totalValue}>NLe {serverStats.projectedCycle.toFixed(2)}</Text>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pending Collection Verifications</Text>
           <View style={styles.sectionCard}>
-            {pendingCollections.length > 0 ? (
-              pendingCollections.slice(0, 6).map((transaction) => (
-                <View key={transaction.id} style={styles.listItem}>
-                  <View style={styles.listBody}>
-                    <Text style={styles.listTitle}>{transaction.description}</Text>
-                    <Text style={styles.listMeta}>
-                      {transaction.groupName || 'General'} • {new Date(transaction.occurredAt).toLocaleString()}
-                    </Text>
-                  </View>
-                  <Text style={styles.listAmount}>NLe {transaction.amount.toFixed(2)}</Text>
-                </View>
-              ))
+            {serverStats.pendingCount > 0 ? (
+              <Text style={styles.listTitle}>{serverStats.pendingCount} collection(s) awaiting verification</Text>
             ) : (
               <Text style={styles.emptyText}>No pending verifications.</Text>
             )}
@@ -163,20 +194,31 @@ export default function CreatorDashboardScreen() {
           <View style={styles.sectionCard}>
             {groups.length > 0 ? (
               groups.map((group) => (
-                <TouchableOpacity
-                  key={group.id}
-                  style={styles.listItem}
-                  onPress={() => router.push(`/(groups)/manage/${group.id}`)}
-                >
-                  <View style={styles.listBody}>
+                <View key={group.id} style={styles.listItem}>
+                  <TouchableOpacity
+                    style={styles.listBody}
+                    onPress={() => router.push(`/(groups)/manage/${group.id}`)}
+                  >
                     <Text style={styles.listTitle}>{group.name}</Text>
-                    <Text style={styles.listMeta}>Members: {group.members}</Text>
-                  </View>
+                    <Text style={styles.listMeta}>
+                      Members: {group.members}
+                      {group.status === 'pending' ? ' • pending delete' : ''}
+                    </Text>
+                  </TouchableOpacity>
                   <View style={styles.scheduleRight}>
                     <Calendar size={14} color="#6B7280" />
                     <Text style={styles.scheduleDate}>{group.nextPayout}</Text>
                   </View>
-                </TouchableOpacity>
+                  {group.status !== 'pending' ? (
+                    <TouchableOpacity
+                      style={[styles.deleteButton, deletingGroupId === group.id && styles.actionButtonDisabled]}
+                      disabled={deletingGroupId === group.id}
+                      onPress={() => handleDeleteGroup(group)}
+                    >
+                      <Trash2 size={18} color="#DC2626" strokeWidth={2.6} />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
               ))
             ) : (
               <Text style={styles.emptyText}>No groups created yet.</Text>
@@ -298,6 +340,7 @@ const styles = StyleSheet.create({
   scheduleRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginRight: 8,
   },
   scheduleDate: {
     marginLeft: 4,
@@ -309,6 +352,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     paddingVertical: 14,
+  },
+  deleteButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionButtonDisabled: {
+    opacity: 0.45,
   },
 });
 

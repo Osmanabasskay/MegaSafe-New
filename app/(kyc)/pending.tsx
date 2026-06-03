@@ -1,16 +1,21 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuthStore } from '../../stores/authStore';
-import { fetchProfile, type KycStatus } from '../../lib/profileService';
-import { useKycDraftStore } from '../../stores/kycDraftStore';
-import { KycProgress } from '../../components/kyc/KycProgress';
+import { useAuthStore } from '../../src/store/authStore';
+import { fetchProfile, type KycStatus } from '../../src/services/profileService';
+import { useKycDraftStore } from '../../src/store/kycDraftStore';
+import { KycProgress } from '../../src/components/kyc/KycProgress';
+import { useAppDataStore } from '../../src/store/appDataStore';
+import { darkColors, lightColors } from '../../src/theme/colors';
 
 export default function PendingScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const resetDraft = useKycDraftStore((s) => s.reset);
+  const { preferences } = useAppDataStore();
+  const isDark = preferences.darkMode;
+  const C = isDark ? darkColors : lightColors;
 
   const [status, setStatus] = useState<KycStatus | null>(null);
   const [reason, setReason] = useState<string | null>(null);
@@ -32,7 +37,7 @@ export default function PendingScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      void load();
     }, [load])
   );
 
@@ -45,53 +50,54 @@ export default function PendingScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#F97316" />
-      </View>
+      <SafeAreaView style={[styles.root, { backgroundColor: C.bg }]}>
+        <View style={[styles.center, { backgroundColor: C.bg }]}>
+          <ActivityIndicator size="large" color="#F97316" />
+        </View>
       </SafeAreaView>
     );
   }
 
   const approved = status === 'approved';
   const rejected = status === 'rejected';
-  const submitted = status === 'submitted';
+  // 'submitted' is a legacy value written by the old RPC; treat it the same as 'pending'
+  const pending  = status === 'pending' || status === 'submitted';
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView style={[styles.root, { backgroundColor: C.bg }]}>
       <KycProgress currentStep={5} label="Status" />
-      <View className="flex-1 items-center justify-center p-6">
-        <Text className="text-6xl mb-4">{approved ? '✅' : rejected ? '❌' : '⏳'}</Text>
-        <Text className="text-2xl font-bold text-primary mb-2 text-center">
-          {approved ? 'KYC approved' : rejected ? 'KYC needs attention' : submitted ? 'Under review' : 'Complete your KYC'}
+      <View style={styles.content}>
+        <Text style={styles.emoji}>{approved ? '✅' : rejected ? '❌' : '⏳'}</Text>
+        <Text style={[styles.title, { color: C.text }]}>
+          {approved ? 'KYC approved' : rejected ? 'KYC needs attention' : pending ? 'Under review' : 'Complete your KYC'}
         </Text>
-        <Text className="text-gray-600 text-center mb-6 px-2">
+        <Text style={[styles.body, { color: C.textSub }]}>
           {approved
-            ? 'Your identity is verified. You can use all MegaSafe features.'
+            ? 'Your identity is verified. You can use all Mi Osusu features.'
             : rejected
               ? reason || 'Please resubmit your documents with clearer images.'
-              : submitted
+              : pending
                 ? 'Your documents were submitted. We will notify you when review is complete.'
                 : 'Start the verification flow to unlock groups and payments.'}
         </Text>
 
         {rejected ? (
-          <TouchableOpacity className="bg-primary px-8 py-3 rounded-full mb-3" onPress={goResubmit}>
-            <Text className="text-white font-bold">Resubmit KYC</Text>
+          <TouchableOpacity style={styles.primaryBtn} onPress={goResubmit}>
+            <Text style={styles.primaryBtnText}>Resubmit KYC</Text>
           </TouchableOpacity>
         ) : null}
 
-        {!approved && !rejected && !submitted ? (
-          <TouchableOpacity className="bg-primary px-8 py-3 rounded-full mb-3" onPress={goResubmit}>
-            <Text className="text-white font-bold">Start KYC</Text>
+        {!approved && !rejected && !pending ? (
+          <TouchableOpacity style={styles.primaryBtn} onPress={goResubmit}>
+            <Text style={styles.primaryBtnText}>Start KYC</Text>
           </TouchableOpacity>
         ) : null}
 
         <TouchableOpacity
-          className={`px-8 py-3 rounded-full ${approved ? 'bg-secondary' : 'bg-gray-100'}`}
+          style={[styles.secondaryBtn, { backgroundColor: approved ? '#F97316' : C.iconBg }]}
           onPress={goHome}
         >
-          <Text className={`font-semibold ${approved ? 'text-white' : 'text-gray-700'}`}>
+          <Text style={[styles.secondaryBtnText, { color: approved ? '#FFFFFF' : C.textSub }]}>
             {approved ? 'Go to dashboard' : 'Back to dashboard'}
           </Text>
         </TouchableOpacity>
@@ -99,3 +105,38 @@ export default function PendingScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root:    { flex: 1 },
+  center:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  content: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  emoji:   { fontSize: 60, marginBottom: 16 },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  body: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+    paddingHorizontal: 8,
+  },
+  primaryBtn: {
+    backgroundColor: '#F97316',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 999,
+    marginBottom: 12,
+  },
+  primaryBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
+  secondaryBtn: {
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 999,
+    marginBottom: 8,
+  },
+  secondaryBtnText: { fontWeight: '600', fontSize: 15 },
+});

@@ -1,0 +1,14 @@
+# Next.js build output — never commit these
+.next/
+out/
+
+# Dependencies
+node_modules/
+
+# Local env — .env.example is committed; bare .env is not
+.env
+.env.*
+!.env.example
+
+# TypeScript incremental build info
+*.tsbuildinfo

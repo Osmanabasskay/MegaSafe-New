@@ -7,7 +7,7 @@ const includeDirs = ['app', 'lib', 'stores', 'types', 'supabase', 'scripts/phase
 const denyPatterns = [
   { label: 'TODO marker', regex: /\bTODO\b/ },
   { label: 'FIXME marker', regex: /\bFIXME\b/ },
-  { label: 'Legacy default name', regex: /MegaSafe Member/i },
+  { label: 'Legacy default name', regex: /Mi Osusu Member/i },
 ];
 
 const requiredPaths = [

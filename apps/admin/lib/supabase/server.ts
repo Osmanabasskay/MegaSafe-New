@@ -12,9 +12,13 @@ export const createSupabaseServerClient = async () => {
       setAll: (
         cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>
       ) => {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, options as never);
-        });
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options as never);
+          });
+        } catch {
+          // Called from a Server Component — middleware handles session refresh
+        }
       },
     },
   });

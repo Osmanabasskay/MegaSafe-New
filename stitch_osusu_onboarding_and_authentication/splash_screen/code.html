@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Osusu - Secure Contributions</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#690005",
+                        "secondary": "#ffcb8d",
+                        "tertiary": "#c6c6c7",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "on-secondary": "#462a00",
+                        "on-surface-variant": "#c6c5d4",
+                        "on-primary-container": "#7887ec",
+                        "tertiary-container": "#262828",
+                        "on-primary": "#102287",
+                        "surface-tint": "#bbc3ff",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "inverse-surface": "#dfe2ea",
+                        "outline-variant": "#454652",
+                        "outline": "#8f8f9e",
+                        "surface-bright": "#353940",
+                        "surface-container": "#1c2026",
+                        "background": "#0f1419",
+                        "surface-dim": "#0f1419",
+                        "primary-fixed-dim": "#bbc3ff",
+                        "on-tertiary-container": "#8e8f8f",
+                        "surface-container-low": "#181c21",
+                        "secondary-container": "#ffa504",
+                        "on-surface": "#dfe2ea",
+                        "surface-variant": "#31353b",
+                        "inverse-on-surface": "#2c3137",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#ffddb7",
+                        "on-secondary-container": "#684100",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "surface": "#0f1419",
+                        "on-tertiary": "#2f3131",
+                        "on-secondary-fixed": "#2a1700",
+                        "surface-container-highest": "#31353b",
+                        "surface-container-high": "#262a30",
+                        "surface-container-lowest": "#0a0f14",
+                        "on-primary-fixed": "#000d5f",
+                        "inverse-primary": "#4655b7",
+                        "primary-container": "#00157f",
+                        "tertiary-fixed": "#e2e2e2",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#2d3c9e",
+                        "primary": "#bbc3ff",
+                        "secondary-fixed-dim": "#ffb95c",
+                        "on-background": "#dfe2ea",
+                        "error": "#ffb4ab",
+                        "primary-fixed": "#dfe0ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "40px",
+                        "xs": "4px",
+                        "base": "8px",
+                        "md": "24px",
+                        "margin-mobile": "20px",
+                        "sm": "12px",
+                        "margin-desktop": "120px",
+                        "xl": "64px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "label-sm": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .splash-gradient {
+            background: radial-gradient(circle at center, #00157f 0%, #0f1419 100%);
+        }
+        .glass-glow {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background overflow-hidden antialiased">
+<!-- Splash Screen Main Canvas -->
+<main class="relative min-h-screen w-full flex flex-col items-center justify-center splash-gradient px-margin-mobile">
+<!-- Background Ambient Element -->
+<div class="absolute inset-0 z-0 opacity-30 pointer-events-none overflow-hidden">
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-container rounded-full blur-[120px] opacity-20"></div>
+</div>
+<!-- Central Content Area -->
+<div class="relative z-10 flex flex-col items-center">
+<!-- Brand Identity Section -->
+<div class="mb-xl flex flex-col items-center gap-base">
+<!-- Abstract Brand Icon (Vault Concept) -->
+<div class="w-16 h-16 glass-glow rounded-xl flex items-center justify-center mb-md shadow-2xl">
+<span class="material-symbols-outlined text-secondary text-[40px]" data-icon="lock_person" style="font-variation-settings: 'FILL' 1;">lock_person</span>
+</div>
+<!-- Wordmark from Shared Components JSON -->
+<h1 class="font-headline-xl text-headline-xl text-on-primary-fixed tracking-tight">
+                    Osusu
+                </h1>
+<p class="font-label-md text-label-md text-on-surface-variant opacity-70 uppercase tracking-[0.2em]">
+                    Communal Prosperity
+                </p>
+</div>
+<!-- Loading Indicator (Three Static Dots per constraints) -->
+<div class="flex items-center gap-sm mt-md">
+<div class="w-2.5 h-2.5 rounded-full bg-secondary shadow-[0_0_10px_rgba(255,165,0,0.5)]"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-secondary/60"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-secondary/30"></div>
+</div>
+</div>
+<!-- Footer Information -->
+<div class="absolute bottom-12 z-10 flex flex-col items-center gap-xs">
+<div class="flex items-center gap-xs font-label-sm text-label-sm text-on-surface-variant/60">
+<span class="material-symbols-outlined text-[16px]" data-icon="verified_user">verified_user</span>
+<span>SECURED BY DIGITAL VAULT PROTOCOL</span>
+</div>
+<div class="h-[1px] w-12 bg-outline-variant opacity-30 mt-base"></div>
+</div>
+<!-- Decorative UI Element (Asymmetric Glass Card) -->
+<div class="absolute -bottom-20 -right-20 w-80 h-80 glass-glow rounded-full rotate-12 opacity-40 pointer-events-none"></div>
+<div class="absolute -top-20 -left-20 w-64 h-64 glass-glow rounded-full -rotate-45 opacity-20 pointer-events-none"></div>
+</main>
+<!-- Invisible background loader for future assets if needed -->
+<div class="hidden">
+<img data-alt="A premium fintech application splash screen background featuring a deep imperial blue radial gradient. In the center, a minimalist white logo for Osusu is visible, surrounded by soft bokeh light effects and subtle digital textures that evoke a sense of high-security vaults and modern prosperity. The lighting is focused and cinematic, emphasizing depth and transparency through glassmorphism elements." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4wJOztskO8xEp8oWBixPhcdkmnDuI5EMnBEB_3BJSa8JqFe5jlofQGLvZzlN60PR5NHzY18iC-WUnNssHRrx4zGFpfDCSeCWaoIHFA_fMjejYixxLxgSzALlg15nkodtCHPJY35UwW5xcZQWnjgLOuEnr8H48pauDEotUhuFhMjKzTRs23I8ZDHsaXj5fNxvfLwajJ_uo10V1Vf1_UHHNqQrENMXGoSTaztDklcWHzZAVIXN1IbHKbMFCqQJLV9Y6ImeFgH-aKgI"/>
+</div>
+</body></html>

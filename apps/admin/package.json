@@ -1,12 +1,13 @@
 {
-  "name": "megasafe-admin",
+  "name": "mi-osusu-admin",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "verify:auth": "node scripts/verify-auth.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

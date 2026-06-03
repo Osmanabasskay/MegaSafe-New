@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,20 +12,32 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Building2, Phone, Trash2 } from 'lucide-react-native';
-import { normalizePhoneE164, isValidE164 } from '../../lib/auth/phone';
-import { useAppDataStore } from '../../stores/appDataStore';
+import { normalizePhoneE164, isValidE164 } from '../../src/services/auth/phone';
+import { useAppDataStore, type MobileMoneyNetwork } from '../../src/store/appDataStore';
+import { darkColors, lightColors } from '../../src/theme/colors';
+import { MOBILE_MONEY_METHODS } from '../../src/services/paymentMethodLinks';
+
+const MOBILE_METHOD_LOGOS: Record<MobileMoneyNetwork, { source: number; title: string }> = {
+  orange_money: { source: require('../../Orange Money logo.png'), title: 'Orange Money Logo' },
+  afrimoney: { source: require('../../AfriMoney Logo.png'), title: 'Afrimoney Logo' },
+  qmoney: { source: require('../../Qmoney logo.png'), title: 'QMoney Logo' },
+};
 
 export default function PaymentMethodsScreen() {
   const router = useRouter();
   const {
-    linkedPhoneNumbers,
+    linkedMobileMoneyAccounts,
     linkedBankAccounts,
     linkPhoneNumber,
     unlinkPhoneNumber,
     linkBankAccount,
     unlinkBankAccount,
+    preferences,
   } = useAppDataStore();
+  const isDark = preferences.darkMode;
+  const C = isDark ? darkColors : lightColors;
 
+  const [selectedNetwork, setSelectedNetwork] = useState<MobileMoneyNetwork>('orange_money');
   const [phoneInput, setPhoneInput] = useState('');
   const [bankName, setBankName] = useState('');
   const [accountName, setAccountName] = useState('');
@@ -37,14 +50,15 @@ export default function PaymentMethodsScreen() {
       return;
     }
 
-    const result = linkPhoneNumber(normalized);
+    const result = linkPhoneNumber(normalized, selectedNetwork);
     if (!result.ok) {
       Alert.alert('Phone not linked', result.message ?? 'Could not link phone number.');
       return;
     }
 
     setPhoneInput('');
-    Alert.alert('Phone linked', 'Your phone number can now be used for transactions.');
+    const networkLabel = MOBILE_MONEY_METHODS.find((method) => method.id === selectedNetwork)?.label;
+    Alert.alert('Mobile money linked', `${networkLabel ?? 'Mobile money'} is ready for transactions.`);
   };
 
   const handleAddBank = () => {
@@ -61,72 +75,110 @@ export default function PaymentMethodsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bg }]}>
+      <View style={[styles.header, { backgroundColor: C.bg }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
           <ArrowLeft size={22} color="#F97316" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Payment Methods</Text>
+        <Text style={[styles.headerTitle, { color: C.text }]}>Payment Methods</Text>
         <View style={styles.iconButton} />
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: C.card }]}>
           <View style={styles.sectionHeader}>
             <Phone size={18} color="#F97316" />
-            <Text style={styles.sectionTitle}>Linked Phone Numbers</Text>
+            <Text style={[styles.sectionTitle, { color: C.text }]}>Linked Mobile Money</Text>
+          </View>
+
+          <View style={styles.networkRow}>
+            {MOBILE_MONEY_METHODS.map((method) => (
+              <TouchableOpacity
+                key={method.id}
+                style={[
+                  styles.networkChip,
+                  selectedNetwork === method.id && styles.networkChipActive,
+                  selectedNetwork === method.id && {
+                    borderColor: method.color,
+                    backgroundColor: `${method.color}18`,
+                  },
+                ]}
+                onPress={() => setSelectedNetwork(method.id)}
+              >
+                <Image
+                  source={MOBILE_METHOD_LOGOS[method.id].source}
+                  style={styles.networkLogo}
+                  resizeMode="contain"
+                  accessibilityLabel={MOBILE_METHOD_LOGOS[method.id].title}
+                />
+              </TouchableOpacity>
+            ))}
           </View>
 
           <TextInput
-            style={styles.input}
-            placeholder="+23276123456"
-            placeholderTextColor="#9CA3AF"
+            style={[styles.input, { backgroundColor: C.inputBg, color: C.text }]}
+            placeholder="Mobile money number, e.g. +23276123456"
+            placeholderTextColor={C.textMuted}
             keyboardType="phone-pad"
             value={phoneInput}
             onChangeText={setPhoneInput}
           />
           <TouchableOpacity style={styles.primaryButton} onPress={handleAddPhone}>
-            <Text style={styles.primaryButtonText}>Link Phone Number</Text>
+            <Text style={styles.primaryButtonText}>Link Mobile Money Number</Text>
           </TouchableOpacity>
 
-          {linkedPhoneNumbers.length > 0 ? (
-            linkedPhoneNumbers.map((phone) => (
-              <View key={phone} style={styles.itemRow}>
-                <Text style={styles.itemText}>{phone}</Text>
-                <TouchableOpacity onPress={() => unlinkPhoneNumber(phone)}>
-                  <Trash2 size={16} color="#EF4444" />
-                </TouchableOpacity>
-              </View>
-            ))
+          {linkedMobileMoneyAccounts.length > 0 ? (
+            linkedMobileMoneyAccounts.map((account) => {
+              const method = MOBILE_MONEY_METHODS.find((item) => item.id === account.network);
+              return (
+                <View key={account.id} style={[styles.itemRow, { backgroundColor: C.bg }]}>
+                  <View style={styles.itemLogoWrap}>
+                    <Image
+                      source={MOBILE_METHOD_LOGOS[account.network].source}
+                      style={styles.itemLogo}
+                      resizeMode="contain"
+                      accessibilityLabel={MOBILE_METHOD_LOGOS[account.network].title}
+                    />
+                  </View>
+                  <View style={styles.itemBody}>
+                    <Text style={[styles.itemText, { color: C.text }]}>{method?.label ?? account.network}</Text>
+                    <Text style={[styles.itemSubText, { color: C.textSub }]}>{account.phone}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => unlinkPhoneNumber(account.phone, account.network)}>
+                    <Trash2 size={16} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              );
+            })
           ) : (
-            <Text style={styles.emptyText}>No linked phone numbers yet.</Text>
+            <Text style={[styles.emptyText, { color: C.textSub }]}>No mobile money numbers linked yet.</Text>
           )}
         </View>
 
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: C.card }]}>
           <View style={styles.sectionHeader}>
             <Building2 size={18} color="#F97316" />
-            <Text style={styles.sectionTitle}>Linked Bank Accounts</Text>
+            <Text style={[styles.sectionTitle, { color: C.text }]}>Linked Bank Accounts</Text>
           </View>
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: C.inputBg, color: C.text }]}
             placeholder="Bank Name"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={C.textMuted}
             value={bankName}
             onChangeText={setBankName}
           />
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: C.inputBg, color: C.text }]}
             placeholder="Account Name"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={C.textMuted}
             value={accountName}
             onChangeText={setAccountName}
           />
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: C.inputBg, color: C.text }]}
             placeholder="Account Number"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={C.textMuted}
             keyboardType="number-pad"
             value={accountNumber}
             onChangeText={setAccountNumber}
@@ -137,10 +189,10 @@ export default function PaymentMethodsScreen() {
 
           {linkedBankAccounts.length > 0 ? (
             linkedBankAccounts.map((bank) => (
-              <View key={bank.id} style={styles.itemRow}>
+              <View key={bank.id} style={[styles.itemRow, { backgroundColor: C.bg }]}>
                 <View style={styles.itemBody}>
-                  <Text style={styles.itemText}>{bank.bankName}</Text>
-                  <Text style={styles.itemSubText}>{bank.accountName} • {bank.accountNumberMasked}</Text>
+                  <Text style={[styles.itemText, { color: C.text }]}>{bank.bankName}</Text>
+                  <Text style={[styles.itemSubText, { color: C.textSub }]}>{bank.accountName} â€¢ {bank.accountNumberMasked}</Text>
                 </View>
                 <TouchableOpacity onPress={() => unlinkBankAccount(bank.id)}>
                   <Trash2 size={16} color="#EF4444" />
@@ -148,7 +200,7 @@ export default function PaymentMethodsScreen() {
               </View>
             ))
           ) : (
-            <Text style={styles.emptyText}>No linked bank accounts yet.</Text>
+            <Text style={[styles.emptyText, { color: C.textSub }]}>No linked bank accounts yet.</Text>
           )}
         </View>
       </ScrollView>
@@ -211,6 +263,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 8,
   },
+  networkRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 10,
+  },
+  networkChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minWidth: 118,
+    minHeight: 58,
+    marginRight: 8,
+    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  networkChipActive: {
+    borderWidth: 1.5,
+  },
+  networkLogo: {
+    width: 102,
+    height: 40,
+  },
   primaryButton: {
     backgroundColor: '#F97316',
     borderRadius: 12,
@@ -236,6 +316,17 @@ const styles = StyleSheet.create({
   itemBody: {
     flex: 1,
     marginRight: 8,
+  },
+  itemLogoWrap: {
+    width: 68,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  itemLogo: {
+    width: 64,
+    height: 28,
   },
   itemText: {
     color: '#1F2937',

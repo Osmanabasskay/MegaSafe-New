@@ -1,4 +1,4 @@
--- MegaSafe Phase 2: Storage buckets + policies (run in Supabase SQL Editor after `profiles` / auth exist)
+-- Mi Osusu Phase 2: Storage buckets + policies (run in Supabase SQL Editor after `profiles` / auth exist)
 -- Buckets
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
