@@ -35,7 +35,7 @@ export default function WelcomeScreen() {
       <View style={styles.brandBlock}>
         <View style={styles.logoShell}>
           <Image
-            source={require('../assets/Mi Osusu Logo.png')}
+            source={require('../assets/logos/mi-osusu/mi-osusu-logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />

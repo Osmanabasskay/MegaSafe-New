@@ -63,9 +63,9 @@ const METHOD_LABELS: Record<CollectionMethod, string> = {
 };
 
 const METHOD_LOGOS: Partial<Record<CollectionMethod, { source: number; title: string }>> = {
-  orange_money: { source: require('../../Orange Money logo.png'), title: 'Orange Money Logo' },
-  afrimoney: { source: require('../../AfriMoney Logo.png'), title: 'Afrimoney Logo' },
-  qmoney: { source: require('../../Qmoney logo.png'), title: 'QMoney Logo' },
+  orange_money: { source: require('../../assets/payment-providers/orange-money.png'), title: 'Orange Money Logo' },
+  afrimoney: { source: require('../../assets/payment-providers/afrimoney.png'), title: 'Afrimoney Logo' },
+  qmoney: { source: require('../../assets/payment-providers/qmoney.png'), title: 'QMoney Logo' },
 };
 
 const UNIT_LABELS: Record<DurationUnit, string> = {

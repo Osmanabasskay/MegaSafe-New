@@ -35,9 +35,9 @@ import {
 import type { SupportedPaymentMethod } from '../../src/services/paymentService';
 
 const MOBILE_METHOD_LOGOS = {
-  orange_money: { source: require('../../Orange Money logo.png'), title: 'Orange Money Logo' },
-  afrimoney: { source: require('../../AfriMoney Logo.png'), title: 'Afrimoney Logo' },
-  qmoney: { source: require('../../Qmoney logo.png'), title: 'QMoney Logo' },
+  orange_money: { source: require('../../assets/payment-providers/orange-money.png'), title: 'Orange Money Logo' },
+  afrimoney: { source: require('../../assets/payment-providers/afrimoney.png'), title: 'Afrimoney Logo' },
+  qmoney: { source: require('../../assets/payment-providers/qmoney.png'), title: 'QMoney Logo' },
 };
 
 const ALL_METHODS: Array<{ id: SupportedPaymentMethod; label: string; logo?: { source: number; title: string } }> = [

@@ -18,9 +18,9 @@ import { darkColors, lightColors } from '../../src/theme/colors';
 import { MOBILE_MONEY_METHODS } from '../../src/services/paymentMethodLinks';
 
 const MOBILE_METHOD_LOGOS: Record<MobileMoneyNetwork, { source: number; title: string }> = {
-  orange_money: { source: require('../../Orange Money logo.png'), title: 'Orange Money Logo' },
-  afrimoney: { source: require('../../AfriMoney Logo.png'), title: 'Afrimoney Logo' },
-  qmoney: { source: require('../../Qmoney logo.png'), title: 'QMoney Logo' },
+  orange_money: { source: require('../../assets/payment-providers/orange-money.png'), title: 'Orange Money Logo' },
+  afrimoney: { source: require('../../assets/payment-providers/afrimoney.png'), title: 'Afrimoney Logo' },
+  qmoney: { source: require('../../assets/payment-providers/qmoney.png'), title: 'QMoney Logo' },
 };
 
 export default function PaymentMethodsScreen() {

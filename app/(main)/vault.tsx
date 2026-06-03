@@ -48,8 +48,8 @@ import {
 
 // ── Monime method logos ─────────────────────────────────────────
 const METHOD_LOGOS: Record<VaultTopupMethod, { source: ReturnType<typeof require>; title: string }> = {
-  orange_money: { source: require('../../Orange Money logo.png'), title: 'Orange Money' },
-  afrimoney:    { source: require('../../AfriMoney Logo.png'),    title: 'AfriMoney' },
+  orange_money: { source: require('../../assets/payment-providers/orange-money.png'), title: 'Orange Money' },
+  afrimoney:    { source: require('../../assets/payment-providers/afrimoney.png'),    title: 'AfriMoney' },
 };
 
 const METHOD_COLORS: Record<VaultTopupMethod, string> = {
