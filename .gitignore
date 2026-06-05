@@ -33,6 +33,12 @@ testsprite_tests/tmp/
 *.key
 *.mobileprovision
 
+# Executables / binaries — never commit these to the repo
+*.exe
+*.dll
+*.so
+*.dylib
+
 # Metro
 .metro-health-check*
 
@@ -49,7 +55,20 @@ yarn-error.*
 # .env*.local matches .env.local etc but NOT bare `.env`
 .env
 .env.*
+apps/admin/.env
+apps/admin/.env.*
+
+# Keep safe template files only
 !.env.example
+!apps/admin/.env.example
+
+
+
+# Production database dumps — NEVER commit real data to the repo
+prod_*.sql
+*_clone.sql
+*_backup.sql
+*.dump
 
 # typescript
 *.tsbuildinfo
