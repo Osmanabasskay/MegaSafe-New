@@ -3,12 +3,19 @@ import { DataTable } from '@/components/data-table';
 import { StatusBadge } from '@/components/status-badge';
 import { RiskScoreBadge, SeverityBadge } from '@/components/risk-badge';
 import { AdminActionButton } from '@/components/action-button';
-import { getUserDetail, getUserRiskProfile } from '@/lib/admin-data';
+import { DocImage } from '@/components/doc-image';
+import { getUserDetail, getUserRiskProfile, requireSuperAdmin } from '@/lib/admin-data';
 
 interface Counts { [k: string]: number }
 
 export default async function AdminUserDetailPage(params: { params: Promise<{ id: string }> }) {
   const { id } = await params.params;
+  const { userId: adminId } = await requireSuperAdmin();
+  // Segregation of duties: an admin may never run account/KYC actions on their
+  // own account (enforced server-side by assertNoSelfAction). Reflect that in
+  // the UI so the buttons are clearly disabled instead of returning a raw error.
+  const isSelf = adminId === id;
+  const selfActionReason = 'Blocked: you cannot run this action on your own account.';
   const [detail, riskRaw] = await Promise.all([getUserDetail(id), getUserRiskProfile(id)]);
   const { user } = detail;
   const riskScore = Number(riskRaw.risk_score ?? 0);
@@ -66,22 +73,31 @@ export default async function AdminUserDetailPage(params: { params: Promise<{ id
         <p className="mt-0.5 text-xs text-slate-500">
           Every action is written to the <span className="font-mono">admin_actions</span> ledger. Self-action is blocked server-side. Destructive actions require confirmation.
         </p>
+        {isSelf ? (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+            This is your own account. Account &amp; KYC actions are disabled for admin safety
+            (segregation of duties). Ask another super admin to review your KYC.
+          </div>
+        ) : null}
         <div className="mt-3 flex flex-wrap gap-2">
-          <AdminActionButton label="Approve KYC"          action="approve_kyc"              targetUserId={id} tone="primary" confirm="Approve KYC for this user?" />
-          <AdminActionButton label="Mark KYC Verified"    action="mark_kyc_verified"        targetUserId={id} tone="primary" confirm="Mark KYC verified?" />
-          <AdminActionButton label="Reject KYC"           action="reject_kyc"               targetUserId={id} tone="warning" requireReason />
-          <AdminActionButton label="Request Resubmission" action="request_kyc_resubmission" targetUserId={id} tone="neutral" requireReason />
-          <AdminActionButton label="Escalate KYC"         action="escalate_kyc"             targetUserId={id} tone="neutral" requireReason />
-          <AdminActionButton label="Suspend"              action="suspend_user"             targetUserId={id} tone="warning" requireReason />
-          <AdminActionButton label="Unsuspend"            action="unsuspend_user"           targetUserId={id} tone="neutral" />
-          <AdminActionButton label="Lock Account"         action="lock_account"             targetUserId={id} tone="danger" requireReason />
-          <AdminActionButton label="Unlock"               action="unlock_account"           targetUserId={id} tone="neutral" />
-          <AdminActionButton label="Force Logout"         action="force_logout"             targetUserId={id} tone="warning" requireReason />
-          <AdminActionButton label="Ban"                  action="ban_user"                 targetUserId={id} tone="danger" requireReason />
-          <AdminActionButton label="Add Admin Note"       action="add_admin_note"           targetUserId={id} tone="neutral" requireReason />
+          <AdminActionButton label="Approve KYC"          action="approve_kyc"              targetUserId={id} tone="primary" confirm="Approve KYC for this user?" disabled={isSelf} disabledReason={selfActionReason} />
+          <AdminActionButton label="Mark KYC Verified"    action="mark_kyc_verified"        targetUserId={id} tone="primary" confirm="Mark KYC verified?" disabled={isSelf} disabledReason={selfActionReason} />
+          <AdminActionButton label="Reject KYC"           action="reject_kyc"               targetUserId={id} tone="warning" requireReason disabled={isSelf} disabledReason={selfActionReason} />
+          <AdminActionButton label="Request Resubmission" action="request_kyc_resubmission" targetUserId={id} tone="neutral" requireReason disabled={isSelf} disabledReason={selfActionReason} />
+          <AdminActionButton label="Escalate KYC"         action="escalate_kyc"             targetUserId={id} tone="neutral" requireReason disabled={isSelf} disabledReason={selfActionReason} />
+          <AdminActionButton label="Suspend"              action="suspend_user"             targetUserId={id} tone="warning" requireReason disabled={isSelf} disabledReason={selfActionReason} />
+          <AdminActionButton label="Unsuspend"            action="unsuspend_user"           targetUserId={id} tone="neutral" disabled={isSelf} disabledReason={selfActionReason} />
+          <AdminActionButton label="Lock Account"         action="lock_account"             targetUserId={id} tone="danger" requireReason disabled={isSelf} disabledReason={selfActionReason} />
+          <AdminActionButton label="Unlock"               action="unlock_account"           targetUserId={id} tone="neutral" disabled={isSelf} disabledReason={selfActionReason} />
+          <AdminActionButton label="Force Logout"         action="force_logout"             targetUserId={id} tone="warning" requireReason disabled={isSelf} disabledReason={selfActionReason} />
+          <AdminActionButton label="Ban"                  action="ban_user"                 targetUserId={id} tone="danger" requireReason disabled={isSelf} disabledReason={selfActionReason} />
+          <AdminActionButton label="Add Admin Note"       action="add_admin_note"           targetUserId={id} tone="neutral" requireReason disabled={isSelf} disabledReason={selfActionReason} />
           <AdminActionButton label="Open Fraud Case"      action="create_fraud_case"        targetUserId={id} tone="warning" severity="high" requireReason />
         </div>
       </div>
+
+      {/* KYC Documents */}
+      <KycDocuments userId={id} />
 
       {/* Profile & Guarantor */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -259,6 +275,65 @@ export default async function AdminUserDetailPage(params: { params: Promise<{ id
           emptyText="No audit events for this user."
         />
       </div>
+    </div>
+  );
+}
+
+/** Fetches and displays the user's KYC document images via short-lived signed URLs. */
+async function KycDocuments({ userId }: { userId: string }) {
+  const { svc } = await requireSuperAdmin();
+
+  const { data: p } = await svc
+    .from('profiles')
+    .select('national_id_front_url, national_id_back_url, selfie_url, kyc_status')
+    .eq('id', userId)
+    .maybeSingle();
+
+  const signUrl = async (path: string | null | undefined): Promise<string | null> => {
+    if (!path) return null;
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    const { data: signed } = await svc.storage
+      .from('kyc-documents')
+      .createSignedUrl(path, 60 * 10);
+    return signed?.signedUrl ?? null;
+  };
+
+  const [idFrontUrl, idBackUrl, selfieUrl] = await Promise.all([
+    signUrl(p?.national_id_front_url),
+    signUrl(p?.national_id_back_url),
+    signUrl(p?.selfie_url),
+  ]);
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h3 className="text-base font-bold text-slate-900">KYC Documents</h3>
+      <p className="mt-0.5 text-xs text-slate-500">
+        Images load inline via 10-minute signed URLs. Click any image to open full size.
+        KYC status:{' '}
+        <span className="font-semibold capitalize">{p?.kyc_status ?? 'unknown'}</span>
+      </p>
+      {!idFrontUrl && !idBackUrl && !selfieUrl ? (
+        <p className="mt-3 text-sm text-slate-400">
+          No KYC documents on file — the applicant has not uploaded documents yet.
+        </p>
+      ) : (
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {(
+            [
+              { label: 'ID Front', url: idFrontUrl },
+              { label: 'ID Back',  url: idBackUrl  },
+              { label: 'Selfie',   url: selfieUrl  },
+            ] as const
+          ).map(({ label, url }) => (
+            <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                {label}
+              </p>
+              <DocImage label={label} url={url} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

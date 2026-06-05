@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import type { KycDraftState } from '../store/kycDraftStore';
 import { uploadFromUri, uploadKycFile } from './storageUpload';
 import type { GuarantorForm } from '../utils/validation/kyc';
+import { isValidSierraLeonePhone, normalizeToSierraLeone } from './auth/phone';
 
 /**
  * Matches profiles.kyc_status CHECK constraint in the DB.
@@ -213,6 +214,28 @@ export async function submitKycPackage(params: {
     return { error: new Error('Guarantor ID document data is missing. Please upload it again.') };
   }
 
+  // ── 1b. Normalise & validate Sierra Leone phone numbers ─────────────────────
+  // profiles.phone has a DB CHECK constraint (^\+232[0-9]{8}$). The UI shows a
+  // "+232" label but the form stores only the local digits the user typed, so we
+  // canonicalise here BEFORE any upload — otherwise the RPC's profiles update
+  // violates the constraint and rolls back the entire submission.
+  const normalizedPhone = normalizeToSierraLeone(draft.phone ?? '');
+  if (!isValidSierraLeonePhone(normalizedPhone)) {
+    return {
+      error: new Error(
+        'Enter a valid Sierra Leone phone number — 8 digits after +232 (e.g. 088 123 456).',
+      ),
+    };
+  }
+  const normalizedGuarantorPhone = normalizeToSierraLeone(guarantor.guarantorPhone ?? '');
+  if (!isValidSierraLeonePhone(normalizedGuarantorPhone)) {
+    return {
+      error: new Error(
+        "Enter a valid Sierra Leone phone number for the guarantor — 8 digits after +232.",
+      ),
+    };
+  }
+
   // ── 2. Generate submission UUID (path-safe, unique per submission) ──────────
   const submissionId = generateUUID();
   const base = `kyc/${userId}/${submissionId}`;
@@ -263,7 +286,7 @@ export async function submitKycPackage(params: {
     p_submission_id:           submissionId,
     p_first_name:              draft.firstName.trim(),
     p_last_name:               draft.lastName.trim(),
-    p_phone:                   draft.phone.trim(),
+    p_phone:                   normalizedPhone,
     p_date_of_birth:           draft.dateOfBirth,
     p_gender:                  draft.gender || null,
     p_address_line1:           draft.addressLine1.trim(),
@@ -278,7 +301,7 @@ export async function submitKycPackage(params: {
     p_national_id_back_url:    paths.back,
     p_selfie_url:              paths.selfie,
     p_guarantor_name:          guarantor.guarantorName.trim(),
-    p_guarantor_phone:         guarantor.guarantorPhone.trim(),
+    p_guarantor_phone:         normalizedGuarantorPhone,
     p_guarantor_email:         guarantor.guarantorEmail?.trim() ?? '',
     p_guarantor_address:       guarantor.guarantorAddress.trim(),
     p_guarantor_relationship:  guarantor.relationship.trim(),
@@ -325,8 +348,22 @@ export async function upsertBasicProfile(params: {
   const firstName  = params.firstName?.trim()  || null;
   const lastName   = params.lastName?.trim()   || null;
   const email      = params.email?.trim().toLowerCase() || null;
-  const phone      = params.phone?.trim()      || null;
   const addressLine1 = params.address?.trim()  || null;
+
+  // profiles.phone has a DB CHECK constraint (^\+232[0-9]{8}$). Canonicalise to
+  // Sierra Leone E.164 here so callers (sign-up, profile edit) can pass the raw
+  // value the user typed without tripping the constraint. A supplied-but-invalid
+  // number returns a clear error instead of a raw DB constraint failure.
+  let phone: string | null = null;
+  if (params.phone && params.phone.trim()) {
+    const normalized = normalizeToSierraLeone(params.phone);
+    if (!isValidSierraLeonePhone(normalized)) {
+      return {
+        error: new Error('Enter a valid Sierra Leone phone number — 8 digits after +232.'),
+      };
+    }
+    phone = normalized;
+  }
   // Validate date format before writing; reject if clearly wrong
   const dob = params.dateOfBirth && /^\d{4}-\d{2}-\d{2}$/.test(params.dateOfBirth)
     ? params.dateOfBirth

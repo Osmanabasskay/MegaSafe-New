@@ -79,10 +79,8 @@ export interface DepositSavingsResult {
 // ── Helpers ──────────────────────────────────────────────────────
 
 function getEdgeUrl(path: string): string {
-  const url =
-    (supabase as unknown as { supabaseUrl: string }).supabaseUrl ??
-    process.env.EXPO_PUBLIC_SUPABASE_URL ??
-    '';
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+  if (!url) throw new Error('EXPO_PUBLIC_SUPABASE_URL is not configured');
   return `${url}/functions/v1/${path}`;
 }
 
@@ -269,6 +267,64 @@ export async function payOsusuFromVault(params: {
     };
   } catch (err) {
     return { ...blank, error: toBackendError(err, 'Pay Osusu from vault') };
+  }
+}
+
+// ── Request Vault Withdrawal ─────────────────────────────────────
+
+export type VaultWithdrawalProvider = 'orange_money' | 'afrimoney' | 'qmoney' | 'bank_transfer';
+
+export interface VaultWithdrawalResult {
+  success:      boolean;
+  withdrawalId: string | null;
+  idempotent:   boolean;
+  error:        Error | null;
+}
+
+export async function requestVaultWithdrawal(params: {
+  amount:              number;
+  destinationProvider: VaultWithdrawalProvider;
+  destinationNumber:   string;
+  savingsGoalId?:      string | null;
+  idempotencyKey?:     string;
+  currency?:           string;
+}): Promise<VaultWithdrawalResult> {
+  const blank: VaultWithdrawalResult = {
+    success: false, withdrawalId: null, idempotent: false, error: null,
+  };
+  if (!supabaseConfigured) return { ...blank, success: true };
+
+  try {
+    const token = await getAuthToken();
+    if (!token) throw new Error('Not authenticated.');
+
+    const iKey = params.idempotencyKey ?? generateIdempotencyKey();
+    const resp = await fetch(getEdgeUrl('process-withdrawal'), {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount:               params.amount,
+        destination_provider: params.destinationProvider,
+        destination_number:   params.destinationNumber,
+        savings_goal_id:      params.savingsGoalId ?? null,
+        currency:             params.currency       ?? 'NLe',
+        idempotency_key:      iKey,
+      }),
+    });
+
+    const json = await resp.json() as Record<string, unknown>;
+    if (!resp.ok || json.error) {
+      throw new Error((json.error as string) ?? `Withdrawal request failed (${resp.status})`);
+    }
+
+    return {
+      success:      Boolean(json.success),
+      withdrawalId: (json.withdrawal_id as string | null) ?? null,
+      idempotent:   Boolean(json.idempotent),
+      error:        null,
+    };
+  } catch (err) {
+    return { ...blank, error: toBackendError(err, 'Request vault withdrawal') };
   }
 }
 

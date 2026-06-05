@@ -9,13 +9,12 @@ export const MOBILE_MONEY_METHODS: Array<{
 }> = [
   { id: 'orange_money', label: 'Orange Money', shortLabel: 'Orange', color: '#F97316' },
   { id: 'afrimoney', label: 'AfriMoney', shortLabel: 'Africell', color: '#16A34A' },
-  { id: 'qmoney', label: 'QMoney', shortLabel: 'QMoney', color: '#2563EB' },
+  // qmoney intentionally excluded — not supported via Monime
 ];
 
 export const PAYMENT_METHOD_LABELS: Record<SupportedPaymentMethod, string> = {
   orange_money: 'Orange Money',
   afrimoney: 'AfriMoney',
-  qmoney: 'QMoney',
   bank_transfer: 'Bank Transfer',
   card: 'Card',
   cash_collected: 'Cash Collected',
@@ -25,7 +24,7 @@ export function getLinkedMobileMoneyAccount(
   accounts: LinkedMobileMoneyRecord[],
   method: SupportedPaymentMethod
 ): LinkedMobileMoneyRecord | null {
-  if (method !== 'orange_money' && method !== 'afrimoney' && method !== 'qmoney') return null;
+  if (method !== 'orange_money' && method !== 'afrimoney') return null;
   return accounts.find((account) => account.network === method) ?? null;
 }
 
@@ -48,7 +47,10 @@ export function getPaymentMethodDetail(params: {
   const mobileAccount = getLinkedMobileMoneyAccount(params.mobileMoneyAccounts, params.method);
   if (mobileAccount) return mobileAccount.phone;
   if (params.method === 'bank_transfer' && params.bankAccounts[0]) {
-    return params.bankAccounts[0].accountNumberMasked;
+    const first = params.bankAccounts[0].accountNumberMasked;
+    return params.bankAccounts.length > 1
+      ? `${first} (+${params.bankAccounts.length - 1} more)`
+      : first;
   }
   if (params.method === 'card') return 'Not available';
   return 'Not linked';

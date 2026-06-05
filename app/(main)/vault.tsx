@@ -4,7 +4,6 @@ import {
   Alert,
   Animated,
   AppState,
-  Clipboard,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -18,6 +17,7 @@ import {
   View,
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView }         from 'react-native-safe-area-context';
 import { useRouter }            from 'expo-router';
 import {
@@ -128,15 +128,18 @@ export default function VaultScreen() {
 
   // ── Animations ──────────────────────────────────────────────
   useEffect(() => {
-    Animated.loop(
+    const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(badgePulse, { toValue: 1.1, duration: 1000, useNativeDriver: true }),
         Animated.timing(badgePulse, { toValue: 1,   duration: 1000, useNativeDriver: true }),
       ])
-    ).start();
-    Animated.loop(
+    );
+    const ringLoop = Animated.loop(
       Animated.timing(badgeRing, { toValue: 1, duration: 2400, useNativeDriver: true })
-    ).start();
+    );
+    pulseLoop.start();
+    ringLoop.start();
+    return () => { pulseLoop.stop(); ringLoop.stop(); };
   }, []);
 
   const onRefresh = async () => { setRefreshing(true); await loadData(); setRefreshing(false); };
@@ -557,7 +560,7 @@ export default function VaultScreen() {
                 <TouchableOpacity
                   style={styles.copyBtn}
                   onPress={() => {
-                    Clipboard.setString(topupResult.ussdCode ?? '');
+                    Clipboard.setStringAsync(topupResult.ussdCode ?? '');
                     Alert.alert('Copied', 'USSD code copied to clipboard.');
                   }}
                   activeOpacity={0.8}

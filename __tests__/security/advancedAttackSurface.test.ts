@@ -28,6 +28,10 @@ const SRC  = path.join(ROOT, 'src');
 const APP  = path.join(ROOT, 'app');
 const FNS  = path.join(ROOT, 'supabase', 'functions');
 const SQL  = path.join(ROOT, 'supabase');
+// Canonical, verified snapshot of the LIVE security objects (KYC RPCs, profile
+// lock trigger, KYC RLS). Replaces the archived, schema-incorrect
+// prompt8_security_hardening_v2.sql. Regenerated from prod via pg_get_functiondef.
+const KYC_SEC = path.join(ROOT, 'supabase', '_live_snapshot', 'canonical_security_objects.sql');
 
 function tsFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
@@ -306,7 +310,7 @@ describe('Phase 2: Authentication — address injection', () => {
 
 describe('Phase 3: Authorization — role protection in migration', () => {
   it('prompt8 migration exists and contains trigger to protect profiles.role', () => {
-    const migPath = path.join(SQL, 'prompt8_security_hardening_v2.sql');
+    const migPath = KYC_SEC;
     expect(fs.existsSync(migPath)).toBe(true);
     const text = readFile(migPath);
     expect(text).toMatch(/protect_profile_immutable_columns/);
@@ -314,19 +318,19 @@ describe('Phase 3: Authorization — role protection in migration', () => {
   });
 
   it('prompt8 migration blocks kyc_status direct updates', () => {
-    const migPath = path.join(SQL, 'prompt8_security_hardening_v2.sql');
+    const migPath = KYC_SEC;
     const text = readFile(migPath);
     expect(text).toMatch(/NEW\.kyc_status IS DISTINCT FROM OLD\.kyc_status/);
   });
 
   it('prompt8 migration blocks is_active direct updates', () => {
-    const migPath = path.join(SQL, 'prompt8_security_hardening_v2.sql');
+    const migPath = KYC_SEC;
     const text = readFile(migPath);
     expect(text).toMatch(/NEW\.is_active IS DISTINCT FROM OLD\.is_active/);
   });
 
   it('prompt8 KYC approve RPC checks user_roles (not profiles.role)', () => {
-    const migPath = path.join(SQL, 'prompt8_security_hardening_v2.sql');
+    const migPath = KYC_SEC;
     const text = readFile(migPath);
     // Should contain user_roles table in the approve function body
     expect(text).toMatch(/FROM public\.user_roles/);
@@ -340,10 +344,15 @@ describe('Phase 3: Authorization — role protection in migration', () => {
     expect(oldProfileRolePattern.test(funcText)).toBe(false);
   });
 
-  it('prompt8 KYC RLS policies use user_roles not profiles.role', () => {
-    const migPath = path.join(SQL, 'prompt8_security_hardening_v2.sql');
-    const text = readFile(migPath);
-    expect(text).toMatch(/FROM public\.user_roles ur.*WHERE ur\.user_id = auth\.uid\(\) AND ur\.role = 'super_admin'/s);
+  it('KYC RLS admin policies authorize via is_super_admin() (user_roles), not profiles.role', () => {
+    const text = readFile(KYC_SEC);
+    // Admin policies must delegate to the canonical user_roles-backed helper.
+    expect(text).toMatch(/CREATE POLICY kyc_apps_select_admin[\s\S]*?USING \(public\.is_super_admin\(\)\)/);
+    expect(text).toMatch(/CREATE POLICY kyc_apps_update_admin[\s\S]*?USING \(public\.is_super_admin\(\)\)/);
+    expect(text).toMatch(/CREATE POLICY kyc_docs_select_admin[\s\S]*?USING \(public\.is_super_admin\(\)\)/);
+    expect(text).toMatch(/CREATE POLICY kyc_reviews_admin_all[\s\S]*?USING \(public\.is_super_admin\(\)\)/);
+    // The fragile profiles.role pattern must be gone from the admin policies.
+    expect(text).not.toMatch(/FOR (SELECT|UPDATE|ALL)[\s\S]*?p\.role = 'super_admin'/);
   });
 
   it('upsertBasicProfile does NOT include role in its update payload (static analysis)', () => {
@@ -450,7 +459,7 @@ describe('Phase 4: Financial — negative amount protection in SQL', () => {
   });
 
   it('prompt8 migration does not weaken existing amount constraints', () => {
-    const sql = readFile(path.join(SQL, 'prompt8_security_hardening_v2.sql'));
+    const sql = readFile(KYC_SEC);
     // Must not DROP any positive-amount CHECK constraints
     expect(sql).not.toMatch(/DROP CONSTRAINT.*chk_.*amount_positive/i);
   });
@@ -528,18 +537,18 @@ describe('Phase 5: Webhook — HMAC signature enforcement', () => {
 
 describe('Phase 6: KYC — self-approval blocked in new migration', () => {
   it('prompt8 approve_kyc_application contains self-approval guard', () => {
-    const sql = readFile(path.join(SQL, 'prompt8_security_hardening_v2.sql'));
+    const sql = readFile(KYC_SEC);
     expect(sql).toMatch(/v_app\.user_id = v_reviewer_id/);
     expect(sql).toMatch(/cannot approve your own KYC/i);
   });
 
   it('prompt8 reject_kyc_application contains self-rejection guard', () => {
-    const sql = readFile(path.join(SQL, 'prompt8_security_hardening_v2.sql'));
+    const sql = readFile(KYC_SEC);
     expect(sql).toMatch(/cannot reject your own KYC/i);
   });
 
   it('submit_kyc_package blocks already-approved users from re-submitting', () => {
-    const sql = readFile(path.join(SQL, 'prompt8_security_hardening_v2.sql'));
+    const sql = readFile(KYC_SEC);
     expect(sql).toMatch(/kyc_status = 'approved'/);
     expect(sql).toMatch(/already verified/i);
   });
@@ -547,7 +556,7 @@ describe('Phase 6: KYC — self-approval blocked in new migration', () => {
 
 describe('Phase 6: KYC — file path validation', () => {
   it('submit_kyc_package validates storage paths belong to current user and submission', () => {
-    const sql = readFile(path.join(SQL, 'prompt8_security_hardening_v2.sql'));
+    const sql = readFile(KYC_SEC);
     // Path prefix: kyc/{uid}/{submission_id}/
     expect(sql).toMatch(/v_expected_prefix.*kyc.*v_uid.*p_submission_id/s);
     expect(sql).toMatch(/starts_with\(p_national_id_front_url, v_expected_prefix\)/);
@@ -588,36 +597,35 @@ describe('Phase 6: KYC — file path validation', () => {
   });
 });
 
-describe('Phase 6: KYC — audit log correctness in new migration', () => {
-  it('prompt8 submit_kyc_package audit log uses user_id and new_values', () => {
-    const sql = readFile(path.join(SQL, 'prompt8_security_hardening_v2.sql'));
-    // Must contain the correct audit INSERT column list
-    expect(sql).toMatch(/INSERT INTO public\.audit_logs \(user_id, action, table_name, record_id, new_values\)/);
-    // No INSERT INTO audit_logs should use actor_id or new_data columns
-    // Scan INSERT statements only (not comments)
+describe('Phase 6: KYC — audit log correctness (matches live audit_logs schema)', () => {
+  // The live audit_logs table uses (actor_id, action, table_name, record_id, new_data).
+  // The archived prompt8 file used user_id/new_values — which would BREAK inserts.
+  it('submit_kyc_package audit log uses actor_id and new_data (not user_id/new_values)', () => {
+    const sql = readFile(KYC_SEC);
+    expect(sql).toMatch(/INSERT INTO public\.audit_logs \(actor_id, action, table_name, record_id, new_data\)/);
     const insertStatements = sql.match(/INSERT INTO public\.audit_logs \([^)]+\)/g) ?? [];
     for (const stmt of insertStatements) {
-      expect(stmt).not.toMatch(/actor_id/);
-      expect(stmt).not.toMatch(/new_data/);
+      expect(stmt).toMatch(/actor_id/);
+      expect(stmt).toMatch(/new_data/);
+      expect(stmt).not.toMatch(/new_values/);
     }
   });
 
-  it('prompt8 approve_kyc_application audit log uses user_id and new_values', () => {
-    const sql = readFile(path.join(SQL, 'prompt8_security_hardening_v2.sql'));
-    // All three audit INSERTs should use user_id / new_values
+  it('all KYC audit INSERTs use actor_id / new_data', () => {
+    const sql = readFile(KYC_SEC);
     const auditInserts = sql.match(/INSERT INTO public\.audit_logs \([^)]+\)/g) ?? [];
+    expect(auditInserts.length).toBeGreaterThanOrEqual(3);
     for (const ins of auditInserts) {
-      expect(ins).toMatch(/user_id/);
-      expect(ins).toMatch(/new_values/);
-      expect(ins).not.toMatch(/actor_id/);
-      expect(ins).not.toMatch(/new_data/);
+      expect(ins).toMatch(/actor_id/);
+      expect(ins).toMatch(/new_data/);
+      expect(ins).not.toMatch(/new_values/);
     }
   });
 });
 
 describe('Phase 6: KYC — rate limiting', () => {
   it('submit_kyc_package contains inline rate limit (max 3 in 10 minutes)', () => {
-    const sql = readFile(path.join(SQL, 'prompt8_security_hardening_v2.sql'));
+    const sql = readFile(KYC_SEC);
     expect(sql).toMatch(/v_recent_count >= 3/);
     expect(sql).toMatch(/INTERVAL '10 minutes'/);
     expect(sql).toMatch(/Too many submission attempts/);

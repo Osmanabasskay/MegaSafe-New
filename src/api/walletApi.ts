@@ -24,6 +24,7 @@ export {
   verifyVaultTopupStatus,
   payOsusuFromVault,
   depositSavingsFromVault,
+  requestVaultWithdrawal,
   type VaultSummary,
   type VaultTopupMethod,
   type VaultTopupResult,
@@ -31,4 +32,6 @@ export {
   type VaultTopupEffectiveStatus,
   type PayOsusuResult,
   type DepositSavingsResult,
+  type VaultWithdrawalProvider,
+  type VaultWithdrawalResult,
 } from '../services/vaultService';

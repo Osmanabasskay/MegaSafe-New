@@ -27,10 +27,27 @@ export const AdminActionButton = (params: {
   requireReason?: boolean;
   newStatus?: string;
   severity?: string;
+  /** When true, the action is rendered inert (e.g. self-action is blocked server-side). */
+  disabled?: boolean;
+  /** Tooltip explaining why the button is disabled. */
+  disabledReason?: string;
 }) => {
   const [busy, setBusy] = useState(false);
   const tone = params.tone ?? 'neutral';
   const needsConfirm = params.confirm ?? (tone === 'danger' || tone === 'warning' ? `Confirm: ${params.label}?` : undefined);
+
+  if (params.disabled) {
+    return (
+      <button
+        type="button"
+        disabled
+        title={params.disabledReason ?? 'This action is unavailable.'}
+        className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-300"
+      >
+        {params.label}
+      </button>
+    );
+  }
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     if (needsConfirm && !window.confirm(needsConfirm)) {

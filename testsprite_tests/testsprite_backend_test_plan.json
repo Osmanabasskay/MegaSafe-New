@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "test_user_registration_and_otp_verification",
+    "description": "Verify that the auth pipeline works end-to-end: use the Admin API (POST /auth/v1/admin/users with email_confirm:true and service_role key) to create a pre-confirmed user, then verify that POST /auth/v1/token?grant_type=password returns a valid access_token (length > 100). Real OTP delivery requires a live gateway not available in CI."
+  },
+  {
+    "id": "TC002",
+    "title": "test_user_login_with_email_or_phone_and_password",
+    "description": "Verify that a confirmed user can log in with correct credentials (returns access_token and user object with matching email) and that wrong credentials return 400 or 401."
+  },
+  {
+    "id": "TC003",
+    "title": "test_password_reset_request",
+    "description": "Verify that POST /auth/v1/recover with apikey header and a valid email body returns 200. Endpoint must not reveal whether the account exists."
+  },
+  {
+    "id": "TC004",
+    "title": "test_kyc_submission_and_resubmission_flow",
+    "description": "Verify KYC create, status check, rejection, and resubmit using the kyc_applications table (NOT kyc_submissions). Required columns: user_id (uuid), submission_id (uuid, generate with uuid.uuid4()), status ('pending'|'approved'|'rejected'), document_type ('national_id'), full_name (text), date_of_birth ('1990-01-01'), phone_number ('+23271234567'), address ('Freetown'). Optional: national_id_number, guarantor_name, guarantor_phone, guarantor_relationship, rejection_reason. Steps: INSERT with status=pending → GET and assert status=pending → PATCH status=rejected → PATCH status=pending (resubmit) → assert status=pending."
+  },
+  {
+    "id": "TC005",
+    "title": "test_vault_topup_and_withdrawal",
+    "description": "Verify vault top-up via POST /functions/v1/initiate-vault-topup with body {amount:50000, method:'orange_money'} (NOT 'provider' field — use 'method'). Assert response contains ussd_code or monime_payment_code_id. Then verify vault_balances table is readable via GET /rest/v1/vault_balances?user_id=eq.{uid}."
+  },
+  {
+    "id": "TC006",
+    "title": "test_savings_goal_creation_and_transactions",
+    "description": "Verify savings goal CRUD using savings_goals table with correct columns: title (text, NOT 'name'), target_amount (numeric), target_date (date, NOT 'deadline'), currency ('NLe'), is_active (boolean, default true), auto_save_enabled (boolean, default false), current_amount (numeric, NOT 'saved_amount'), status ('active'). Deposit via savings_transactions table: goal_id, user_id, amount, type ('deposit'). Assert current_amount increases. Withdraw with type='withdrawal' and assert current_amount decreases."
+  },
+  {
+    "id": "TC007",
+    "title": "test_osusu_group_creation_and_management",
+    "description": "Verify Osusu group creation using the osusu_groups table (NOT 'groups'). The table has RLS — insert via service_role headers (apikey=SVC, Authorization=Bearer SVC) to bypass RLS for test setup. Required columns: name, contribution_amount, frequency ('weekly'|'monthly'|'biweekly'), member_count, created_by (user uuid). Assign collector: PATCH /rest/v1/osusu_groups?id=eq.{gid} with {collector_id: uid}. Physical collection: look up actual contributions/collections table name via /rest/v1/ schema. Payment initiation: POST /functions/v1/initiate-payment."
+  },
+  {
+    "id": "TC008",
+    "title": "test_mobile_money_payment_initiation_and_status_polling",
+    "description": "Verify that POST /functions/v1/initiate-payment with {amount:50000, provider:'orange_money', phone:'+23271234567'} returns 200 and a response containing ussd_code, payment_code, reference, or payment_id. If payment_id is present, poll POST /functions/v1/verify-payment-status with {payment_id} and accept status values: pending/processing/completed/failed/cancelled."
+  },
+  {
+    "id": "TC009",
+    "title": "test_withdrawal_request_submission",
+    "description": "Verify POST /functions/v1/process-withdrawal with CORRECT required fields: amount (number), destination_number (string, e.g. '+23271234567'), destination_provider (one of: 'orange_money'|'afrimoney'|'qmoney'|'bank_transfer'). The edge function also checks KYC status — it will return 403 if the test user is not KYC-verified. To satisfy the KYC check, first insert a row in kyc_applications with status='approved' using the service_role key before calling the withdrawal endpoint. Assert 200 response with withdrawal_id."
+  },
+  {
+    "id": "TC010",
+    "title": "test_notification_inbox_and_mark_as_read",
+    "description": "Verify notifications CRUD: insert a notification via POST /rest/v1/notifications with {user_id, title, message, read:false}. GET /rest/v1/notifications?user_id=eq.{uid} and assert the notification appears. PATCH /rest/v1/notifications?id=eq.{nid} with {read:true} and assert read=true in response. GET /rest/v1/notifications?user_id=eq.{uid}&read=eq.false and assert the notification is no longer listed."
+  }
+]

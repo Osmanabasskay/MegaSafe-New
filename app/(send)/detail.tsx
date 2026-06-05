@@ -37,13 +37,12 @@ import type { SupportedPaymentMethod } from '../../src/services/paymentService';
 const MOBILE_METHOD_LOGOS = {
   orange_money: { source: require('../../assets/payment-providers/orange-money.png'), title: 'Orange Money Logo' },
   afrimoney: { source: require('../../assets/payment-providers/afrimoney.png'), title: 'Afrimoney Logo' },
-  qmoney: { source: require('../../assets/payment-providers/qmoney.png'), title: 'QMoney Logo' },
 };
 
+// qmoney intentionally excluded — not supported via Monime (see SupportedPaymentMethod)
 const ALL_METHODS: Array<{ id: SupportedPaymentMethod; label: string; logo?: { source: number; title: string } }> = [
   { id: 'orange_money',  label: 'Orange Money', logo: MOBILE_METHOD_LOGOS.orange_money },
   { id: 'afrimoney',    label: 'AfriMoney', logo: MOBILE_METHOD_LOGOS.afrimoney },
-  { id: 'qmoney',       label: 'QMoney', logo: MOBILE_METHOD_LOGOS.qmoney },
   { id: 'bank_transfer', label: 'Bank Transfer' },
   { id: 'card',         label: 'Card'          },
 ];

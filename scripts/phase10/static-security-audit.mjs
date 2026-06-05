@@ -13,7 +13,7 @@ const denyPatterns = [
 const requiredPaths = [
   'app/(settings)/terms.tsx',
   'app/(settings)/privacy.tsx',
-  'app/(auth)/onboarding.tsx',
+  'app/(auth)/intro.tsx',
   'app/(auth)/register.tsx',
   'app/(auth)/otp.tsx',
   'apps/admin/app/admin/page.tsx',

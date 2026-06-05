@@ -54,7 +54,8 @@ export interface LinkedBankAccountRecord {
   createdAt: string;
 }
 
-export type MobileMoneyNetwork = 'orange_money' | 'afrimoney' | 'qmoney';
+// qmoney intentionally excluded — not supported via Monime (see paymentService.SupportedPaymentMethod)
+export type MobileMoneyNetwork = 'orange_money' | 'afrimoney';
 
 export interface LinkedMobileMoneyRecord {
   id: string;
@@ -212,11 +213,7 @@ const nowIso = (): string => new Date().toISOString();
 
 const createId = (prefix: string): string => {
   const rand = new Uint32Array(1);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(rand);
-  } else {
-    rand[0] = Math.floor(Math.random() * 0xffffffff);
-  }
+  crypto.getRandomValues(rand); // crypto is available in all supported runtimes (browser, Node 15+, RN 0.70+)
   return `${prefix}-${Date.now()}-${rand[0]!.toString(16)}`;
 };
 
@@ -247,12 +244,8 @@ const buildDefaultProfile = (): ProfileData => ({
   memberSince: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
   referralCode: (() => {
     const rand = new Uint32Array(1);
-    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-      crypto.getRandomValues(rand);
-    } else {
-      rand[0] = Math.floor(Math.random() * 900000) + 100000;
-    }
-    return `MSF-${(100000 + (rand[0]! % 900000))}`;
+    crypto.getRandomValues(rand);
+    return `MSF-${100000 + (rand[0]! % 900000)}`;
   })(),
 });
 

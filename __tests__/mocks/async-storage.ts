@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 const store: Record<string, string> = {};
 export default {
   getItem: vi.fn(async (key: string) => store[key] ?? null),

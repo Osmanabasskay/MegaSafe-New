@@ -1,6 +1,7 @@
 import './global.css';
 import { useEffect, useState } from 'react';
 import * as WebBrowser from 'expo-web-browser';
+import { Platform } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -15,7 +16,10 @@ export default function RootLayout() {
   const { session, isLoading, setSession, setUser, setLoading } = useAuthStore();
   const termsAcceptedAt = useComplianceStore((s) => s.termsAcceptedAt);
   const privacyAcceptedAt = useComplianceStore((s) => s.privacyAcceptedAt);
-  const [showSplash, setShowSplash] = useState(true);
+  // The animated splash is a native intro only. On web it would otherwise sit on
+  // top of the whole app for 5s on every load/reload, blanking first paint and
+  // blocking automated testing — so skip it on web.
+  const [showSplash, setShowSplash] = useState(Platform.OS !== 'web');
   const router = useRouter();
   const segments = useSegments();
 

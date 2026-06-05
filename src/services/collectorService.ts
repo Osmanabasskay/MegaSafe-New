@@ -75,7 +75,7 @@ export async function recordPhysicalCollection(
       success: true,
       receiptNumber: `RCP-LOCAL-${Date.now()}`,
       contributionId: null, amount: input.amount,
-      period: input.period, collectedAt: new Date().toISOString(),
+      collectedAt: new Date().toISOString(),
       idempotent: false, error: null,
     };
   }

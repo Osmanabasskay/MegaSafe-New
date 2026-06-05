@@ -87,7 +87,13 @@ async function signInWithGoogleNative(): Promise<{
 
 async function signInWithGoogleWeb(): Promise<{ error: Error | null }> {
   if (typeof window === 'undefined') return { error: new Error('Web only') };
-  const redirectTo = `${window.location.origin}/`;
+  // EXPO_PUBLIC_APP_URL must be set to the externally-reachable origin when
+  // testing on a physical device via ADB port forwarding (where window.location.origin
+  // is "localhost:3000" on the phone — unreachable after the Google OAuth redirect).
+  // In production this env var should be the deployed domain (e.g. https://miosusu.app).
+  const baseUrl =
+    (process.env.EXPO_PUBLIC_APP_URL ?? '').trim() || window.location.origin;
+  const redirectTo = `${baseUrl}/auth/callback`;
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo, skipBrowserRedirect: false },
@@ -111,9 +117,9 @@ async function logGoogleLoginAudit(userId: string, success: boolean): Promise<vo
       p_old_data:   null,
       p_new_data:   { provider: 'google', success },
     });
-  } catch {
-    // Audit log failure must never interrupt the auth flow
-    if (__DEV__) console.warn('[googleOAuth] audit log write failed');
+  } catch (err) {
+    // Audit log failure must never interrupt the auth flow, but always log so ops can detect
+    console.error('[googleOAuth] audit log write failed:', err instanceof Error ? err.message : err);
   }
 }
 

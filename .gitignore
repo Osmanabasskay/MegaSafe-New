@@ -15,10 +15,6 @@ coverage/
 apps/*/.next/
 out/
 
-# Backend tooling caches (Supabase backend is canonical; Convex is unused)
-.convex/
-convex/
-
 # AI / agent tooling caches (machine-local, not project source)
 .agents/
 .codex/
@@ -61,3 +57,5 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+testsprite_tests\tmp\config.json

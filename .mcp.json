@@ -4,18 +4,6 @@
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=upuhjekwmtjnjksqikdu"
     },
-    "convex": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "convex@latest",
-        "mcp",
-        "start"
-      ],
-      "env": {
-        "CONVEX_DEPLOYMENT": "standing-albatross-753"
-      }
-    },
     "TestSprite": {
       "type": "stdio",
       "command": "npx",
@@ -23,7 +11,7 @@
         "@testsprite/testsprite-mcp@latest"
       ],
       "env": {
-        "API_KEY": "${TESTSPRITE_API_KEY}"
+        "API_KEY": "sk-user-Ayyt7d5e57wbQbNBav8dW4kw0-knknfOaNYoFIccoeA5lym82g2dGbBGAGzZVUremwX-sa38NYRaDI5Uf_AKAd_SrndbZOS9vF9D9V9IYUl7SFewxsln12-cQHRdUXzN-nE"
       }
     }
   }

@@ -22,7 +22,7 @@ import {
 import {
   normalizeToSierraLeone as normalizeSL,
   isValidSierraLeonePhone as isValidSL,
-} from '../../services/auth/phone';
+} from '../../../services/auth/phone';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PHONE VALIDATION
@@ -137,7 +137,7 @@ describe('Email validation', () => {
     expect(emailSchema.safeParse('te st@gmail.com').success).toBe(false);
   });
   it('rejects email over 254 characters', () => {
-    const long = 'a'.repeat(245) + '@b.com';
+    const long = 'a'.repeat(250) + '@example.com'; // 262 chars, exceeds 254 limit
     expect(emailSchema.safeParse(long).success).toBe(false);
   });
   it('rejects script injection in email', () => {

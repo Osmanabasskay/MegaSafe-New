@@ -144,7 +144,7 @@ describe('signInWithGoogle — token fragment path', () => {
 
 describe('signInWithGoogle — cancellation and failure', () => {
   it('returns cancelled=true when user dismisses the browser', async () => {
-    mockOpenAuthSession.mockResolvedValue({ type: 'cancel' });
+    mockOpenAuthSession.mockResolvedValue({ type: 'cancel' } as Awaited<ReturnType<typeof WebBrowser.openAuthSessionAsync>>);
 
     const result = await signInWithGoogle();
 
@@ -154,7 +154,7 @@ describe('signInWithGoogle — cancellation and failure', () => {
   });
 
   it('returns error when browser returns a non-success type', async () => {
-    mockOpenAuthSession.mockResolvedValue({ type: 'dismiss' });
+    mockOpenAuthSession.mockResolvedValue({ type: 'dismiss' } as Awaited<ReturnType<typeof WebBrowser.openAuthSessionAsync>>);
 
     const result = await signInWithGoogle();
 
@@ -220,7 +220,7 @@ describe('signInWithGoogle — audit log', () => {
   });
 
   it('does not write audit log when login is cancelled', async () => {
-    mockOpenAuthSession.mockResolvedValue({ type: 'cancel' });
+    mockOpenAuthSession.mockResolvedValue({ type: 'cancel' } as Awaited<ReturnType<typeof WebBrowser.openAuthSessionAsync>>);
 
     await signInWithGoogle();
     await Promise.resolve();

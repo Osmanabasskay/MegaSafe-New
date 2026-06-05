@@ -96,7 +96,7 @@ async function assertProfileUpdateBlocked(
   }
 
   // Row was returned — check if the value actually changed
-  const returned = (data[0] as Record<string, unknown>)[field];
+  const returned = (data[0] as unknown as Record<string, unknown>)[field];
   if (returned !== value) {
     // Value was silently overridden (trigger or generated column)
     pass(`Member cannot update profiles.${field} (trigger/constraint blocked the change)`);

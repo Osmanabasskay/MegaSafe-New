@@ -1,0 +1,1643 @@
+[
+  {
+    "id": "TC001",
+    "title": "Register and reach the app after verification",
+    "description": "A new user can complete registration, verify the OTP, and enter the main app successfully.",
+    "category": "Authentication & Session",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/register"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the full name field with a new user name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the phone number field with a valid phone number"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with a new email address"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the date of birth field with a valid date"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the address field with a valid address"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with a valid password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "action",
+        "description": "Enter the received 6-digit OTP"
+      },
+      {
+        "type": "action",
+        "description": "Submit the OTP verification form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the main app"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the home dashboard is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Log in with existing credentials",
+    "description": "An authenticated user can sign in with email or phone and access the main app.",
+    "category": "Authentication & Session",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the main app"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the home dashboard is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Complete KYC submission and reach pending status",
+    "description": "An authenticated user can submit identity, selfie, and guarantor details and see KYC move to pending.",
+    "category": "KYC Submission & Review",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(kyc)/details"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the identity and address details with valid values"
+      },
+      {
+        "type": "action",
+        "description": "Continue to ID photo capture"
+      },
+      {
+        "type": "action",
+        "description": "Provide the front and back ID images"
+      },
+      {
+        "type": "action",
+        "description": "Continue to selfie capture"
+      },
+      {
+        "type": "action",
+        "description": "Capture a live selfie"
+      },
+      {
+        "type": "action",
+        "description": "Continue to guarantor details"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the guarantor details with valid values"
+      },
+      {
+        "type": "action",
+        "description": "Submit the KYC form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify KYC pending status is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the submitted KYC application is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Create an Osusu group and see it in the groups list",
+    "description": "A group creator can create a new Osusu group and find it in the groups list afterward.",
+    "category": "Osusu Group Lifecycle",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(groups)/create"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the group creation form with valid values"
+      },
+      {
+        "type": "action",
+        "description": "Submit the group creation form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(main)/groups"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new group is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the group summary is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Discover a public group and request to join",
+    "description": "A member can find a public group, request to join it, and see the request reflected in the UI.",
+    "category": "Osusu Group Lifecycle",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(groups)/discover"
+      },
+      {
+        "type": "action",
+        "description": "Search for a public group"
+      },
+      {
+        "type": "action",
+        "description": "Open the group details from discovery"
+      },
+      {
+        "type": "action",
+        "description": "Request to join the group"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the join request confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the group is marked as requested or pending"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "View vault balances and initiate a top up",
+    "description": "A member can view vault balances, enter a top-up amount, choose a mobile money method, and receive a payment code.",
+    "category": "Vault",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(main)/vault"
+      },
+      {
+        "type": "action",
+        "description": "Verify posted, reserved, and available balances are displayed"
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid top-up amount"
+      },
+      {
+        "type": "action",
+        "description": "Select a mobile money provider"
+      },
+      {
+        "type": "action",
+        "description": "Initiate the top-up"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a payment code is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the top-up request is shown"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Create an Osusu group and see it appear in group details",
+    "description": "This test verifies that a user can create an Osusu group with contribution rules and then view the created group.",
+    "category": "Osusu Groups & Contributions",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(groups)/create"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a group name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid contribution amount"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid contribution frequency"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the member count"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the payout order details"
+      },
+      {
+        "type": "action",
+        "description": "Submit the group creation form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new group is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the group schedule is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Initiate a Monime contribution payment and see USSD status",
+    "description": "A member can start a Monime contribution payment, receive the dial code, and view payment status polling in the app.",
+    "category": "Osusu Group Lifecycle",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(groups)/monime-payment"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid group contribution payment target"
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid contribution amount"
+      },
+      {
+        "type": "action",
+        "description": "Initiate the payment"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a USSD dial code is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify payment status polling is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Create a savings goal and see it added to the list",
+    "description": "This test verifies that an authenticated user can create a savings goal and immediately see it appear in their savings list.",
+    "category": "Savings Goals",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(main)/savings"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to create a new savings goal"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a savings goal name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid target amount"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid deadline"
+      },
+      {
+        "type": "action",
+        "description": "Submit the savings goal form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new savings goal is displayed in the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the goal progress is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Request a vault withdrawal",
+    "description": "A member can request a withdrawal from available funds and see the request submitted successfully.",
+    "category": "Vault",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(main)/vault"
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid withdrawal amount within the available balance"
+      },
+      {
+        "type": "action",
+        "description": "Submit the withdrawal request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a withdrawal request confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the withdrawal request appears in the vault history"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "View group details and assign a collector",
+    "description": "A group creator can open group details and assign a registered user as collector.",
+    "category": "Osusu Group Lifecycle",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open an owned group from the groups list"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to group management"
+      },
+      {
+        "type": "action",
+        "description": "Open the contributor assignment flow"
+      },
+      {
+        "type": "action",
+        "description": "Select a registered user as collector"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the assignment"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the collector assignment is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the group management changes are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Deposit toward a savings goal and see progress increase",
+    "description": "This test verifies that a user can add funds to an existing savings goal and observe the saved amount increase.",
+    "category": "Savings Goals",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(main)/savings"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing savings goal"
+      },
+      {
+        "type": "action",
+        "description": "Choose to deposit toward the goal"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid deposit amount"
+      },
+      {
+        "type": "action",
+        "description": "Submit the deposit"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the goal progress is updated"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the goal transaction history is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Record a physical contribution collection",
+    "description": "A collector can record a physical cash or mobile money collection for a group member and see it saved.",
+    "category": "Osusu Group Lifecycle",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(groups)/physical-collect"
+      },
+      {
+        "type": "action",
+        "description": "Select the target group and member"
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid collection amount"
+      },
+      {
+        "type": "action",
+        "description": "Select the collection method"
+      },
+      {
+        "type": "action",
+        "description": "Submit the collection entry"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the collection is recorded"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the collection history entry is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Request a withdrawal from a savings goal",
+    "description": "This test verifies that a user can request a withdrawal from a savings goal and see the request submitted.",
+    "category": "Savings Goals",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(main)/savings"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing savings goal"
+      },
+      {
+        "type": "action",
+        "description": "Choose to withdraw from the goal"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid withdrawal amount"
+      },
+      {
+        "type": "action",
+        "description": "Submit the withdrawal request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a withdrawal request confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the goal balance remains visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Request a password reset",
+    "description": "A user can request a password reset and see confirmation that the request was submitted.",
+    "category": "Authentication & Session",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/forgot-password"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with an account email address"
+      },
+      {
+        "type": "action",
+        "description": "Submit the password reset request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a reset confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the password reset request was submitted"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Select a transfer target and submit a transfer",
+    "description": "This test verifies that a user can move through the transfer flow from recipient selection to final submission.",
+    "category": "Payments & Webhooks",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(send)/select"
+      },
+      {
+        "type": "action",
+        "description": "Select a recipient or transfer target"
+      },
+      {
+        "type": "action",
+        "description": "Continue to transfer details"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid transfer amount"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid payment method"
+      },
+      {
+        "type": "action",
+        "description": "Continue to the summary"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the transfer"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a transfer submission confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the transfer summary is no longer editable"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "Deposit into a savings goal from the vault",
+    "description": "A member can add funds to an existing savings goal and see the updated progress afterward.",
+    "category": "Savings Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(main)/savings"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing savings goal"
+      },
+      {
+        "type": "action",
+        "description": "Choose to deposit into the goal"
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid deposit amount"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the deposit"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the savings goal balance is updated"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify updated progress is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC018",
+    "title": "Search for a public group and submit a join request",
+    "description": "This test verifies that a member can discover a public group and request to join it.",
+    "category": "Osusu Groups & Contributions",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(groups)/discover"
+      },
+      {
+        "type": "action",
+        "description": "Search for a public group"
+      },
+      {
+        "type": "action",
+        "description": "Select a matching group"
+      },
+      {
+        "type": "action",
+        "description": "Request to join the group"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a join request confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected group remains visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC019",
+    "title": "Change password successfully",
+    "description": "This test verifies that an authenticated user can update their password from the settings screen and see confirmation that the change was saved.",
+    "category": "Profile & Account Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(settings)/change-password"
+      },
+      {
+        "type": "action",
+        "description": "Enter the current password"
+      },
+      {
+        "type": "action",
+        "description": "Enter a new password"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the new password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the password change form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a password update confirmation is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC020",
+    "title": "Withdraw from a savings goal within limits",
+    "description": "A member can withdraw from a savings goal when allowed and see the reduced balance afterward.",
+    "category": "Savings Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(main)/savings"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing savings goal"
+      },
+      {
+        "type": "action",
+        "description": "Choose to withdraw from the goal"
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid withdrawal amount within the goal balance"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the withdrawal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the savings goal balance is reduced"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated withdrawal history is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC021",
+    "title": "Assign a registered user as collector from group details",
+    "description": "This test verifies that a group creator can assign a collector from the group detail view and see the assignment saved.",
+    "category": "Osusu Groups & Contributions",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(main)/groups"
+      },
+      {
+        "type": "action",
+        "description": "Open a group detail page"
+      },
+      {
+        "type": "action",
+        "description": "Choose to assign a collector"
+      },
+      {
+        "type": "action",
+        "description": "Select a registered user as collector"
+      },
+      {
+        "type": "action",
+        "description": "Save the collector assignment"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the assigned collector is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the group membership summary is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC022",
+    "title": "Change password from settings",
+    "description": "A signed-in user can update their password from settings and see a success confirmation.",
+    "category": "Notifications and Profile",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(settings)/change-password"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the current password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the new password field with a valid new password"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the new password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the password change form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a password change confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the password update is reflected in settings"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC023",
+    "title": "Record a physical collection and see it added to the ledger",
+    "description": "This test verifies that a collector can record a physical collection and see the entry reflected in the group ledger.",
+    "category": "Osusu Groups & Contributions",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(groups)/physical-collect"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the collection contributor details"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid collection amount"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid collection date"
+      },
+      {
+        "type": "action",
+        "description": "Submit the physical collection"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the collection entry is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the group ledger is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC024",
+    "title": "Reject an invalid OTP during sign up",
+    "description": "A user entering an invalid OTP is kept on verification and sees an error state instead of entering the app.",
+    "category": "Authentication & Session",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/register"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the full name field with a new user name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the phone number field with a valid phone number"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with a new email address"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the date of birth field with a valid date"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the address field with a valid address"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with a valid password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "action",
+        "description": "Enter an invalid 6-digit OTP"
+      },
+      {
+        "type": "action",
+        "description": "Submit the OTP verification form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an OTP validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user does not enter the main app"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC025",
+    "title": "View profile and KYC status",
+    "description": "A signed-in user can open their profile and see personal information together with current KYC status.",
+    "category": "Notifications and Profile",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /components/profile"
+      },
+      {
+        "type": "action",
+        "description": "Verify profile details are displayed"
+      },
+      {
+        "type": "action",
+        "description": "Verify KYC status is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC026",
+    "title": "Resubmit KYC after rejection",
+    "description": "A user with rejected KYC can update details and submit a new application from the status screen.",
+    "category": "KYC Submission & Review",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(kyc)/pending"
+      },
+      {
+        "type": "action",
+        "description": "Open the KYC resubmission flow"
+      },
+      {
+        "type": "action",
+        "description": "Update the KYC details with valid values"
+      },
+      {
+        "type": "action",
+        "description": "Submit the KYC form again"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify KYC pending status is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the resubmitted application is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC027",
+    "title": "Open notifications and mark one as read",
+    "description": "A signed-in user can view notification items and mark one as read so the unread state changes.",
+    "category": "Notifications and Profile",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /components/notifications"
+      },
+      {
+        "type": "action",
+        "description": "Open a notification item"
+      },
+      {
+        "type": "action",
+        "description": "Mark the notification as read"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the notification appears as read"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify notification content is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC028",
+    "title": "Reject mismatched password confirmation",
+    "description": "This test verifies that an authenticated user sees validation when the new password confirmation does not match.",
+    "category": "Profile & Account Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(settings)/change-password"
+      },
+      {
+        "type": "action",
+        "description": "Enter the current password"
+      },
+      {
+        "type": "action",
+        "description": "Enter a new password"
+      },
+      {
+        "type": "action",
+        "description": "Confirm a different password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the password change form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a password confirmation validation error is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC029",
+    "title": "Handle missing registration fields",
+    "description": "A user cannot submit registration until the required profile and password fields are provided.",
+    "category": "Authentication & Session",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/register"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form without filling required fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify form validation errors are visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify registration was not submitted"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC030",
+    "title": "Prevent creating a savings goal with invalid target details",
+    "description": "This test verifies that invalid savings goal details are rejected and validation feedback is shown before the goal is created.",
+    "category": "Savings Goals",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(main)/savings"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to create a new savings goal"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a savings goal name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in an invalid target amount"
+      },
+      {
+        "type": "action",
+        "description": "Fill in an invalid deadline"
+      },
+      {
+        "type": "action",
+        "description": "Submit the savings goal form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation feedback is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no new savings goal is added"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC031",
+    "title": "View notification inbox",
+    "description": "This test verifies that an authenticated user can open the inbox and see their notifications list.",
+    "category": "Notifications",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /components/notifications"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the notification inbox is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify notifications are listed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC032",
+    "title": "Block an oversized vault withdrawal",
+    "description": "A member cannot request more than the available vault balance and sees a validation error.",
+    "category": "Vault",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(main)/vault"
+      },
+      {
+        "type": "action",
+        "description": "Enter a withdrawal amount greater than the available balance"
+      },
+      {
+        "type": "action",
+        "description": "Submit the withdrawal request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a withdrawal validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the withdrawal request is not submitted"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC033",
+    "title": "Mark notification as read",
+    "description": "This test verifies that an authenticated user can mark a notification as read and see the inbox update.",
+    "category": "Notifications",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /components/notifications"
+      },
+      {
+        "type": "action",
+        "description": "Open a notification from the inbox"
+      },
+      {
+        "type": "action",
+        "description": "Mark the notification as read"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the unread count is updated"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the notification is shown as read"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC034",
+    "title": "Enable or disable two-factor authentication settings",
+    "description": "A signed-in user can open 2FA settings and change the toggle state successfully.",
+    "category": "Notifications and Profile",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /(auth)/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /(settings)/2fa"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the two-factor authentication setting"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the two-factor authentication state is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated security setting is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC035",
+    "title": "Review KYC status and guarantor information",
+    "description": "This test verifies that an authenticated user can review their KYC status and guarantor details from the profile screen.",
+    "category": "Profile & Account Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /components/profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the KYC status section is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the guarantor information section is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC036",
+    "title": "Open a notification",
+    "description": "This test verifies that an authenticated user can open a notification and view its details.",
+    "category": "Notifications",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /components/notifications"
+      },
+      {
+        "type": "action",
+        "description": "Open a notification from the inbox"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the notification detail view is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC037",
+    "title": "View profile details",
+    "description": "This test verifies that an authenticated user can open their profile and review their account information.",
+    "category": "Profile & Account Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email or phone field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /components/profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the profile details are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the account information section is displayed"
+      }
+    ],
+    "priority": "Low"
+  }
+]

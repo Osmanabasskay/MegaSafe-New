@@ -66,6 +66,23 @@ const USER_TARGETED = new Set([
   'force_logout', 'add_admin_note',
 ]);
 
+// Actions where a reason is mandatory (auditable decisions that must be explained).
+const REQUIRES_REASON = new Set([
+  'reject_kyc',
+  'request_kyc_resubmission',
+  'escalate_kyc',
+  'add_admin_note',
+  'suspend_user',
+  'ban_user',
+  'lock_account',
+  'force_logout',
+  'reject_dispute',
+  'reject_withdrawal',
+  'freeze_payout',
+  'freeze_transaction',
+  'create_fraud_case',
+]);
+
 // Actions that also raise a risk_event for the live monitor.
 const RISK_EVENT_FOR: Record<string, { type: string; score: number }> = {
   ban_user:           { type: 'admin_ban_user', score: 70 },
@@ -118,12 +135,21 @@ export async function POST(request: Request) {
   const targetRecordId = payload.targetRecordId ?? payload.targetUserId;
   const nowIso = new Date().toISOString();
 
+  // ── Reason enforcement (server-side; client prompt is not trusted) ──
+  if (REQUIRES_REASON.has(payload.action) && !payload.reason?.trim()) {
+    return NextResponse.json(
+      { error: 'A reason is required for this action.' },
+      { status: 400 }
+    );
+  }
+
   // ── Self-action guard for user-targeted actions ──
   if (USER_TARGETED.has(payload.action) && payload.targetUserId) {
     try {
       assertNoSelfAction(user.id, payload.targetUserId);
     } catch (err) {
-      return NextResponse.json({ error: String(err) }, { status: 403 });
+      const message = err instanceof Error ? err.message : 'Self-action is blocked for admin safety.';
+      return NextResponse.json({ error: message }, { status: 403 });
     }
   }
 

@@ -200,7 +200,7 @@ describe('processSavingsWithdrawal', () => {
   it('never directly inserts into withdrawal_requests table', async () => {
     const { __mockFrom } = getMocks();
 
-    __getMocks().then = undefined; // suppress potential chaining
+    (__getMocks() as Record<string, unknown>).then = undefined; // suppress potential chaining
     await processSavingsWithdrawal({ goalId: 'goal-1', amount: 10 }).catch(() => {});
 
     const fromCalls = (__mockFrom.mock.calls as string[][]).map((c) => c[0]);

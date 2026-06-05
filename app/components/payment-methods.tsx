@@ -20,7 +20,7 @@ import { MOBILE_MONEY_METHODS } from '../../src/services/paymentMethodLinks';
 const MOBILE_METHOD_LOGOS: Record<MobileMoneyNetwork, { source: number; title: string }> = {
   orange_money: { source: require('../../assets/payment-providers/orange-money.png'), title: 'Orange Money Logo' },
   afrimoney: { source: require('../../assets/payment-providers/afrimoney.png'), title: 'Afrimoney Logo' },
-  qmoney: { source: require('../../assets/payment-providers/qmoney.png'), title: 'QMoney Logo' },
+  // qmoney intentionally excluded — not supported via Monime
 };
 
 export default function PaymentMethodsScreen() {
