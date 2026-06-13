@@ -10,7 +10,7 @@ export default async function AdminPaymentsPage(params: {
   const sp = params.searchParams ? await params.searchParams : {};
   const page = Math.max(1, parseInt(sp.page ?? '1', 10));
 
-  const { mobileMoneyTxs, webhookEvents, total } = await getPaymentsSummary({
+  const { mobileMoneyTxs, webhookEvents, sendMonitor, sendIntents, sendRiskEvents, total } = await getPaymentsSummary({
     provider: sp.provider,
     status: sp.status,
     page,
@@ -32,13 +32,22 @@ export default async function AdminPaymentsPage(params: {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-black text-slate-900">Payments</h2>
-        <p className="text-sm text-slate-500">Mobile money transactions and payment webhook events.</p>
+        <p className="text-sm text-slate-500">Mobile money transactions, send intents, and payment webhook events.</p>
       </div>
 
       <section className="grid gap-4 sm:grid-cols-3">
         <KpiCard label="Successful (this page)" value={successCount.toString()} accent="green" />
         <KpiCard label="Failed (this page)"     value={failedCount.toString()}  accent={failedCount > 0 ? 'red' : 'slate'} />
         <KpiCard label="Invalid Webhook Sigs"   value={invalidSigs.toString()}  accent={invalidSigs > 0 ? 'red' : 'slate'} />
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <KpiCard label="Pending Send Intents" value={sendMonitor.pendingIntents.toString()} accent={sendMonitor.pendingIntents > 0 ? 'orange' : 'slate'} />
+        <KpiCard label="Failed Confirms 24h" value={sendMonitor.failedConfirmations.toString()} accent={sendMonitor.failedConfirmations > 0 ? 'red' : 'slate'} />
+        <KpiCard label="Duplicate Attempts 24h" value={sendMonitor.duplicateIdempotencyAttempts.toString()} accent={sendMonitor.duplicateIdempotencyAttempts > 0 ? 'orange' : 'slate'} />
+        <KpiCard label="Unauthorized Targets 24h" value={sendMonitor.unauthorizedTargetAttempts.toString()} accent={sendMonitor.unauthorizedTargetAttempts > 0 ? 'red' : 'slate'} />
+        <KpiCard label="Webhook Failures 24h" value={sendMonitor.providerWebhookFailures.toString()} accent={sendMonitor.providerWebhookFailures > 0 ? 'red' : 'slate'} />
+        <KpiCard label="Suspicious Activity 24h" value={sendMonitor.suspiciousActivity.toString()} accent={sendMonitor.suspiciousActivity > 0 ? 'red' : 'slate'} />
       </section>
 
       {/* Filters */}
@@ -65,6 +74,41 @@ export default async function AdminPaymentsPage(params: {
       </form>
 
       {/* Mobile Money Transactions */}
+      <section>
+        <h3 className="mb-3 text-lg font-bold text-slate-900">Send Payment Intents</h3>
+        <DataTable
+          headers={['User', 'Target', 'Amount', 'Method', 'Status', 'Reference', 'Expires']}
+          rows={sendIntents.map((intent) => [
+            <span key={`${intent.id}-u`} className="font-mono text-xs">{intent.userId.slice(0, 12)}...</span>,
+            <span key={`${intent.id}-t`}>
+              {intent.targetName}
+              <span className="ml-2 text-xs font-semibold uppercase text-slate-400">{intent.targetType}</span>
+            </span>,
+            `${intent.amount.toFixed(2)} ${intent.currency}`,
+            intent.method.replace('_', ' '),
+            <StatusBadge key={`${intent.id}-s`} value={intent.status} />,
+            intent.reference ?? '-',
+            new Date(intent.expiresAt).toLocaleString(),
+          ])}
+          emptyText="No send payment intents found."
+        />
+      </section>
+
+      <section>
+        <h3 className="mb-3 text-lg font-bold text-slate-900">Send Payment Risk Events</h3>
+        <DataTable
+          headers={['Actor', 'Action', 'Table', 'Record', 'Date']}
+          rows={sendRiskEvents.map((event) => [
+            event.actorId ? <span key={`${event.id}-a`} className="font-mono text-xs">{event.actorId.slice(0, 12)}...</span> : 'System',
+            <span key={`${event.id}-act`} className="font-mono text-xs">{event.action}</span>,
+            event.tableName,
+            event.recordId ? <span key={`${event.id}-r`} className="font-mono text-xs">{event.recordId.slice(0, 12)}...</span> : '-',
+            new Date(event.createdAt).toLocaleString(),
+          ])}
+          emptyText="No send payment risk events in the latest audit window."
+        />
+      </section>
+
       <section>
         <h3 className="mb-3 text-lg font-bold text-slate-900">Mobile Money Transactions</h3>
         <DataTable

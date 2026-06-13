@@ -101,7 +101,7 @@ export default function KYCDetailsScreen() {
       lastName:         d.lastName,
       phone:            d.phone,
       dateOfBirth:      d.dateOfBirth,
-      gender:           (genderOk ? d.gender : '') as '' | 'male' | 'female' | 'other',
+      gender:           genderOk ? (d.gender as 'male' | 'female' | 'other') : undefined,
       addressLine1:     d.addressLine1,
       addressLine2:     d.addressLine2 ?? '',
       city:             d.city,
@@ -114,7 +114,7 @@ export default function KYCDetailsScreen() {
     };
   }, []);
 
-  const { control, handleSubmit, setValue, watch, formState: { errors } } = useForm({
+  const { control, handleSubmit, setValue, watch, formState: { errors } } = useForm<z.infer<typeof kycDetailsSchema>>({
     resolver: zodResolver(kycDetailsSchema),
     defaultValues,
   });

@@ -22,6 +22,7 @@ import {
   Check,
   Link2,
   Lock,
+  MoreHorizontal,
   Plus,
   Search,
   Send,
@@ -356,11 +357,12 @@ type GroupCardProps = {
 
 function GroupCard({ group, userId, onOpenInvite, C }: GroupCardProps) {
   const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
   const isCreator = group.role === 'creator' || group.createdBy === userId;
+  const contributionStatus = group.status === 'active' ? 'Contribution active' : group.status;
 
   return (
-    <View style={[styles.groupCard, { backgroundColor: C.bg }]}>
-      {/* Top row: avatar · name · badge */}
+    <View style={[styles.groupCard, { backgroundColor: C.card }]}>
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={() => router.push(`/(groups)/manage/${group.id}`)}
@@ -377,55 +379,62 @@ function GroupCard({ group, userId, onOpenInvite, C }: GroupCardProps) {
             <Text style={[styles.groupCardName, { color: C.text }]} numberOfLines={1}>
               {group.name}
             </Text>
-            <Text style={[styles.groupCardMeta, { color: C.textSub }]}>
-              {group.members} members · NLe {group.contributionAmount.toFixed(0)}/{group.frequency}
-            </Text>
-          </View>
-          {isCreator && (
-            <View style={styles.creatorBadge}>
-              <Text style={styles.creatorBadgeText}>CREATOR</Text>
+            <Text style={[styles.groupCardMeta, { color: C.textSub }]}>{group.members} members</Text>
+            <View style={styles.groupStatusLine}>
+              <View style={styles.groupStatusPill}>
+                <Text style={styles.groupStatusText}>{contributionStatus}</Text>
+              </View>
+              <Text style={[styles.groupLastActivity, { color: C.textMuted }]} numberOfLines={1}>
+                {group.lastActivity || 'No activity yet'}
+              </Text>
             </View>
-          )}
-        </View>
-
-        {/* Stats row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCol}>
-            <Text style={[styles.statValue, { color: C.text }]}>NLe {group.totalCollected.toFixed(0)}</Text>
-            <Text style={[styles.statLabel, { color: C.textMuted }]}>Collected</Text>
           </View>
-          <View style={[styles.statDivider, { backgroundColor: C.borderStrong }]} />
-          <View style={styles.statCol}>
-            <Text style={[styles.statValue, { color: C.text }]}>{group.nextPayout}</Text>
-            <Text style={[styles.statLabel, { color: C.textMuted }]}>Next Payout</Text>
-          </View>
-          <View style={[styles.statDivider, { backgroundColor: C.borderStrong }]} />
-          <View style={styles.statCol}>
-            <Text style={[styles.statValue, { color: C.text }]}>{group.lastActivity}</Text>
-            <Text style={[styles.statLabel, { color: C.textMuted }]}>Last Activity</Text>
+          <View style={styles.groupRightRail}>
+            <TouchableOpacity
+              style={styles.moreButton}
+              onPress={() => setMenuOpen(true)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MoreHorizontal size={22} color="#64748B" />
+            </TouchableOpacity>
+            <Text style={styles.groupAmount}>NLe {group.contributionAmount.toFixed(0)}</Text>
+            <Text style={styles.groupFrequency}>{group.frequency}</Text>
           </View>
         </View>
       </TouchableOpacity>
 
-      {/* Action row */}
-      <View style={styles.actionsRow}>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => onOpenInvite(group)}>
-          <FontAwesome name="user-plus" size={15} color="#111827" />
-          <Text style={[styles.actionBtnText, { color: '#111827' }]}>Invite</Text>
+      {isCreator && (
+        <View style={styles.creatorBadge}>
+          <Text style={styles.creatorBadgeText}>CREATOR</Text>
+        </View>
+      )}
+
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <TouchableOpacity style={styles.cardMenuOverlay} activeOpacity={1} onPress={() => setMenuOpen(false)}>
+          <View style={[styles.cardMenu, { backgroundColor: C.card }]}>
+            <TouchableOpacity
+              style={styles.cardMenuItem}
+              onPress={() => {
+                setMenuOpen(false);
+                onOpenInvite(group);
+              }}
+            >
+              <FontAwesome name="user-plus" size={15} color="#F97316" />
+              <Text style={[styles.cardMenuText, { color: C.text }]}>Invite to Group</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cardMenuItem}
+              onPress={() => {
+                setMenuOpen(false);
+                router.push(`/(groups)/manage/${group.id}`);
+              }}
+            >
+              <FontAwesome name="cog" size={15} color="#F97316" />
+              <Text style={[styles.cardMenuText, { color: C.text }]}>Group Settings</Text>
+            </TouchableOpacity>
+          </View>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.actionBtn}
-          onPress={() => router.push(`/(groups)/manage/${group.id}`)}
-        >
-          <FontAwesome name="cog" size={15} color="#111827" />
-          <Text style={[styles.actionBtnText, { color: '#111827' }]}>Manage</Text>
-        </TouchableOpacity>
-
-      </View>
-
-      {/* Bottom divider */}
-      <View style={[styles.cardDivider, { backgroundColor: C.border }]} />
+      </Modal>
     </View>
   );
 }
@@ -1132,14 +1141,22 @@ const styles = StyleSheet.create({
   /* ── Group Card ── */
   groupCard: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 0,
+    marginHorizontal: 18,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    elevation: 4,
   },
   groupCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
   },
   groupAvatar: {
     width: 56,
@@ -1162,6 +1179,14 @@ const styles = StyleSheet.create({
   groupCardInfo: { flex: 1 },
   groupCardName: { fontSize: 17, fontWeight: '700', color: '#1E2B5A', marginBottom: 3 },
   groupCardMeta: { fontSize: 13, color: '#6B7280' },
+  groupStatusLine: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, minHeight: 22 },
+  groupStatusPill: { backgroundColor: '#FFF7ED', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
+  groupStatusText: { color: '#F97316', fontSize: 10, fontWeight: '900', textTransform: 'capitalize' },
+  groupLastActivity: { flex: 1, fontSize: 11, fontWeight: '600' },
+  groupRightRail: { alignItems: 'flex-end', justifyContent: 'space-between', minHeight: 62, marginLeft: 8 },
+  moreButton: { width: 34, height: 28, alignItems: 'center', justifyContent: 'center' },
+  groupAmount: { color: '#0F172A', fontSize: 12, fontWeight: '900', marginTop: 4 },
+  groupFrequency: { color: '#94A3B8', fontSize: 10, fontWeight: '800', textTransform: 'capitalize' },
 
   /* CREATOR badge – outline only, no background fill */
   creatorBadge: {
@@ -1171,6 +1196,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     backgroundColor: 'transparent',
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    marginLeft: 70,
   },
   creatorBadgeText: {
     fontSize: 10,
@@ -1217,6 +1245,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     marginHorizontal: 0,
   },
+  cardMenuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.12)',
+    alignItems: 'flex-end',
+    paddingTop: 150,
+    paddingRight: 22,
+  },
+  cardMenu: {
+    width: 210,
+    borderRadius: 16,
+    paddingVertical: 8,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+    elevation: 9,
+  },
+  cardMenuItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 15, paddingVertical: 12 },
+  cardMenuText: { fontSize: 14, fontWeight: '800' },
 
   /* ── Discover ── */
   discoverSectionRow: {

@@ -4,7 +4,12 @@ import { KpiCard } from '@/components/kpi-card';
 import { StatusBadge } from '@/components/status-badge';
 import { SeverityBadge } from '@/components/risk-badge';
 import { AdminActionButton } from '@/components/action-button';
-import { getSecuritySummary, getSecurityEvents, getOverviewMetrics } from '@/lib/admin-data';
+import {
+  getSecuritySummary,
+  getSecurityEvents,
+  getOverviewMetrics,
+  getTransactionVerificationSetting,
+} from '@/lib/admin-data';
 
 const SEVERITIES = ['low', 'medium', 'high', 'critical', 'extreme'];
 const EVENT_TYPES = [
@@ -18,11 +23,12 @@ export default async function AdminSecurityPage(params: {
 }) {
   const sp = params.searchParams ? await params.searchParams : {};
   const page = Math.max(1, parseInt(sp.page ?? '1', 10));
-  const [{ summary, rateLimitEvents, recentFailedPayments, highValueWithdrawals }, { events }, metricsRaw] =
+  const [{ summary, rateLimitEvents, recentFailedPayments, highValueWithdrawals }, { events }, metricsRaw, transactionVerification] =
     await Promise.all([
       getSecuritySummary(),
       getSecurityEvents({ severity: sp.severity, eventType: sp.type, status: sp.status, page }),
       getOverviewMetrics(),
+      getTransactionVerificationSetting(),
     ]);
   const sec = (metricsRaw.security ?? {}) as Record<string, number>;
 
@@ -50,6 +56,40 @@ export default async function AdminSecurityPage(params: {
         <KpiCard label="Extreme Risk Events" value={String(sec.extreme_risk_events ?? 0)} accent={Number(sec.extreme_risk_events) > 0 ? 'red' : 'slate'} />
         <KpiCard label="Suspended Users" value={summary.suspendedUsers.toLocaleString()} accent={summary.suspendedUsers > 0 ? 'orange' : 'slate'} />
         <KpiCard label="Banned Users" value={summary.bannedUsers.toLocaleString()} accent={summary.bannedUsers > 0 ? 'red' : 'slate'} />
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Transaction Verification Gate</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              {transactionVerification.required
+                ? 'Verification is required before users can create payments, top up vaults, withdraw, or move money.'
+                : 'Verification is currently bypassed for transaction flows. Account status and payment-method checks still apply.'}
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              Last changed: {transactionVerification.updatedAt ? new Date(transactionVerification.updatedAt).toLocaleString() : 'not recorded'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+              transactionVerification.required
+                ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-orange-100 text-orange-700'
+            }`}>
+              {transactionVerification.required ? 'Required' : 'Bypassed'}
+            </span>
+            <AdminActionButton
+              action="set_transaction_verification_required"
+              label={transactionVerification.required ? 'Turn Off' : 'Turn On'}
+              tone={transactionVerification.required ? 'warning' : 'primary'}
+              newStatus={transactionVerification.required ? 'false' : 'true'}
+              confirm={transactionVerification.required
+                ? 'Allow unverified users to perform transaction flows?'
+                : 'Require verification for all transaction flows?'}
+            />
+          </div>
+        </div>
       </section>
 
       {/* Security events feed + filters + actions */}

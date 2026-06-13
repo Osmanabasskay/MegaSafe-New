@@ -45,6 +45,7 @@ import {
   depositSavingsFromVault,
   type VaultSummary,
 } from '../../src/services/vaultService';
+import { EnterTransactionPinModal } from '../../src/components/security/EnterTransactionPinModal';
 
 const CATEGORY_EMOJI: Record<SavingsGoalCategory, string> = {
   car: '🚗',
@@ -92,6 +93,8 @@ export default function SavingsScreen() {
   const [fundGoalLoading, setFundGoalLoading]       = useState(false);
   const [fundGoalProcessing, setFundGoalProcessing] = useState(false);
   const [fundGoalSuccess, setFundGoalSuccess]       = useState(false);
+  const [fundGoalPinVisible, setFundGoalPinVisible] = useState(false);
+  const [fundGoalPinError, setFundGoalPinError]     = useState<string | null>(null);
 
   const handleEyeTap = async () => {
     if (statsVisible) { setStatsVisible(false); return; }
@@ -185,18 +188,27 @@ export default function SavingsScreen() {
       return;
     }
 
+    setFundGoalPinError(null);
+    setFundGoalPinVisible(true);
+  };
+
+  const submitDepositFromVault = async (transactionPin: string) => {
+    if (!selectedGoal) return;
+    const amount = parseFloat(fundGoalAmount);
     setFundGoalProcessing(true);
     const { success, error } = await depositSavingsFromVault({
       goalId: selectedGoal.id,
       amount,
+      transactionPin,
     });
     setFundGoalProcessing(false);
 
     if (!success || error) {
-      Alert.alert('Deposit failed', error?.message ?? 'Unable to deposit to savings goal. Please try again.');
+      setFundGoalPinError(error?.message ?? 'Unable to deposit to savings goal. Please try again.');
       return;
     }
 
+    setFundGoalPinVisible(false);
     setFundGoalSuccess(true);
     void loadSavingsGoals();
   };
@@ -704,6 +716,17 @@ export default function SavingsScreen() {
           </View>
         )}
       </Modal>
+      <EnterTransactionPinModal
+        visible={fundGoalPinVisible}
+        subtitle={`Enter your Transaction PIN to move NLe ${parseFloat(fundGoalAmount || '0').toFixed(2)} from Vault to ${selectedGoal?.title ?? 'savings'}.`}
+        loading={fundGoalProcessing}
+        error={fundGoalPinError}
+        onCancel={() => {
+          setFundGoalPinVisible(false);
+          setFundGoalPinError(null);
+        }}
+        onConfirm={submitDepositFromVault}
+      />
     </SafeAreaView>
   );
 }

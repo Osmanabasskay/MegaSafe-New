@@ -191,8 +191,8 @@ BEGIN
     RETURN jsonb_build_object('error', 'Destination number is required');
   END IF;
 
-  -- KYC required
-  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = v_caller AND kyc_verified = true) THEN
+  -- KYC required only when the transaction verification gate is enabled.
+  IF NOT public.is_user_verified_for_transactions(v_caller) THEN
     RETURN jsonb_build_object('error', 'KYC verification required before withdrawal');
   END IF;
 

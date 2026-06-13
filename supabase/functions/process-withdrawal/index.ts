@@ -6,19 +6,16 @@
  * Actual payout only occurs after admin approval (approve-withdrawal).
  */
 
-import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { corsHeaders, handleCors, readBoundedBody } from '../_shared/cors.ts';
 import { getAuthUser, createUserClient, isKycVerified } from '../_shared/auth.ts';
-
-const SUPPORTED_PROVIDERS = ['orange_money', 'afrimoney', 'qmoney', 'bank_transfer'] as const;
-type Provider = typeof SUPPORTED_PROVIDERS[number];
 
 interface RequestBody {
   savings_goal_id?:      string | null;
   amount:                number;
   currency?:             string;
-  destination_provider:  Provider;
-  destination_number:    string;
+  payment_method_id?:    string | null;
   idempotency_key?:      string | null;
+  transaction_pin?:      string | null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -30,9 +27,12 @@ Deno.serve(async (req: Request) => {
   const user = await getAuthUser(authHeader);
   if (!user) return jsonError('Not authenticated.', 401);
 
+  const { text: rawBody, error: sizeErr } = await readBoundedBody(req);
+  if (sizeErr) return jsonError(sizeErr, 413);
+
   let body: RequestBody;
   try {
-    body = await req.json();
+    body = JSON.parse(rawBody) as RequestBody;
   } catch {
     return jsonError('Invalid JSON body.', 400);
   }
@@ -40,11 +40,8 @@ Deno.serve(async (req: Request) => {
   if (!Number.isFinite(body.amount) || body.amount <= 0) {
     return jsonError('amount must be a positive number.', 400);
   }
-  if (!body.destination_provider || !SUPPORTED_PROVIDERS.includes(body.destination_provider)) {
-    return jsonError('Invalid destination_provider.', 400);
-  }
-  if (!body.destination_number?.trim()) {
-    return jsonError('destination_number is required.', 400);
+  if (!body.payment_method_id?.trim()) {
+    return jsonError('payment_method_id is required.', 400);
   }
 
   // KYC check (belt-and-suspenders — RPC also checks)
@@ -54,16 +51,19 @@ Deno.serve(async (req: Request) => {
   const userClient = createUserClient(authHeader);
   const iKey       = body.idempotency_key ?? crypto.randomUUID();
 
-  const { data: rpcResult, error: rpcErr } = await userClient.rpc('process_withdrawal_request', {
+  const { data: rpcResult, error: rpcErr } = await userClient.rpc('process_withdrawal_request_with_method', {
     p_amount:               body.amount,
-    p_destination_provider: body.destination_provider,
-    p_destination_number:   body.destination_number.trim(),
+    p_payment_method_id:    body.payment_method_id.trim(),
     p_currency:             body.currency ?? 'NLe',
     p_savings_goal_id:      body.savings_goal_id ?? null,
     p_idempotency_key:      iKey,
+    p_transaction_pin:      body.transaction_pin,
   });
 
-  if (rpcErr) return jsonError(rpcErr.message, 500);
+  if (rpcErr) {
+    console.error('process_withdrawal_request_with_method RPC error:', rpcErr.message);
+    return jsonError('Could not submit withdrawal request. Please try again.', 500);
+  }
   const result = rpcResult as Record<string, unknown>;
   if (result?.error) return jsonError(result.error as string, 400);
 
@@ -76,14 +76,17 @@ Deno.serve(async (req: Request) => {
 });
 
 function jsonOk(body: unknown): Response {
-  return new Response(JSON.stringify(body), {
+  const data = body != null && typeof body === 'object' && !Array.isArray(body)
+    ? body as Record<string, unknown>
+    : { value: body };
+  return new Response(JSON.stringify({ ...data, success: true, data }), {
     status: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
-function jsonError(msg: string, status = 400): Response {
-  return new Response(JSON.stringify({ error: msg }), {
+function jsonError(msg: string, status = 400, code = 'PAYMENT_ERROR'): Response {
+  return new Response(JSON.stringify({ success: false, error: msg, code }), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });

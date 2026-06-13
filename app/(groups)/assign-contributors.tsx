@@ -51,12 +51,13 @@ interface ProfileSummary {
 }
 
 function generateRandomPasscode(): string {
-  const bytes = new Uint8Array(3);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(bytes);
-  } else {
-    for (let i = 0; i < 3; i++) bytes[i] = Math.floor(Math.random() * 256);
+  // Fail closed: crypto.getRandomValues must be available.
+  // Math.random is NOT acceptable for security-critical passcode generation.
+  if (typeof crypto === 'undefined' || !crypto.getRandomValues) {
+    throw new Error('Secure random number generation is unavailable on this device.');
   }
+  const bytes = new Uint8Array(3);
+  crypto.getRandomValues(bytes);
   return String((bytes[0]! * 65536 + bytes[1]! * 256 + bytes[2]!) % 1000000).padStart(6, '0');
 }
 
@@ -79,6 +80,14 @@ export default function AssignContributorsScreen() {
   const [collectorPhotoUri, setCollectorPhotoUri] = useState<string | null>(null);
   const [collectorPasscode, setCollectorPasscode] = useState('');
   const [showPasscode, setShowPasscode] = useState(false);
+
+  // One-time secure passcode reveal — shown in a dedicated modal after assignment.
+  // The passcode is cleared when the admin dismisses the reveal modal.
+  // It is NEVER shown in an Alert (which can be screenshot, logged, or sent to
+  // accessibility services).
+  const [revealPasscode, setRevealPasscode] = useState<string | null>(null);
+  const [showRevealModal, setShowRevealModal] = useState(false);
+  const [showRevealPasscode, setShowRevealPasscode] = useState(false);
 
   useEffect(() => {
     async function loadGroup() {
@@ -121,8 +130,8 @@ export default function AssignContributorsScreen() {
         return name.includes(q) || member.phone?.includes(q) || member.email?.toLowerCase().includes(q);
       });
       setResults(matchingMembers);
-    } catch (error: any) {
-      Alert.alert('Search failed', error.message);
+    } catch {
+      Alert.alert('Search failed', 'Unable to search members. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -138,14 +147,46 @@ export default function AssignContributorsScreen() {
   }, [results, searchQuery]);
 
   const openSetupModal = (profile: ProfileSummary) => {
+    let passcode: string;
+    try {
+      passcode = generateRandomPasscode();
+    } catch {
+      Alert.alert(
+        'Security Error',
+        'Secure random number generation is not available on this device. Cannot generate a safe passcode.'
+      );
+      return;
+    }
     setSelectedProfile(profile);
     setCollectorName(
       [profile.first_name, profile.last_name].filter(Boolean).join(' ') || ''
     );
     setCollectorPhotoUri(null);
-    setCollectorPasscode(generateRandomPasscode());
+    setCollectorPasscode(passcode);
     setShowPasscode(false);
     setShowSetupModal(true);
+  };
+
+  const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+  const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5 MB
+
+  const validateAndSetPhoto = (asset: ImagePicker.ImagePickerAsset) => {
+    if (asset.fileSize && asset.fileSize > MAX_PHOTO_BYTES) {
+      Alert.alert('File Too Large', 'Collector photo must be under 5 MB.');
+      return;
+    }
+    // expo-image-picker returns a file URI; MIME type check via extension
+    const uri = asset.uri.toLowerCase();
+    const hasValidExt = uri.endsWith('.jpg') || uri.endsWith('.jpeg') || uri.endsWith('.png') || uri.endsWith('.webp');
+    if (asset.mimeType && !ALLOWED_IMAGE_TYPES.has(asset.mimeType)) {
+      Alert.alert('Invalid Image', 'Only JPEG, PNG, or WebP images are allowed.');
+      return;
+    }
+    if (!asset.mimeType && !hasValidExt) {
+      Alert.alert('Invalid Image', 'Only JPEG, PNG, or WebP images are allowed.');
+      return;
+    }
+    setCollectorPhotoUri(asset.uri);
   };
 
   const handlePickPhoto = async () => {
@@ -163,7 +204,7 @@ export default function AssignContributorsScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      setCollectorPhotoUri(result.assets[0].uri);
+      validateAndSetPhoto(result.assets[0]);
     }
   };
 
@@ -182,7 +223,7 @@ export default function AssignContributorsScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      setCollectorPhotoUri(result.assets[0].uri);
+      validateAndSetPhoto(result.assets[0]);
     }
   };
 
@@ -229,17 +270,21 @@ export default function AssignContributorsScreen() {
 
       if (success) {
         setShowSetupModal(false);
-        Alert.alert(
-          '✅ Collector Assigned',
-          `${collectorName.trim()} has been assigned as collector.\n\n` +
-            `🔑 Collector Passcode: ${finalPasscode || collectorPasscode}\n` +
-            `🔐 Member Secret Code: ${secretCode || 'N/A'}\n\n` +
-            `All group members have been notified with the collector's name and photo.`,
-          [{ text: 'OK' }]
-        );
+        // Show the passcode in a dedicated secure reveal modal — not in Alert.alert.
+        // Alert dialogs can be captured by accessibility services, screen recorders,
+        // and notification shades. The passcode must only be shown once in-app.
+        const passcodeToReveal = finalPasscode ?? collectorPasscode ?? null;
+        setRevealPasscode(passcodeToReveal);
+        setShowRevealPasscode(false);
+        setShowRevealModal(true);
       }
-    } catch (error: any) {
-      Alert.alert('Assignment failed', error.message);
+    } catch (err: unknown) {
+      // Do not expose raw server error messages — they may contain sensitive schema info.
+      const isKnownError = err instanceof Error;
+      const safeMessage = isKnownError && err.message.length < 200
+        ? err.message
+        : 'Collector assignment failed. Please try again.';
+      Alert.alert('Assignment Failed', safeMessage);
     } finally {
       setIsAssigning(null);
     }
@@ -534,6 +579,78 @@ export default function AssignContributorsScreen() {
                 </TouchableOpacity>
               </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─── Secure One-Time Passcode Reveal Modal ─── */}
+      {/* The passcode is shown exactly once here, never in an Alert.
+          Dismissed state clears the passcode from memory. */}
+      <Modal
+        visible={showRevealModal}
+        animationType="fade"
+        transparent
+        onRequestClose={() => {
+          setShowRevealModal(false);
+          setRevealPasscode(null);
+        }}
+      >
+        <View style={styles.revealOverlay}>
+          <View style={styles.revealCard}>
+            <View style={styles.revealIconBadge}>
+              <Lock size={28} color="#FFFFFF" />
+            </View>
+            <Text style={styles.revealTitle}>Collector Assigned</Text>
+            <Text style={styles.revealSubtitle}>
+              Share this passcode securely with{' '}
+              <Text style={{ fontWeight: '800' }}>{collectorName}</Text> only.
+              It will not be shown again.
+            </Text>
+
+            <View style={styles.revealPasscodeBox}>
+              <Text style={styles.revealPasscodeLabel}>COLLECTOR PASSCODE</Text>
+              {revealPasscode && (
+                <Text
+                  style={[
+                    styles.revealPasscodeText,
+                    !showRevealPasscode && styles.revealPasscodeHidden,
+                  ]}
+                  selectable={showRevealPasscode}
+                >
+                  {showRevealPasscode ? revealPasscode : '••••••'}
+                </Text>
+              )}
+              <TouchableOpacity
+                style={styles.revealToggleBtn}
+                onPress={() => setShowRevealPasscode((v) => !v)}
+              >
+                {showRevealPasscode
+                  ? <EyeOff size={18} color="#7C3AED" />
+                  : <Eye size={18} color="#7C3AED" />}
+                <Text style={styles.revealToggleText}>
+                  {showRevealPasscode ? 'Hide' : 'Reveal'} Passcode
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.revealWarning}>
+              <Shield size={14} color="#DC2626" />
+              <Text style={styles.revealWarningText}>
+                Write this down securely. Do not screenshot or share via messaging apps.
+                All group members have been notified of the collector's name and photo.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.revealDismissBtn}
+              onPress={() => {
+                setShowRevealModal(false);
+                setRevealPasscode(null);
+                setShowRevealPasscode(false);
+              }}
+            >
+              <Text style={styles.revealDismissText}>I've Noted the Passcode — Done</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -925,6 +1042,118 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   confirmBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+
+  // ── Secure passcode reveal modal ──────────────────────────────
+  revealOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  revealCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    width: '100%',
+    alignItems: 'center',
+  },
+  revealIconBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: '#7C3AED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  revealTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1E2B5A',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  revealSubtitle: {
+    fontSize: 14,
+    color: '#475569',
+    textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: 20,
+  },
+  revealPasscodeBox: {
+    alignSelf: 'stretch',
+    backgroundColor: '#F5F3FF',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#DDD6FE',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  revealPasscodeLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#7C3AED',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom: 10,
+  },
+  revealPasscodeText: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#1E2B5A',
+    letterSpacing: 10,
+    marginBottom: 14,
+  },
+  revealPasscodeHidden: {
+    fontSize: 28,
+    letterSpacing: 6,
+    color: '#94A3B8',
+  },
+  revealToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  revealToggleText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#7C3AED',
+  },
+  revealWarning: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 20,
+    alignSelf: 'stretch',
+  },
+  revealWarningText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#DC2626',
+    lineHeight: 18,
+  },
+  revealDismissBtn: {
+    alignSelf: 'stretch',
+    backgroundColor: '#7C3AED',
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  revealDismissText: {
     fontSize: 15,
     fontWeight: '800',
     color: '#FFFFFF',

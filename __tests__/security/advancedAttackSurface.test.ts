@@ -649,8 +649,9 @@ describe('Phase 7: Storage — bucket security', () => {
 
   it('avatar upload uses user-scoped path (prevents cross-user overwrite)', () => {
     const profileSvc = readFile(path.join(SRC, 'services', 'profileService.ts'));
-    // Path must include userId as first segment
-    expect(profileSvc).toMatch(/`\$\{userId\}\/avatar/);
+    // Path must include the authenticated user's ID as first segment.
+    // uploadAvatar now derives the ID from auth.getUser() (session), not a parameter.
+    expect(profileSvc).toMatch(/`\$\{user\.id\}\/avatar|`\$\{userId\}\/avatar/);
   });
 
   it('storageUpload.ts does not allow path traversal', () => {
@@ -961,11 +962,26 @@ describe('Phase 12: Secrets — no hardcoded credentials in source', () => {
     expect(envExample).not.toMatch(/sk_live_[a-zA-Z0-9]{20,}/);
   });
 
-  it('placeholder JWT in supabase.ts is not a real token', () => {
+  it('fallback credentials in supabase.ts are safe placeholders, not real tokens', () => {
     const supabaseSvc = readFile(path.join(SRC, 'services', 'supabase.ts'));
-    // The placeholder JWT exists but its payload should decode to a dummy role only
-    expect(supabaseSvc).toMatch(/PLACEHOLDER_KEY/);
+    // supabase.ts was refactored from a JWT-shaped PLACEHOLDER_KEY to an
+    // sb_publishable_ placeholder (sb_publishable_placeholder_key_not_configured)
+    // and a placeholder URL (https://placeholder.supabase.co).
+    // The test intent is unchanged: verify the fallback is not a real credential.
+
+    // 1. A safe placeholder string must exist in the file
     expect(supabaseSvc).toMatch(/placeholder/i);
+
+    // 2. The fallback key must use the sb_publishable_ format, not a raw JWT
+    const hasPlaceholderKey =
+      /sb_publishable_placeholder/i.test(supabaseSvc) ||
+      /PLACEHOLDER_KEY/i.test(supabaseSvc);          // legacy pattern, kept as OR
+    expect(hasPlaceholderKey).toBe(true);
+
+    // 3. No real eyJ… JWT must appear as a hardcoded fallback value
+    const realJwtInEffectiveKey =
+      /effectiveKey\s*[=:][^;]*eyJ[A-Za-z0-9_-]{20,}/m.test(supabaseSvc);
+    expect(realJwtInEffectiveKey).toBe(false);
   });
 });
 

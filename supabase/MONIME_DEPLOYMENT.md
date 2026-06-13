@@ -30,6 +30,13 @@ Set these via the Supabase dashboard or CLI before deploying **any** edge functi
 supabase secrets set MONIME_ACCESS_TOKEN=your_monime_bearer_token
 supabase secrets set MONIME_SPACE_ID=your_monime_space_id
 supabase secrets set MONIME_WEBHOOK_SECRET=your_monime_webhook_signing_secret
+
+# Per-endpoint webhook secrets. Each falls back to MONIME_WEBHOOK_SECRET when
+# unset — if you register all three Monime endpoints with the SAME signing
+# secret, setting only MONIME_WEBHOOK_SECRET is sufficient. If the dashboard
+# gives each endpoint its own secret, set all three explicitly:
+supabase secrets set MONIME_VAULT_WEBHOOK_SECRET=your_vault_webhook_signing_secret
+supabase secrets set MONIME_PAYOUT_WEBHOOK_SECRET=your_payout_webhook_signing_secret
 ```
 
 ### Optional secrets
@@ -37,6 +44,9 @@ supabase secrets set MONIME_WEBHOOK_SECRET=your_monime_webhook_signing_secret
 ```bash
 # Override API base URL — used for sandbox/live switching (see Sandbox Testing below)
 supabase secrets set MONIME_BASE_URL=https://sandbox.api.monime.io
+# Convenience switch: MONIME_ENV=sandbox selects the sandbox URL when
+# MONIME_BASE_URL is not set. Defaults to live (https://api.monime.io).
+supabase secrets set MONIME_ENV=sandbox
 
 # Bank transfer payouts via Flutterwave (approve-withdrawal only)
 supabase secrets set FLUTTERWAVE_SECRET_KEY=your_flutterwave_key
@@ -62,7 +72,10 @@ These are the **current, production-ready** edge functions for Monime payments:
 | `initiate-vault-topup` v2   | ✅ yes       | Create Monime Payment Code for vault top-ups              |
 | `verify-vault-topup-status` v2 | ✅ yes    | Poll vault top-up status (display-only, read-only)        |
 | `vault-webhook` v2          | ❌ no (HMAC) | Receive `payment_code.*` events; credit vault             |
-| `approve-withdrawal` v2     | ✅ yes       | Admin approves payout; calls Monime Payouts API           |
+| `approve-withdrawal` v3     | ✅ yes       | Admin approves payout; calls Monime Payouts API; leaves status='processing' |
+| `payout-webhook` v1         | ❌ no (HMAC) | Receive `payout.*` events; completes/fails withdrawals    |
+| `create-send-payment-intent` v2 | ✅ yes   | Create server-side payment intent for the Send flow       |
+| `confirm-send-payment` v2   | ✅ yes       | Confirm intent + create Monime Payment Code (group & savings) |
 | `provider-kyc-check` v1     | ✅ yes       | Backend-only Provider KYC lookup                          |
 | `send-notification` v1      | ❌ no (service key) | Expo push + DB notification log                  |
 
@@ -76,6 +89,9 @@ supabase functions deploy initiate-vault-topup
 supabase functions deploy verify-vault-topup-status
 supabase functions deploy vault-webhook
 supabase functions deploy approve-withdrawal
+supabase functions deploy payout-webhook
+supabase functions deploy create-send-payment-intent
+supabase functions deploy confirm-send-payment
 supabase functions deploy provider-kyc-check
 supabase functions deploy send-notification
 ```
@@ -84,12 +100,18 @@ supabase functions deploy send-notification
 
 ## Webhook Configuration
 
-In the **Monime Dashboard**, register **two** webhook endpoints:
+In the **Monime Dashboard**, register **three** webhook endpoints:
 
 | Endpoint URL                                                            | Events to subscribe                                                                                            |
 |-------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
 | `https://<project-ref>.supabase.co/functions/v1/vault-webhook`          | `payment_code.processed`, `payment_code.completed`, `payment_code.expired`, `payment_code.cancelled`           |
 | `https://<project-ref>.supabase.co/functions/v1/mobile-money-webhook`   | `payment_code.processed`, `payment_code.completed`, `payment_code.expired`, `payment_code.cancelled`           |
+| `https://<project-ref>.supabase.co/functions/v1/payout-webhook`         | `payout.pending`, `payout.processing`, `payout.completed`, `payout.failed`                                     |
+
+> `payout-webhook` verifies signatures with `MONIME_PAYOUT_WEBHOOK_SECRET` and
+> falls back to `MONIME_WEBHOOK_SECRET` when the dedicated secret is unset.
+> Without this endpoint registered, approved withdrawals stay in
+> `processing` forever — registering it is REQUIRED for payouts.
 
 > The old `payment-webhook` slug is **decommissioned** (see Stale Functions below). Do NOT point
 > Monime webhooks at it.
@@ -155,17 +177,108 @@ User taps "Add Money" in vault.tsx
     → monime-payment.tsx shows success, routes back to vault screen
 ```
 
+### Send Payment → Group (Osusu contribution via Send flow)
+
+```
+User picks a group in the Send flow
+  → createSendPaymentIntent() → create-send-payment-intent [Edge Fn]
+    → amount/target validated server-side; payment_intents row (status='pending')
+  → confirmSendPayment() → confirm-send-payment [Edge Fn]
+    → KYC + provider validation (QMoney rejected) + Provider KYC gate (24 h cache)
+    → initiate_group_payment RPC (PIN verified; contribution_payments row, pending)
+    → createPaymentCode() with metadata {payment_type:'send_payment', target_type:'group', payment_intent_id}
+    → payment_intents.status = 'processing' (NEVER completed here)
+    ← Returns { ussdCode, monimePaymentCodeId, expiresAt }
+  → monime-payment.tsx → user dials USSD
+  ← Monime sends payment_code.completed to mobile-money-webhook
+    → HMAC + freshness → dedup → re-fetch code from Monime API
+    → routes by metadata.payment_type → finalize_send_payment RPC
+      → validates amount (SLE minor units) + currency against the stored intent
+      → contribution_payments='approved', mm txn='completed', intent='completed'
+      → ledger entries + receipt (idempotent — UNIQUE(idempotency_key))
+```
+
+### Send Payment → Savings (mobile-money savings deposit)
+
+```
+User picks a savings goal in the Send flow
+  → create-send-payment-intent (status='pending')
+  → confirm-send-payment
+    → PIN verified (verify_transaction_pin RPC) + goal ownership re-checked
+    → Provider KYC gate → createPaymentCode() with metadata
+      {payment_type:'send_payment', target_type:'savings', payment_intent_id}
+    → intent='processing'. The savings goal is NOT credited here.
+    ← Returns { ussdCode, monimePaymentCodeId, expiresAt }
+  ← Monime sends payment_code.completed to mobile-money-webhook
+    → routes to finalize_savings_deposit RPC
+      → validates amount + currency against the stored intent
+      → credits savings_goals.current_amount EXACTLY ONCE
+        (UNIQUE(idempotency_key) on savings_transactions blocks replays)
+      → intent='completed', receipt + ledger entries (idempotent)
+  payment_code.expired/cancelled → fail_send_payment_intent RPC
+    → intent + mm txn = expired/cancelled/failed; nothing credited
+```
+
+### Vault → Osusu (pay contribution from vault balance)
+
+```
+User taps "Pay from Vault" in contribute.tsx
+  → payOsusuFromVault() [vaultService.ts] → pay_osusu_from_vault RPC
+    (SECURITY DEFINER; PIN verified; resolves the open payment period
+     server-side when none is given)
+    → validates KYC, group active, membership, period open/unlocked,
+      duplicate contribution, idempotency, vault available balance
+    → vault_reservations → contribution_payments (status='approved') →
+      vault_transactions debit (+fee) → reservation consumed
+    ← Returns { contribution_id, receipt_number, amount, fee }
+No Monime call — internal movement, completed synchronously after the
+backend-confirmed deduction. Receipt number is generated by the RPC.
+```
+
 ### Withdrawal / Payout (admin disbursing funds)
 
 ```
 Admin approves withdrawal in admin dashboard
   → POST approve-withdrawal [Edge Fn]
     → approve_withdrawal_request RPC (amounts/destinations from DB, never from client)
-    → createMonimePayout() [Monime POST /v1/payouts, destination.type='momo']
+      → debits vault/savings, sets withdrawal status = 'processing'
+    → createMonimePayout() [Monime POST /v1/payouts, destination.type='momo',
+      metadata.reference = withdrawal_id]
+    → record_monime_payout_result RPC (payout_status='pending'/'processing')
+    ← Returns payout status — withdrawal stays 'processing'
+  ← Monime sends payout.completed / payout.failed to payout-webhook
+    → HMAC (MONIME_PAYOUT_WEBHOOK_SECRET) + freshness → dedup
+    → re-fetch payout via GET /v1/payouts/{id} (authoritative)
+    → locate withdrawal by monime_payout_id → metadata.reference fallback
+    → amount + currency validated; mismatch NEVER completes (audited)
     → record_monime_payout_result RPC
-    ← Returns payout status
+      → completed: status='completed', payout_completed_at, completed_at
+      → failed/cancelled: status='failed', payout_failed_at + sanitized reason
+      → idempotent: completed payouts are never downgraded or re-applied
 Note: QMoney payouts are rejected — must be done manually via provider dashboard.
+Note: a payout that fails AFTER approval leaves the vault debit in place —
+      refunds are a manual admin operation (by design, audited).
 ```
+
+---
+
+## Status Lifecycle (canonical, all payment objects)
+
+| Status       | Meaning                                                                  |
+|--------------|--------------------------------------------------------------------------|
+| `pending`    | Intent/record created — no provider action yet                           |
+| `processing` | Monime payment code or payout created, awaiting provider confirmation    |
+| `completed`  | Confirmed by Monime webhook + API re-fetch, or internal vault deduction  |
+| `failed`     | Provider/backend confirmed failure                                       |
+| `cancelled`  | User or provider cancellation                                            |
+| `expired`    | Payment code expired before redemption                                   |
+
+Rules enforced in code and RPCs:
+- Nothing is marked `completed` before money movement is confirmed.
+- Webhook finalizers are the ONLY path to `completed` for Monime flows.
+- Completed records are never downgraded by late/duplicate events.
+- `mobile_money_status` enum carries legacy labels (`initiated`, `success`,
+  `reversed`) for old rows; all new writes use the canonical set above.
 
 ---
 
@@ -275,8 +388,15 @@ Repeat step 5 with the **same body and signature**. Expected: HTTP 200 with
 - [ ] Receive `payment_code.completed` webhook; verify `vault_topups` or `contribution_payments` reaches completed/approved
 - [ ] Resend identical webhook — confirm `already_processed`, no double-credit
 - [ ] Send tampered `Monime-Signature` — confirm `invalid_signature`, no DB mutation
-- [ ] Send `payment_code.expired` — confirm payment status set to failed
-- [ ] Send `payment_code.cancelled` — confirm payment status set to failed
+- [ ] Send `payment_code.expired` — confirm payment status set to expired
+- [ ] Send `payment_code.cancelled` — confirm payment status set to cancelled
+- [ ] Register `payout-webhook` URL in Monime dashboard, events `payout.*`
+- [ ] Approve a sandbox withdrawal → status 'processing'; send `payout.completed`
+      → confirm withdrawal becomes 'completed' with payout_completed_at set
+- [ ] Send `payout.failed` for another withdrawal → status 'failed' + reason stored
+- [ ] Replay the same payout event — confirm `already_processed`, no double transition
+- [ ] Send-payment to savings: confirm goal is NOT credited at confirm time and
+      IS credited exactly once after `payment_code.completed`
 
 ---
 

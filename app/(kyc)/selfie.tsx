@@ -5,6 +5,7 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
   Image,
   StyleSheet,
   Platform,
@@ -74,7 +75,10 @@ export default function SelfieScreen() {
         setPreviewBase64(photo.base64 ?? null);
       }
     } catch {
-      // silently ignore — user can retry
+      Alert.alert(
+        'Capture failed',
+        'Could not take the photo. Please check camera permissions and try again.',
+      );
     } finally {
       setCapturing(false);
     }

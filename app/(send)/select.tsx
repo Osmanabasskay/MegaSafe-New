@@ -69,15 +69,18 @@ export default function SendSelectScreen() {
     [goals, search]
   );
 
-  const goToDetail = (targetId: string, targetName: string, prefillAmount: number) => {
+  // displayName/displayAmount are UI hints only — the payment intent's
+  // authoritative name and amount are resolved server-side from targetId in
+  // create-send-payment-intent and re-fetched on the summary screen.
+  const goToDetail = (targetId: string, displayName: string, displayAmount?: number) => {
     router.push({
       pathname: '/(send)/detail',
       params: {
         type: type ?? 'group',
         from: from ?? 'home',
         targetId,
-        targetName,
-        prefillAmount: String(prefillAmount),
+        displayName,
+        displayAmount: displayAmount != null ? String(displayAmount) : undefined,
       },
     });
   };
@@ -87,7 +90,7 @@ export default function SendSelectScreen() {
       {/* ── Header ─────────────────────────────────────────── */}
       <View style={[styles.header, { backgroundColor: C.bg, borderBottomColor: C.border }]}>
         <TouchableOpacity style={[styles.backBtn, { backgroundColor: isDark ? '#431407' : '#FFF7ED' }]} onPress={() => router.back()}>
-          <ArrowLeft size={22} color="#F97316" />
+          <ArrowLeft size={28} color="#F97316" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: C.text }]}>{isGroup ? 'Send to Osusu' : 'Send to Savings'}</Text>
@@ -154,7 +157,7 @@ export default function SendSelectScreen() {
               <View style={styles.amountPill}>
                 <Text style={styles.amountPillText}>NLe {g.contributionAmount.toFixed(0)}</Text>
               </View>
-              <ChevronRight size={18} color="#D1D5DB" style={{ marginLeft: 6 }} />
+              <ChevronRight size={20} color="#D1D5DB" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           )}
         />
@@ -179,7 +182,7 @@ export default function SendSelectScreen() {
             return (
               <TouchableOpacity
                 style={[styles.itemCard, { backgroundColor: C.card }]}
-                onPress={() => goToDetail(g.id, g.title, 0)}
+                onPress={() => goToDetail(g.id, g.title)}
                 activeOpacity={0.88}
               >
                 <View style={[styles.itemAvatar, styles.itemAvatarGreen]}>
@@ -197,7 +200,7 @@ export default function SendSelectScreen() {
                     <View style={[styles.progressFill, { width: `${Math.min(pct, 100)}%` as `${number}%` }]} />
                   </View>
                 </View>
-                <ChevronRight size={18} color="#D1D5DB" style={{ marginLeft: 8 }} />
+                <ChevronRight size={20} color="#D1D5DB" style={{ marginLeft: 8 }} />
               </TouchableOpacity>
             );
           }}
@@ -208,92 +211,91 @@ export default function SendSelectScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
 
-  /* Header */
+  /* Header — 20dp title, 28dp back arrow, 24dp H padding */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     paddingVertical: 14,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    gap: 10,
+    borderBottomColor: '#F0F2F5',
+    gap: 12,
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: '#FFF7ED',
     alignItems: 'center', justifyContent: 'center',
   },
   headerCenter: { flex: 1 },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: '#1E2B5A' },
-  headerSub: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#12121A' },
+  headerSub: { fontSize: 14, color: '#9CA3AF', fontWeight: '500', marginTop: 2 },
 
-  /* Search */
+  /* Search — 16dp label scale */
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginVertical: 12,
+    backgroundColor: '#F8FAFC',
+    marginHorizontal: 24,
+    marginVertical: 14,
     borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    gap: 8,
-    shadowColor: '#1E2B5A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#F0F2F5',
   },
-  searchInput: { flex: 1, fontSize: 14, color: '#1E2B5A' },
+  searchInput: { flex: 1, fontSize: 16, fontWeight: '500', color: '#12121A' },
 
   /* Loading / empty */
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loadingText: { color: '#9CA3AF', fontSize: 14 },
-  emptyWrap: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 },
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: '#1E2B5A', marginTop: 14, marginBottom: 6 },
-  emptyDesc: { fontSize: 13, color: '#9CA3AF', textAlign: 'center', lineHeight: 20 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
+  loadingText: { color: '#9CA3AF', fontSize: 16 },
+  emptyWrap: { alignItems: 'center', paddingTop: 64, paddingHorizontal: 32 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#12121A', marginTop: 16, marginBottom: 8 },
+  emptyDesc: { fontSize: 16, fontWeight: '500', color: '#9CA3AF', textAlign: 'center', lineHeight: 24 },
 
-  /* List */
-  listContent: { paddingHorizontal: 16, paddingBottom: 32 },
+  /* List — 24dp horizontal padding, 18dp value text */
+  listContent: { paddingHorizontal: 24, paddingBottom: 40 },
   itemCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 10,
-    shadowColor: '#1E2B5A',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F0F2F5',
+    shadowColor: '#12121A',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 2,
   },
   itemAvatar: {
-    width: 48, height: 48, borderRadius: 14,
+    width: 52, height: 52, borderRadius: 14,
     backgroundColor: '#FFF7ED',
     alignItems: 'center', justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   itemAvatarGreen: { backgroundColor: '#ECFDF5' },
-  itemAvatarText: { color: '#F97316', fontSize: 15, fontWeight: '800' },
+  itemAvatarText: { color: '#F97316', fontSize: 16, fontWeight: '700' },
   itemAvatarTextGreen: { color: '#10B981' },
   itemInfo: { flex: 1 },
-  itemTitle: { fontSize: 15, fontWeight: '700', color: '#1E2B5A', marginBottom: 3 },
-  itemMeta: { fontSize: 12, color: '#9CA3AF' },
+  itemTitle: { fontSize: 18, fontWeight: '500', color: '#12121A', marginBottom: 4 },
+  itemMeta: { fontSize: 14, fontWeight: '500', color: '#9CA3AF' },
 
   /* Progress bar (savings) */
-  progressTrack: { height: 4, backgroundColor: '#F3F4F6', borderRadius: 2, marginTop: 6, width: '100%' },
+  progressTrack: { height: 4, backgroundColor: '#F0F2F5', borderRadius: 2, marginTop: 8, width: '100%' },
   progressFill: { height: 4, backgroundColor: '#10B981', borderRadius: 2 },
 
   /* Amount pill (groups) */
   amountPill: {
     backgroundColor: '#FFF7ED',
     borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  amountPillText: { fontSize: 12, fontWeight: '800', color: '#F97316' },
+  amountPillText: { fontSize: 14, fontWeight: '600', color: '#F97316' },
 });

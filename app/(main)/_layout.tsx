@@ -461,6 +461,12 @@ export default function MainTabsLayout() {
           }}
         />
         <Tabs.Screen
+          name="vault-topup"
+          options={{
+            href: null,
+          }}
+        />
+        <Tabs.Screen
           name="groups"
           options={{
             title: 'Osusu',

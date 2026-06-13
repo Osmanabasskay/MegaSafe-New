@@ -1,20 +1,22 @@
 import type { SupportedPaymentMethod } from './paymentService';
 import type { LinkedBankAccountRecord, LinkedMobileMoneyRecord, MobileMoneyNetwork } from '../store/appDataStore';
+import { MOBILE_MONEY_PROVIDER_CONFIG } from './mobileMoneyConfig';
 
 export const MOBILE_MONEY_METHODS: Array<{
   id: MobileMoneyNetwork;
   label: string;
   shortLabel: string;
   color: string;
-}> = [
-  { id: 'orange_money', label: 'Orange Money', shortLabel: 'Orange', color: '#F97316' },
-  { id: 'afrimoney', label: 'AfriMoney', shortLabel: 'Africell', color: '#16A34A' },
-  // qmoney intentionally excluded — not supported via Monime
-];
+}> = MOBILE_MONEY_PROVIDER_CONFIG.map((provider) => ({
+  id: provider.id,
+  label: provider.label,
+  shortLabel: provider.shortLabel,
+  color: provider.color,
+}));
 
 export const PAYMENT_METHOD_LABELS: Record<SupportedPaymentMethod, string> = {
-  orange_money: 'Orange Money',
-  afrimoney: 'AfriMoney',
+  orange_money: MOBILE_MONEY_PROVIDER_CONFIG.find((provider) => provider.id === 'orange_money')?.label ?? 'Orange Money',
+  afrimoney: MOBILE_MONEY_PROVIDER_CONFIG.find((provider) => provider.id === 'afrimoney')?.label ?? 'AfriMoney',
   bank_transfer: 'Bank Transfer',
   card: 'Card',
   cash_collected: 'Cash Collected',

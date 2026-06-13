@@ -35,6 +35,33 @@ describe('generateIdempotencyKey', () => {
     expect(key).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
   });
 
+  it('returns a valid UUID from the React Native fallback path', () => {
+    const originalCrypto = globalThis.crypto;
+    Object.defineProperty(globalThis, 'crypto', {
+      configurable: true,
+      value: {
+        getRandomValues: (bytes: Uint8Array) => {
+          for (let index = 0; index < bytes.length; index += 1) {
+            bytes[index] = index;
+          }
+          return bytes;
+        },
+      },
+    });
+
+    try {
+      const key = generateIdempotencyKey();
+      expect(key).toBe('00010203-0405-4607-8809-0a0b0c0d0e0f');
+      expect(key.split('-').map((part) => part.length)).toEqual([8, 4, 4, 4, 12]);
+      expect(key).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    } finally {
+      Object.defineProperty(globalThis, 'crypto', {
+        configurable: true,
+        value: originalCrypto,
+      });
+    }
+  });
+
   it('each call returns a unique key', () => {
     const keys = Array.from({ length: 20 }, () => generateIdempotencyKey());
     const unique = new Set(keys);

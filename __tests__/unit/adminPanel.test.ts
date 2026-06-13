@@ -45,9 +45,12 @@ describe('isIpAllowed', () => {
 // ── getClientIp ───────────────────────────────────────────────────────────────
 
 describe('getClientIp', () => {
-  it('prefers x-forwarded-for header', () => {
+  it('prefers x-forwarded-for header — reads LAST entry (Vercel proxy model)', () => {
+    // The outermost Vercel/Cloudflare proxy APPENDS the real client IP as the
+    // LAST entry. Reading the first entry is the classic IP-spoofing vector
+    // (a client can prepend arbitrary IPs). getClientIp() correctly reads last.
     const headers = new Headers({ 'x-forwarded-for': '1.2.3.4, 5.6.7.8' });
-    expect(getClientIp(headers)).toBe('1.2.3.4');
+    expect(getClientIp(headers)).toBe('5.6.7.8');
   });
 
   it('falls back to x-real-ip', () => {

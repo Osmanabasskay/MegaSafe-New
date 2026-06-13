@@ -9,7 +9,7 @@
  * function fetches status directly from the provider.
  */
 
-import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { corsHeaders, handleCors, readBoundedBody } from '../_shared/cors.ts';
 import { getAuthUser, createServiceClient, createUserClient } from '../_shared/auth.ts';
 
 interface RequestBody {
@@ -28,9 +28,12 @@ Deno.serve(async (req: Request) => {
   const user = await getAuthUser(authHeader);
   if (!user) return jsonError('Not authenticated.', 401);
 
+  const { text: rawBody, error: sizeErr } = await readBoundedBody(req);
+  if (sizeErr) return jsonError(sizeErr, 413);
+
   let body: RequestBody;
   try {
-    body = await req.json();
+    body = JSON.parse(rawBody) as RequestBody;
   } catch {
     return jsonError('Invalid JSON body.', 400);
   }
@@ -53,7 +56,10 @@ Deno.serve(async (req: Request) => {
   }
 
   const { data: mmTxn, error: mmErr } = await query.maybeSingle();
-  if (mmErr) return jsonError('Lookup failed: ' + mmErr.message, 500);
+  if (mmErr) {
+    console.error('mobile_money_transactions lookup error:', mmErr.message);
+    return jsonError('Could not look up transaction.', 500);
+  }
   if (!mmTxn) return jsonError('Transaction not found.', 404);
 
   // Ensure caller owns this transaction
@@ -74,7 +80,8 @@ Deno.serve(async (req: Request) => {
 
   // ── Poll provider for status ─────────────────────────────────
   const providerRef = txn.provider_reference as string | null;
-  const provider    = (body.provider ?? txn.provider) as string;
+  // Always use the DB-stored provider — never trust a client-supplied value.
+  const provider    = txn.provider as string;
 
   if (!providerRef) {
     return jsonOk({ status: 'pending', contribution_id: txn.payment_id });

@@ -37,6 +37,14 @@ import { useAppDataStore } from '../../src/store/appDataStore';
 import { darkColors, lightColors } from '../../src/theme/colors';
 import type { PayoutOrder } from '../../src/types/group';
 import { useKycGuard } from '../../src/hooks/useKycGuard';
+import { isValidSierraLeonePhone, normalizeToSierraLeone } from '../../src/utils/validation/auth';
+
+// Contribution amount limits in NLe (Sierra Leone Leone)
+const MIN_CONTRIBUTION_AMOUNT = 1;       // NLe 1.00
+const MAX_CONTRIBUTION_AMOUNT = 100_000; // NLe 100,000
+
+const ALLOWED_LOGO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
 
 type RotationChoice = 'alphabetical' | 'randomized' | 'custom';
 
@@ -120,8 +128,19 @@ export default function CreateGroupScreen() {
   };
 
   const applyAsset = (asset: ImagePicker.ImagePickerAsset) => {
-    if (asset.fileSize && asset.fileSize > 2 * 1024 * 1024) {
+    if (asset.fileSize && asset.fileSize > MAX_LOGO_BYTES) {
       Alert.alert('File too large', 'Please choose an image under 2 MB.');
+      return;
+    }
+    // Reject non-image MIME types to prevent unexpected file types being uploaded
+    const uri = asset.uri.toLowerCase();
+    const hasValidExt = uri.endsWith('.jpg') || uri.endsWith('.jpeg') || uri.endsWith('.png') || uri.endsWith('.webp');
+    if (asset.mimeType && !ALLOWED_LOGO_TYPES.has(asset.mimeType)) {
+      Alert.alert('Invalid image type', 'Only JPEG, PNG, or WebP images are allowed.');
+      return;
+    }
+    if (!asset.mimeType && !hasValidExt) {
+      Alert.alert('Invalid image type', 'Only JPEG, PNG, or WebP images are allowed.');
       return;
     }
     setLogoUriLocal(asset.uri);
@@ -145,15 +164,35 @@ export default function CreateGroupScreen() {
   const handleCreate = () => {
     if (!requireKyc('create an Osusu group')) return;
 
-    if (!osusuName.trim()) { Alert.alert('Name required', 'Enter a name for your Osusu group.'); return; }
+    const trimmedName = osusuName.trim();
+    if (!trimmedName) { Alert.alert('Name required', 'Enter a name for your Osusu group.'); return; }
+    if (trimmedName.length > 30) { Alert.alert('Name too long', 'Group name must be 30 characters or fewer.'); return; }
+
     const contributionAmount = Number.parseFloat(amount);
-    if (!Number.isFinite(contributionAmount) || contributionAmount <= 0) {
-      Alert.alert('Invalid amount', 'Enter a contribution amount greater than 0.'); return;
+    if (!Number.isFinite(contributionAmount) || contributionAmount < MIN_CONTRIBUTION_AMOUNT) {
+      Alert.alert('Invalid amount', `Contribution amount must be at least NLe ${MIN_CONTRIBUTION_AMOUNT}.`);
+      return;
     }
+    if (contributionAmount > MAX_CONTRIBUTION_AMOUNT) {
+      Alert.alert('Amount too large', `Contribution amount cannot exceed NLe ${MAX_CONTRIBUTION_AMOUNT.toLocaleString()}.`);
+      return;
+    }
+
     const clampedMembers = Math.max(2, Math.min(200, members));
     if (!startDate) { Alert.alert('Date required', 'Please select a start date.'); return; }
-    if (!collectionPhone.trim()) {
+
+    // Validate and normalize Sierra Leone collection phone number
+    const rawPhone = collectionPhone.trim();
+    if (!rawPhone) {
       Alert.alert('Collection number required', 'Enter the mobile money number members will send contributions to.');
+      return;
+    }
+    const normalizedPhone = normalizeToSierraLeone(rawPhone);
+    if (!isValidSierraLeonePhone(normalizedPhone)) {
+      Alert.alert(
+        'Invalid phone number',
+        'Please enter a valid Sierra Leone mobile number (e.g. 76 123 456 or +232 76 123 456).'
+      );
       return;
     }
 
@@ -162,7 +201,12 @@ export default function CreateGroupScreen() {
       cycleStartDate: startDate, totalCycles: clampedMembers,
       payoutOrder: toPayoutOrder(rotationOrder),
     });
-    updateDetails({ name: osusuName.trim(), description: draft.description, logoUri, adminCollectionPhone: collectionPhone.trim() });
+    updateDetails({
+      name: trimmedName,
+      description: draft.description,
+      logoUri,
+      adminCollectionPhone: normalizedPhone,
+    });
     router.push('/(groups)/rules');
   };
 

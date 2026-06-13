@@ -18,7 +18,7 @@
  *   - Payout result recorded via record_monime_payout_result SECURITY DEFINER RPC.
  */
 
-import { corsHeaders, handleCors }                    from '../_shared/cors.ts';
+import { corsHeaders, handleCors, readBoundedBody }    from '../_shared/cors.ts';
 import { getAuthUser, createServiceClient, createUserClient } from '../_shared/auth.ts';
 import {
   MONIME_PROVIDER_IDS,
@@ -46,8 +46,11 @@ Deno.serve(async (req: Request) => {
   if (role !== 'super_admin' && role !== 'org_admin') return err('Admin access required.', 403);
 
   // ── 3. Parse body ─────────────────────────────────────────────────────────────
+  const { text: rawBody, error: sizeErr } = await readBoundedBody(req);
+  if (sizeErr) return err(sizeErr, 413);
+
   let body: RequestBody;
-  try { body = await req.json(); }
+  try { body = JSON.parse(rawBody) as RequestBody; }
   catch { return err('Invalid JSON body.', 400); }
   if (!body.withdrawal_id) return err('withdrawal_id is required.', 400);
 
@@ -99,6 +102,8 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── 7. Record outbound mobile_money_transaction for audit ─────────────────────
+  //    Status stays 'processing' — payout-webhook is the only authority that
+  //    moves the disbursement (and the withdrawal) to completed/failed.
   if (monimePayoutId) {
     await svc.from('mobile_money_transactions').insert({
       user_id:            withdrawalUserId,
@@ -107,7 +112,10 @@ Deno.serve(async (req: Request) => {
       direction:          'outbound',
       amount,
       currency:           'NLe',
-      status:             payoutStatus === 'completed' ? 'completed' : 'processing',
+      status:             'processing',
+      phone_number:       destPhone,
+      internal_reference: `WDR-${body.withdrawal_id}`,
+      provider_reference: monimePayoutId,
       monime_payment_code_id: monimePayoutId,
     }).then(({ error: e }) => { if (e) console.warn('mm_txn outbound insert:', e.message); });
   }
@@ -123,8 +131,8 @@ Deno.serve(async (req: Request) => {
         user_id: withdrawalUserId,
         type:    'withdrawal_approved',
         title:   'Withdrawal Approved',
-        body:    `Your withdrawal of NLe ${Number(amount).toFixed(2)} has been approved and is being processed.`,
-        data:    { withdrawal_id: body.withdrawal_id },
+        body:    'Your withdrawal request has been approved and is being processed.',
+        data:    { amount, withdrawal_id: body.withdrawal_id },
       }),
     }).catch((e) => console.warn('Notification dispatch failed:', e));
   }
@@ -168,7 +176,7 @@ async function initiateProviderPayout(params: {
   if (provider === 'qmoney') {
     // QMoney (m13) is NOT confirmed in the Monime API docs.
     // Disbursement must be handled manually via the provider's dashboard.
-    throw new Error('QMoney payouts are not currently supported via Monime. Please disburse manually.');
+    throw new Error('QMoney is not currently supported. Please use Orange Money or AfriMoney, or disburse manually via the provider dashboard.');
   }
 
   if (provider === 'bank_transfer') {

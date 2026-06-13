@@ -52,6 +52,10 @@ export default async function AdminKycPage(params: {
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Pending KYC"   value={signals.counts.pending.toLocaleString()}   accent="orange" />
         <KpiCard label="Submitted KYC" value={signals.counts.submitted.toLocaleString()} accent="orange" />
+        <KpiCard label="Manual Review" value={signals.counts.manualReview.toLocaleString()} accent={signals.counts.manualReview > 0 ? 'red' : 'slate'} />
+        <KpiCard label="Retake Required" value={signals.counts.retakeRequired.toLocaleString()} accent={signals.counts.retakeRequired > 0 ? 'red' : 'slate'} />
+      </section>
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Approved KYC"  value={signals.counts.approved.toLocaleString()}  accent="green" />
         <KpiCard label="Rejected KYC"  value={signals.counts.rejected.toLocaleString()}  accent={signals.counts.rejected > 0 ? 'red' : 'slate'} />
       </section>
@@ -123,6 +127,7 @@ async function KycQueueTab() {
                 <p className="text-xs text-slate-500">
                   Submitted {new Date(item.submittedAt).toLocaleString()} &middot; Status:{' '}
                   <StatusBadge value={item.kycStatus} />
+                  {' '}&middot; AI validation: <StatusBadge value={item.aiStatus} />
                 </p>
                 <Link
                   href={`/admin/users/${item.userId}`}
@@ -147,6 +152,7 @@ async function KycQueueTab() {
                     <form action="/api/admin/action" method="post">
                       <input type="hidden" name="action"       value="approve_kyc" />
                       <input type="hidden" name="targetUserId" value={item.userId} />
+                      <input type="hidden" name="targetRecordId" value={item.applicationId} />
                       <button type="submit" className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-emerald-700">
                         Approve KYC
                       </button>
@@ -154,6 +160,7 @@ async function KycQueueTab() {
                     <form action="/api/admin/action" method="post">
                       <input type="hidden" name="action"       value="reject_kyc" />
                       <input type="hidden" name="targetUserId" value={item.userId} />
+                      <input type="hidden" name="targetRecordId" value={item.applicationId} />
                       <input type="hidden" name="reason"       value="Document mismatch or unclear image." />
                       <button type="submit" className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-rose-700">
                         Reject KYC
@@ -162,6 +169,7 @@ async function KycQueueTab() {
                     <form action="/api/admin/action" method="post">
                       <input type="hidden" name="action"       value="request_kyc_resubmission" />
                       <input type="hidden" name="targetUserId" value={item.userId} />
+                      <input type="hidden" name="targetRecordId" value={item.applicationId} />
                       <input type="hidden" name="reason"       value="Please resubmit clearer document photos." />
                       <button type="submit" className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 hover:bg-slate-50">
                         Request Resubmission
@@ -179,6 +187,25 @@ async function KycQueueTab() {
                 This is your own submission — review actions are disabled (segregation of duties).
                 Another super admin must review it.
               </p>
+            ) : null}
+            {item.suspiciousFlags.length > 0 || item.manualReviewReason ? (
+              <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
+                <p className="text-xs font-bold uppercase tracking-wide text-rose-700">
+                  Manual review required
+                </p>
+                <p className="mt-1 text-xs text-rose-700">
+                  Internal reason: {item.manualReviewReason ?? item.reasonCode ?? 'flagged_for_review'}
+                </p>
+                {item.suspiciousFlags.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {item.suspiciousFlags.map((flag) => (
+                      <span key={flag} className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-rose-700 ring-1 ring-rose-200">
+                        {flag}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             ) : null}
             {/* Document completeness banner */}
             {(() => {
@@ -232,7 +259,7 @@ async function KycApplicationsTab(props: {
     <div className="space-y-4">
       {/* Status filter */}
       <div className="flex flex-wrap gap-2">
-        {(['', 'pending', 'submitted', 'approved', 'rejected'] as const).map((s) => (
+        {(['', 'pending', 'verification_processing', 'under_review', 'manual_review', 'retake_required', 'approved', 'rejected'] as const).map((s) => (
           <a
             key={s}
             href={`/admin/kyc?tab=applications&status=${s}&page=1`}
@@ -242,19 +269,21 @@ async function KycApplicationsTab(props: {
                 : 'border-slate-300 text-slate-600 hover:bg-slate-50'
             }`}
           >
-            {s ? s.charAt(0).toUpperCase() + s.slice(1) : 'All'}
+            {s ? s.split('_').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ') : 'All'}
           </a>
         ))}
       </div>
 
       <DataTable
-        headers={['Full Name', 'Phone', 'Document Type', 'National ID', 'Status', 'Submitted', 'Reviewed', 'Rejection Reason', '']}
+        headers={['Full Name', 'Phone', 'Document Type', 'National ID', 'Status', 'AI', 'Flags', 'Submitted', 'Reviewed', 'Rejection Reason', '']}
         rows={applications.map((a) => [
           a.fullName,
           a.phone,
           a.documentType,
           a.nationalIdNumber,
           <StatusBadge key={`${a.id}-s`} value={a.status} />,
+          <StatusBadge key={`${a.id}-ai`} value={a.aiStatus} />,
+          a.suspiciousFlags.length > 0 ? a.suspiciousFlags.join(', ') : (a.reasonCode ?? '-'),
           new Date(a.submittedAt).toLocaleDateString(),
           a.reviewedAt ? new Date(a.reviewedAt).toLocaleDateString() : '-',
           a.rejectionReason ?? '-',

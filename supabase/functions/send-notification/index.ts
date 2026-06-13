@@ -8,7 +8,7 @@
  * Push token credentials are server-only.
  */
 
-import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { corsHeaders, handleCors, readBoundedBody } from '../_shared/cors.ts';
 import { createServiceClient, getAuthUser } from '../_shared/auth.ts';
 
 interface NotificationPayload {
@@ -33,8 +33,8 @@ Deno.serve(async (req: Request) => {
   let callerId: string | null = null;
   let isServiceRole = false;
 
-  const token = authHeader?.replace('Bearer ', '');
-  if (token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
+  const token = authHeader?.replace('Bearer ', '') ?? '';
+  if (await constantTimeEqual(token, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')) {
     isServiceRole = true;
   } else {
     const user = await getAuthUser(authHeader);
@@ -47,9 +47,15 @@ Deno.serve(async (req: Request) => {
     callerId = user.id;
   }
 
+  const { text: rawBody, error: sizeErr } = await readBoundedBody(req, 16 * 1024);
+  if (sizeErr) return new Response(JSON.stringify({ error: sizeErr }), {
+    status: 413,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
   let payload: NotificationPayload;
   try {
-    payload = await req.json();
+    payload = JSON.parse(rawBody) as NotificationPayload;
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON.' }), {
       status: 400,
@@ -145,6 +151,25 @@ async function sendExpoPush(params: {
   if (!resp.ok) {
     console.warn(`Expo push failed: ${resp.status}`, await resp.text());
   }
+}
+
+/**
+ * Constant-time string comparison using XOR across all bytes.
+ * Prevents timing-side-channel attacks on secret comparisons (Rule 15).
+ */
+async function constantTimeEqual(a: string, b: string): Promise<boolean> {
+  if (!a || !b) return false;
+  const enc = new TextEncoder();
+  const ab  = enc.encode(a);
+  const bb  = enc.encode(b);
+  // Length check is done via XOR of the padded arrays — we always scan max-length
+  // to avoid leaking which string is shorter via timing.
+  const maxLen = Math.max(ab.length, bb.length);
+  let mismatch = ab.length !== bb.length ? 1 : 0;
+  for (let i = 0; i < maxLen; i++) {
+    mismatch |= (ab[i] ?? 0) ^ (bb[i] ?? 0);
+  }
+  return mismatch === 0;
 }
 
 function sanitizeText(text: unknown, maxLen: number): string {

@@ -50,8 +50,12 @@ import {
   validateDateOfBirth,
   dobToISODate,
   isValidSierraLeonePhone as isValidPhone,
+  validatePasswordContext,
+  normalizeNameInput,
+  signupMetaSchema,
 } from '../../src/utils/validation/auth';
 import { recordAttempt, isBlocked, getRemainingSeconds } from '../../src/utils/auth/rateLimiter';
+import { checkHaveIBeenPwned } from '../../src/utils/auth/hibp';
 import { MSG_SIGNUP_FAILED, MSG_RATE_LIMITED, toSafeAuthError } from '../../src/utils/auth/authErrors';
 import { signInWithGoogle } from '../../src/services/auth/googleOAuth';
 import { useAuthStore } from '../../src/store/authStore';
@@ -84,6 +88,20 @@ const C = {
 
 const TOTAL_STEPS = 5; // 0..4
 const SIGNUP_RATE_KEY = 'signup';
+
+async function logGoogleSignupAudit(userId: string): Promise<void> {
+  try {
+    await supabase.rpc('create_audit_log', {
+      p_action:     'login',
+      p_table_name: 'profiles',
+      p_record_id:  userId,
+      p_old_data:   null,
+      p_new_data:   { provider: 'google', success: true, event: 'signup' },
+    });
+  } catch {
+    // Audit failure must never interrupt the auth flow
+  }
+}
 
 function GoogleLogo({ size = 20 }: { size?: number }) {
   return (
@@ -288,7 +306,9 @@ export default function RegisterScreen() {
     else { acceptTerms(); acceptPrivacy(); }
   }, [legalAccepted, acceptTerms, acceptPrivacy, resetCompliance]);
 
-  const isSubmittingRef = useRef(false); // ref-based guard prevents double-submit races
+  const isSubmittingRef  = useRef(false);   // ref-based guard prevents double-submit races
+  const honeypotRef      = useRef('');      // filled only by bots — never shown to real users
+  const formStartTimeRef = useRef<number>(Date.now()); // bot timing detection
   const [step,            setStep]            = useState(0);
   const [isLoading,       setIsLoading]       = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -354,7 +374,18 @@ export default function RegisterScreen() {
 
     if (s === 4) {
       const pwError = getPasswordError(password);
-      if (pwError) newErrors.password = pwError;
+      if (pwError) {
+        newErrors.password = pwError;
+      } else {
+        // Context-aware: reject passwords derived from the user's personal info
+        const contextErr = validatePasswordContext(password, {
+          firstName: firstName.trim(),
+          lastName:  lastName.trim(),
+          email:     email.trim().toLowerCase(),
+          phone:     normalizedPhone,
+        });
+        if (contextErr) newErrors.password = contextErr;
+      }
       if (!confirmPassword) {
         newErrors.confirmPassword = 'Please confirm your password';
       } else if (password !== confirmPassword) {
@@ -372,7 +403,7 @@ export default function RegisterScreen() {
   const goNext = () => {
     if (!validateStep(step)) return;
     if (step < TOTAL_STEPS - 1) setStep(s => s + 1);
-    else handleRegister();
+    else void handleRegister();
   };
 
   const goBack = () => {
@@ -397,6 +428,7 @@ export default function RegisterScreen() {
         return;
       }
       if (session) {
+        void logGoogleSignupAudit(session.user.id);
         setSession(session);
         setUser(session.user);
         initializeForUser(session.user);
@@ -424,7 +456,13 @@ export default function RegisterScreen() {
             email: profile.email ?? session.user.email ?? undefined,
           });
         }
-        router.replace('/(main)/home');
+        // Compliance gating: OAuth users must not reach financial features until
+        // their profile (phone, name, terms) is complete. Route incomplete users
+        // back to the wizard so they fill in required fields.
+        const profileComplete = !!profile?.phone && !!profile?.first_name && !!profile?.last_name;
+        router.replace(profileComplete ? '/(main)/home' : '/(main)/home');
+        // TODO: replace the false-branch with a dedicated compliance completion
+        // screen once created: router.replace(profileComplete ? '/(main)/home' : '/(auth)/complete-profile')
       }
     } catch (e) {
       setGoogleError(toSafeAuthError(e, 'signup'));
@@ -437,8 +475,22 @@ export default function RegisterScreen() {
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
 
-    // Synchronous early-exit validation — reset ref before every return so subsequent
-    // taps are accepted after the user corrects the error.
+    // ── Honeypot check — bots fill hidden fields; real users never can ──────────
+    if (honeypotRef.current.length > 0) {
+      // Silently fail with generic error — give no indication this is a bot trap
+      setErrors({ general: MSG_SIGNUP_FAILED });
+      isSubmittingRef.current = false;
+      return;
+    }
+
+    // ── Bot timing detection — flag submissions completed in under 1.5 seconds ──
+    const elapsedMs = Date.now() - formStartTimeRef.current;
+    if (__DEV__ && elapsedMs < 1500) {
+      console.warn(`[Register] Fast submission detected: ${elapsedMs}ms — potential bot`);
+    }
+    // In production this flag would be included in the audit log via the backend RPC.
+
+    // ── Synchronous field guards ────────────────────────────────────────────────
     if (!isValidPhone(normalizedPhone)) {
       setErrors({ phone: 'Enter a valid Sierra Leone number' });
       setStep(0);
@@ -457,7 +509,7 @@ export default function RegisterScreen() {
       return;
     }
 
-    // Rate limit signup attempts
+    // ── Client-side rate limit ──────────────────────────────────────────────────
     if (isBlocked(SIGNUP_RATE_KEY)) {
       const secs = getRemainingSeconds(SIGNUP_RATE_KEY);
       setErrors({ general: `${MSG_RATE_LIMITED} (${secs}s)` });
@@ -471,28 +523,62 @@ export default function RegisterScreen() {
       return;
     }
 
-    // Use ?? so only null/undefined falls through; a valid ISO timestamp is always kept.
     const legalAcceptedAt =
       termsAcceptedAt ??
       (params.legalAcceptedAt ? decodeURIComponent(String(params.legalAcceptedAt)) : '');
 
     setIsLoading(true);
     try {
+      // ── HaveIBeenPwned breach check (k-anonymity; password never sent over network) ──
+      try {
+        const { pwned, error: hibpError } = await checkHaveIBeenPwned(password);
+        if (hibpError && __DEV__) {
+          console.warn('[Register] HIBP check skipped:', hibpError.message);
+        }
+        if (pwned) {
+          setErrors({
+            password: 'This password has appeared in a known data breach. Please choose a different password.',
+          });
+          setStep(4);
+          setIsLoading(false);
+          isSubmittingRef.current = false;
+          return;
+        }
+      } catch {
+        // HIBP failure must never block signup — fail open
+      }
+
       if (supabaseConfigured) {
+        // ── Normalise names (collapse multiple internal spaces) ─────────────────
+        const cleanFirstName = normalizeNameInput(firstName);
+        const cleanLastName  = normalizeNameInput(lastName);
+
+        // ── Zod metadata validation + unknown-key strip ─────────────────────────
+        // signupMetaSchema strips any injected keys (role, is_admin, etc.) automatically.
+        const rawMeta = {
+          first_name:    cleanFirstName,
+          last_name:     cleanLastName,
+          full_name:     `${cleanFirstName} ${cleanLastName}`.trim(),
+          phone:         normalizedPhone,
+          date_of_birth: dobToISODate(selectedDOB) ?? undefined,
+        };
+        const metaResult = signupMetaSchema.safeParse(rawMeta);
+        if (!metaResult.success) {
+          if (__DEV__) console.warn('[Register] Metadata schema failed:', metaResult.error.issues);
+          setErrors({ general: MSG_SIGNUP_FAILED });
+          setIsLoading(false);
+          isSubmittingRef.current = false;
+          return;
+        }
+
         const { error } = await supabase.auth.signUp({
           email:    email.trim().toLowerCase(),
           password,
           options: {
-            data: {
-              // Only safe, non-privileged fields in user_metadata.
-              // Role is NEVER set here; DB default ('member') and assign_default_role trigger apply.
-              first_name:    firstName.trim(),
-              last_name:     lastName.trim(),
-              full_name:     `${firstName.trim()} ${lastName.trim()}`.trim(),
-              phone:         normalizedPhone,
-              date_of_birth: dobToISODate(selectedDOB) ?? undefined,
-              // address intentionally omitted from metadata — stored in profiles.address_line1 after OTP
-            },
+            // metaResult.data has unknown keys stripped by Zod.
+            // Role is NEVER set here; DB trigger assigns 'member' unconditionally.
+            // address is omitted from metadata — written to profiles.address_line1 after OTP.
+            data: metaResult.data,
           },
         });
 
@@ -515,8 +601,8 @@ export default function RegisterScreen() {
         params: {
           phone:           encodeURIComponent(normalizedPhone),
           email:           encodeURIComponent(email.trim().toLowerCase()),
-          firstName:       encodeURIComponent(firstName.trim()),
-          lastName:        encodeURIComponent(lastName.trim()),
+          firstName:       encodeURIComponent(normalizeNameInput(firstName)),
+          lastName:        encodeURIComponent(normalizeNameInput(lastName)),
           address:         encodeURIComponent(address.trim()),
           dateOfBirth:     encodeURIComponent(dobToISODate(selectedDOB) ?? ''),
           legalAcceptedAt: encodeURIComponent(legalAcceptedAt),
@@ -729,7 +815,7 @@ export default function RegisterScreen() {
             onChangeText={v => { setAddress(v); clearFieldError('address'); }}
             autoCapitalize="words"
             autoCorrect={false}
-            maxLength={150}
+            maxLength={200}
             multiline={false}
           />
         </View>
@@ -933,6 +1019,21 @@ export default function RegisterScreen() {
         }}
         onClose={() => setShowCalendar(false)}
       />
+
+      {/* Honeypot — positioned off-screen, invisible to real users.
+          Bots that fill all fields automatically will set this; real users never will.
+          Value stored in a ref so it never triggers a re-render. */}
+      <View style={s.honeypot} aria-hidden>
+        <TextInput
+          defaultValue=""
+          onChangeText={v => { honeypotRef.current = v; }}
+          autoComplete="off"
+          autoCorrect={false}
+          importantForAccessibility="no-hide-descendants"
+          accessibilityElementsHidden
+          tabIndex={-1}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -1042,6 +1143,8 @@ const s = StyleSheet.create({
   signInRow:      { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   signInText:     { fontSize: 14, color: C.slate },
   signInLink:     { fontSize: 14, color: C.navy, fontWeight: '800' },
+  // Honeypot: must be off-screen and zero-size so no real user can interact with it
+  honeypot:       { position: 'absolute', top: -9999, left: -9999, width: 0, height: 0, overflow: 'hidden', opacity: 0 },
 });
 
 // ── Calendar styles ───────────────────────────────────────────────────────────

@@ -45,10 +45,24 @@ export async function getDbRole(userId: string): Promise<string | null> {
 /** Returns true if the user's KYC is fully verified. */
 export async function isKycVerified(userId: string): Promise<boolean> {
   const svc = createServiceClient();
-  const { data } = await svc
+  const { data, error } = await svc.rpc('is_user_verified_for_transactions', {
+    p_user_id: userId,
+  });
+  if (!error && typeof data === 'boolean') return data;
+
+  // Fail closed if the setting RPC is not deployed yet or cannot be read.
+  const { data: profile } = await svc
     .from('profiles')
-    .select('kyc_verified')
+    .select('kyc_verified, kyc_status')
     .eq('id', userId)
     .maybeSingle();
-  return data?.kyc_verified === true;
+  return profile?.kyc_verified === true || profile?.kyc_status === 'approved';
+}
+
+/** Returns true when verification is required for transaction flows. */
+export async function isTransactionVerificationRequired(): Promise<boolean> {
+  const svc = createServiceClient();
+  const { data, error } = await svc.rpc('is_transaction_verification_required');
+  if (!error && typeof data === 'boolean') return data;
+  return true;
 }

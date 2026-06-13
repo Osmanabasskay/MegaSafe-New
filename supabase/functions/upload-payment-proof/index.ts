@@ -12,9 +12,23 @@
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { getAuthUser, createServiceClient } from '../_shared/auth.ts';
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-const MAX_BYTES     = 5 * 1024 * 1024; // 5 MB
-const BUCKET        = 'payment-proofs';
+const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const BUCKET    = 'payment-proofs';
+
+/**
+ * Detect MIME type from magic bytes — never trust Content-Type / file name.
+ * Returns null if the file is not a recognised safe type.
+ */
+function detectMimeFromBytes(buf: ArrayBuffer): string | null {
+  const b = new Uint8Array(buf);
+  // JPEG: FF D8 FF
+  if (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) return 'image/jpeg';
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) return 'image/png';
+  // PDF: 25 50 44 46 (‍%PDF)
+  if (b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46) return 'application/pdf';
+  return null;
+}
 
 Deno.serve(async (req: Request) => {
   const corsResponse = handleCors(req);
@@ -43,23 +57,33 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── Validate file ────────────────────────────────────────────
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return jsonError('Only JPEG, PNG, and PDF files are allowed.', 400);
-  }
   const bytes = await file.arrayBuffer();
   if (bytes.byteLength > MAX_BYTES) {
     return jsonError('File exceeds the 5 MB size limit.', 400);
   }
 
+  // Magic byte check — never trust client-supplied Content-Type or file name.
+  const detectedMime = detectMimeFromBytes(bytes);
+  if (!detectedMime) {
+    return jsonError('Only JPEG, PNG, and PDF files are allowed.', 400);
+  }
+
+  // Derive extension from actual content, not the filename
+  const extMap: Record<string, string> = {
+    'image/jpeg':      'jpg',
+    'image/png':       'png',
+    'application/pdf': 'pdf',
+  };
+
   // ── Upload to private storage bucket ────────────────────────
-  const svc       = createServiceClient();
-  const ext       = file.name.split('.').pop() ?? 'bin';
+  const svc         = createServiceClient();
+  const ext         = extMap[detectedMime] ?? 'bin';
   const storagePath = `${user.id}/${crypto.randomUUID()}.${ext}`;
 
   const { error: uploadErr } = await svc.storage
     .from(BUCKET)
     .upload(storagePath, bytes, {
-      contentType:  file.type,
+      contentType:  detectedMime,
       cacheControl: '3600',
       upsert:       false,
     });
@@ -76,7 +100,7 @@ Deno.serve(async (req: Request) => {
       payment_id:    contribution_id ? String(contribution_id) : null,
       uploaded_by:   user.id,
       storage_path:  storagePath,
-      file_type:     file.type,
+      file_type:     detectedMime,
     })
     .select('id')
     .single();

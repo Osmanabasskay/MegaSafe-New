@@ -5,6 +5,7 @@ import {
   Animated,
   AppState,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -26,7 +27,6 @@ import {
   CheckCircle,
   Clock,
   RefreshCw,
-  Shield,
   Wallet,
 } from 'lucide-react-native';
 import FontAwesome    from '@expo/vector-icons/FontAwesome';
@@ -35,7 +35,7 @@ import { useAuthStore }     from '../../src/store/authStore';
 import { useAppDataStore }  from '../../src/store/appDataStore';
 import { useKycGuard }      from '../../src/hooks/useKycGuard';
 import { darkColors, lightColors } from '../../src/theme/colors';
-import { fetchSavingsGoals, processSavingsWithdrawal, type SavingsGoal } from '../../src/api/walletApi';
+import { fetchSavingsGoals, requestVaultWithdrawal, type SavingsGoal } from '../../src/api/walletApi';
 import {
   getVaultSummary,
   initiateVaultTopup,
@@ -45,6 +45,13 @@ import {
   type VaultTopupResult,
   type VaultTopupStatusResult,
 } from '../../src/services/vaultService';
+import {
+  MOBILE_MONEY_PROVIDER_CONFIG,
+  getMobileMoneyProvider,
+} from '../../src/services/mobileMoneyConfig';
+import { getMyPaymentMethods, type LinkedPaymentMethod } from '../../src/services/paymentMethodService';
+import { fetchVaultTopupLimits, type VaultTopupLimits } from '../../src/services/platformSettingsService';
+import { EnterTransactionPinModal } from '../../src/components/security/EnterTransactionPinModal';
 
 // ── Monime method logos ─────────────────────────────────────────
 const METHOD_LOGOS: Record<VaultTopupMethod, { source: ReturnType<typeof require>; title: string }> = {
@@ -53,11 +60,9 @@ const METHOD_LOGOS: Record<VaultTopupMethod, { source: ReturnType<typeof require
 };
 
 const METHOD_COLORS: Record<VaultTopupMethod, string> = {
-  orange_money: '#FF6900',
-  afrimoney:    '#00A652',
+  orange_money: getMobileMoneyProvider('orange_money')?.color ?? '#F97316',
+  afrimoney:    getMobileMoneyProvider('afrimoney')?.color ?? '#16A34A',
 };
-
-const QUICK_AMOUNTS = [50, 100, 200, 500];
 
 // ── Topup multi-step flow ───────────────────────────────────────
 type TopupStep = 'idle' | 'method' | 'amount' | 'processing' | 'checkout' | 'complete' | 'failed';
@@ -67,23 +72,18 @@ export default function VaultScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { requireKyc } = useKycGuard();
-  const {
-    linkedMobileMoneyAccounts,
-    linkedBankAccounts,
-    preferences,
-  } = useAppDataStore();
+  const { preferences } = useAppDataStore();
   const isDark = preferences.darkMode;
   const C = isDark ? darkColors : lightColors;
 
   const [showBalance, setShowBalance] = useState(false);
   const [gateLoading, setGateLoading] = useState(false);
   const balanceAnim = useRef(new Animated.Value(0)).current;
-  const badgePulse  = useRef(new Animated.Value(1)).current;
-  const badgeRing   = useRef(new Animated.Value(0)).current;
 
   const [refreshing, setRefreshing] = useState(false);
   const [vaultSummary, setVaultSummary] = useState<VaultSummary | null>(null);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [withdrawalMethods, setWithdrawalMethods] = useState<LinkedPaymentMethod[]>([]);
 
   // ── Vault top-up flow ───────────────────────────────────────
   const [topupStep, setTopupStep]     = useState<TopupStep>('idle');
@@ -92,6 +92,13 @@ export default function VaultScreen() {
   const [topupResult, setTopupResult] = useState<VaultTopupResult | null>(null);
   const [topupStatus, setTopupStatus] = useState<VaultTopupStatusResult | null>(null);
   const [topupPolling, setTopupPolling] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [topupLimits, setTopupLimits] = useState<VaultTopupLimits>({
+    minAmount: 50,
+    maxAmount: 100000,
+    dailyLimit: 50000,
+    monthlyLimit: 500000,
+  });
 
   // ── Withdrawal detail flow ──────────────────────────────────
   const [withdrawSheetVisible, setWithdrawSheetVisible]   = useState(false);
@@ -100,20 +107,33 @@ export default function VaultScreen() {
   const [selectedGoalId, setSelectedGoalId]               = useState<string>('');
   const [withdrawAmount, setWithdrawAmount]               = useState('');
   const [withdrawNote, setWithdrawNote]                   = useState('');
+  const [selectedWithdrawalMethodId, setSelectedWithdrawalMethodId] = useState('');
   const [withdrawProcessing, setWithdrawProcessing]       = useState(false);
+  const [withdrawPinVisible, setWithdrawPinVisible]       = useState(false);
+  const [withdrawPinError, setWithdrawPinError]           = useState<string | null>(null);
 
   // ── Data ────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
-    if (!user?.id) { setSavingsGoals([]); return; }
+    if (!user?.id) {
+      setSavingsGoals([]);
+      setWithdrawalMethods([]);
+      return;
+    }
     const [{ goals }, { summary }] = await Promise.all([
       fetchSavingsGoals(user.id),
       getVaultSummary(),
     ]);
+    const { methods } = await getMyPaymentMethods();
     setSavingsGoals(goals);
+    setWithdrawalMethods(methods.filter((method) => method.is_active && method.is_verified));
     if (summary) setVaultSummary(summary);
   }, [user?.id]);
 
   useEffect(() => { void loadData(); }, [loadData]);
+
+  useEffect(() => {
+    void fetchVaultTopupLimits().then(setTopupLimits);
+  }, []);
 
   // Reload when app comes back to foreground (e.g. after Monime checkout)
   useEffect(() => {
@@ -128,18 +148,20 @@ export default function VaultScreen() {
 
   // ── Animations ──────────────────────────────────────────────
   useEffect(() => {
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(badgePulse, { toValue: 1.1, duration: 1000, useNativeDriver: true }),
-        Animated.timing(badgePulse, { toValue: 1,   duration: 1000, useNativeDriver: true }),
-      ])
-    );
-    const ringLoop = Animated.loop(
-      Animated.timing(badgeRing, { toValue: 1, duration: 2400, useNativeDriver: true })
-    );
-    pulseLoop.start();
-    ringLoop.start();
-    return () => { pulseLoop.stop(); ringLoop.stop(); };
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
   }, []);
 
   const onRefresh = async () => { setRefreshing(true); await loadData(); setRefreshing(false); };
@@ -178,53 +200,37 @@ export default function VaultScreen() {
   // ── Vault Top-Up flow ────────────────────────────────────────
   const openTopupFlow = () => {
     if (!requireKyc('top up your vault')) return;
-    setTopupMethod(null);
-    setTopupAmount('');
-    setTopupResult(null);
-    setTopupStatus(null);
-    setTopupStep('method');
+    router.push('/(main)/vault-topup');
+  };
+
+  const retryTopupFlow = () => {
+    closeTopupFlow();
+    openTopupFlow();
   };
 
   const handleSelectMethod = (method: VaultTopupMethod) => {
-    setTopupMethod(method);
-    setTopupStep('amount');
-  };
-
-  const handleSubmitTopup = async () => {
-    if (!topupMethod) return;
-    const amount = parseFloat(topupAmount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      Alert.alert('Invalid amount', 'Enter a valid amount greater than zero.');
-      return;
-    }
-
-    setTopupStep('processing');
-    const result = await initiateVaultTopup({ amount, method: topupMethod });
-
-    if (result.error || !result.success) {
-      setTopupResult(result);
-      setTopupStep('failed');
-      return;
-    }
-
-    setTopupResult(result);
-
-    // Navigate to the dedicated premium payment screen
     closeTopupFlow();
     router.push({
-      pathname: '/(groups)/monime-payment',
+      pathname: '/(send)/detail',
       params: {
-        topupId:             result.topupId             ?? '',
-        monimePaymentCodeId: result.monimePaymentCodeId ?? '',
-        ussdCode:            result.ussdCode            ?? '',
-        expiresAt:           result.expiresAt           ?? '',
-        amount:              String(result.amount       ?? amount),
-        fee:                 '0',
-        provider:            topupMethod === 'orange_money' ? 'Orange Money' : 'AfriMoney',
-        reference:           result.topupId             ?? '',
-        paymentType:         'vault_topup',
+        type: 'vault',
+        from: 'vault',
+        paymentMethod: method,
       },
     });
+  };
+
+  const handleSubmitTopup = () => {
+    const amount = Number.parseFloat(topupAmount);
+    if (!Number.isFinite(amount) || amount < topupLimits.minAmount) {
+      Alert.alert('Minimum amount', `Enter at least NLe ${topupLimits.minAmount.toFixed(2)}.`);
+      return;
+    }
+    if (amount > topupLimits.maxAmount) {
+      Alert.alert('Amount too high', `Enter no more than NLe ${topupLimits.maxAmount.toFixed(2)}.`);
+      return;
+    }
+    if (topupMethod) handleSelectMethod(topupMethod);
   };
 
   const pollTopupStatus = async () => {
@@ -253,10 +259,9 @@ export default function VaultScreen() {
 
   // ── Withdraw flow ───────────────────────────────────────────
   const handleWithdraw = (type: 'savings' | 'osusu') => {
-    const hasMethod = linkedMobileMoneyAccounts.length > 0 || linkedBankAccounts.length > 0;
-    if (!hasMethod) {
+    if (withdrawalMethods.length === 0) {
       setWithdrawSheetVisible(false);
-      Alert.alert('Link withdrawal method', 'Link a payment method in Settings first.', [
+      Alert.alert('Link withdrawal method', 'Link and verify Orange Money or AfriMoney in Settings first.', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Open Settings', onPress: () => router.push('/components/payment-methods') },
       ]);
@@ -267,10 +272,11 @@ export default function VaultScreen() {
     setSelectedGoalId('');
     setWithdrawAmount('');
     setWithdrawNote('');
+    setSelectedWithdrawalMethodId(withdrawalMethods[0]?.id ?? '');
     setTimeout(() => setWithdrawDetailVisible(true), 260);
   };
 
-  const handleProcessWithdrawal = async () => {
+  const handleProcessWithdrawal = () => {
     if (!requireKyc('request a withdrawal')) return;
 
     if (withdrawType === 'savings') {
@@ -283,24 +289,37 @@ export default function VaultScreen() {
         Alert.alert('Invalid amount', 'Enter a valid withdrawal amount greater than zero.');
         return;
       }
-      setWithdrawProcessing(true);
-      const { success, error } = await processSavingsWithdrawal({
-        goalId: selectedGoalId,
-        amount,
-        note: withdrawNote.trim() || undefined,
-      });
-      setWithdrawProcessing(false);
-      if (!success || error) {
-        Alert.alert('Withdrawal failed', error?.message ?? 'Could not process withdrawal. Please try again.');
+      if (!selectedWithdrawalMethodId) {
+        Alert.alert('Select method', 'Choose a verified payment method for the withdrawal.');
         return;
       }
-      setWithdrawDetailVisible(false);
-      await loadData();
-      Alert.alert('Request submitted', 'Your savings withdrawal request has been submitted and will be processed within 24 hours.');
+      setWithdrawPinError(null);
+      setWithdrawPinVisible(true);
     } else {
       setWithdrawDetailVisible(false);
       router.push('/(main)/groups');
     }
+  };
+
+  const submitSavingsWithdrawal = async (transactionPin: string) => {
+    if (!selectedGoalId || !selectedWithdrawalMethodId) return;
+    const amount = parseFloat(withdrawAmount);
+    setWithdrawProcessing(true);
+    const { success, error } = await requestVaultWithdrawal({
+        savingsGoalId: selectedGoalId,
+        amount,
+        paymentMethodId: selectedWithdrawalMethodId,
+        transactionPin,
+      });
+    setWithdrawProcessing(false);
+    if (!success || error) {
+      setWithdrawPinError(error?.message ?? 'Could not process withdrawal. Please try again.');
+      return;
+    }
+    setWithdrawPinVisible(false);
+    setWithdrawDetailVisible(false);
+    await loadData();
+    Alert.alert('Request submitted', 'Your savings withdrawal request has been submitted and will be processed within 24 hours.');
   };
 
   const availableBalance = vaultSummary?.availableBalance ?? 0;
@@ -335,20 +354,6 @@ export default function VaultScreen() {
               >
                 <FontAwesome name={showBalance ? 'eye-slash' : 'eye'} size={18} color="#FFFFFF" />
               </TouchableOpacity>
-              <View style={styles.heroBadgeWrap}>
-                <Animated.View
-                  style={[
-                    styles.heroBadgeRing,
-                    {
-                      transform: [{ scale: badgeRing.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.35] }) }],
-                      opacity:   badgeRing.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.6, 0.15, 0] }),
-                    },
-                  ]}
-                />
-                <Animated.View style={[styles.heroBadgeCircle, { transform: [{ scale: badgePulse }] }]}>
-                  <FontAwesome name="bank" size={15} color="#F97316" />
-                </Animated.View>
-              </View>
             </View>
           </View>
 
@@ -416,6 +421,17 @@ export default function VaultScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      <EnterTransactionPinModal
+        visible={withdrawPinVisible}
+        subtitle={`Enter your Transaction PIN to withdraw NLe ${parseFloat(withdrawAmount || '0').toFixed(2)} from savings.`}
+        loading={withdrawProcessing}
+        error={withdrawPinError}
+        onCancel={() => {
+          setWithdrawPinVisible(false);
+          setWithdrawPinError(null);
+        }}
+        onConfirm={submitSavingsWithdrawal}
+      />
 
       {/* ════════════════════════════════════════════════════
           VAULT TOP-UP MODAL (multi-step)
@@ -439,7 +455,9 @@ export default function VaultScreen() {
             <Text style={[styles.sheetTitle, { color: C.text }]}>Add Money to Vault</Text>
             <Text style={styles.sheetSub}>Choose your mobile money provider</Text>
 
-            {(['orange_money', 'afrimoney'] as VaultTopupMethod[]).map((m) => (
+            {MOBILE_MONEY_PROVIDER_CONFIG.map((provider) => {
+              const m = provider.id as VaultTopupMethod;
+              return (
               <TouchableOpacity
                 key={m}
                 style={[styles.methodRow, { backgroundColor: C.bgSoft, borderColor: C.border }]}
@@ -457,7 +475,8 @@ export default function VaultScreen() {
                 <Text style={[styles.methodRowName, { color: C.text }]}>{METHOD_LOGOS[m].title}</Text>
                 <ArrowUpRight size={18} color={METHOD_COLORS[m]} />
               </TouchableOpacity>
-            ))}
+              );
+            })}
 
             <TouchableOpacity
               style={[styles.cancelBtn, { backgroundColor: C.iconBg }]}
@@ -470,9 +489,23 @@ export default function VaultScreen() {
 
         {/* ── STEP: amount entry ── */}
         {topupStep === 'amount' && topupMethod && (
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardLayer}>
             <TouchableOpacity style={styles.sheetBackdrop} activeOpacity={1} onPress={closeTopupFlow} />
-            <View style={[styles.sheet, { backgroundColor: C.card }]}>
+            <View
+              style={[
+                styles.sheet,
+                styles.amountSheet,
+                {
+                  backgroundColor: C.card,
+                  marginBottom: keyboardHeight ? Math.max(0, keyboardHeight - 8) : 0,
+                },
+              ]}
+            >
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.amountSheetContent}
+              >
               <View style={styles.sheetHandle} />
 
               <TouchableOpacity onPress={() => setTopupStep('method')} style={styles.backRow} activeOpacity={0.7}>
@@ -489,7 +522,7 @@ export default function VaultScreen() {
               </View>
 
               <Text style={[styles.sheetTitle, { color: C.text, marginTop: 8 }]}>How much to add?</Text>
-              <Text style={styles.sheetSub}>Minimum NLe 1.00 · Funds credited after payment confirmation</Text>
+              <Text style={styles.sheetSub}>Minimum NLe {topupLimits.minAmount.toFixed(2)} - Funds credited after payment confirmation</Text>
 
               <TextInput
                 style={[styles.amountInput, { backgroundColor: C.inputBg, color: C.text, borderColor: C.border }]}
@@ -503,7 +536,7 @@ export default function VaultScreen() {
 
               {/* Quick amount chips */}
               <View style={styles.quickRow}>
-                {QUICK_AMOUNTS.map((q) => (
+                {[topupLimits.minAmount, 100, 200, 500].filter((q, index, amounts) => amounts.indexOf(q) === index).map((q) => (
                   <TouchableOpacity
                     key={q}
                     style={[styles.quickChip, topupAmount === String(q) && styles.quickChipActive]}
@@ -518,15 +551,16 @@ export default function VaultScreen() {
               </View>
 
               <TouchableOpacity
-                style={[styles.continueBtn, (!topupAmount || parseFloat(topupAmount) <= 0) && styles.continueBtnDisabled]}
+                style={[styles.continueBtn, (!topupAmount || parseFloat(topupAmount) < topupLimits.minAmount) && styles.continueBtnDisabled]}
                 onPress={() => void handleSubmitTopup()}
-                disabled={!topupAmount || parseFloat(topupAmount) <= 0}
+                disabled={!topupAmount || parseFloat(topupAmount) < topupLimits.minAmount}
                 activeOpacity={0.88}
               >
                 <Text style={styles.continueBtnText}>
                   Continue — NLe {parseFloat(topupAmount || '0').toFixed(2)}
                 </Text>
               </TouchableOpacity>
+              </ScrollView>
             </View>
           </KeyboardAvoidingView>
         )}
@@ -650,7 +684,7 @@ export default function VaultScreen() {
             <Text style={styles.sheetSub}>
               {topupResult?.error?.message ?? 'Something went wrong. Please try again.'}
             </Text>
-            <TouchableOpacity style={styles.continueBtn} onPress={() => setTopupStep('method')} activeOpacity={0.88}>
+            <TouchableOpacity style={styles.continueBtn} onPress={retryTopupFlow} activeOpacity={0.88}>
               <Text style={styles.continueBtnText}>Try Again</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: C.iconBg, marginTop: 10 }]} onPress={closeTopupFlow}>
@@ -708,7 +742,6 @@ export default function VaultScreen() {
               <Text style={[styles.sheetOptionTitle, { color: C.text }]}>Osusu Group</Text>
               <Text style={styles.sheetOptionSub}>Requires admin verification before processing</Text>
               <View style={styles.adminBadge}>
-                <Shield size={10} color="#9A3412" strokeWidth={2} />
                 <Text style={styles.adminBadgeText}>Admin verified</Text>
               </View>
             </View>
@@ -785,6 +818,42 @@ export default function VaultScreen() {
                         )}
                       </TouchableOpacity>
                     ))
+                )}
+
+                <Text style={[styles.withdrawFieldLabel, { color: C.textSub, marginTop: 12 }]}>Withdrawal Method</Text>
+                {withdrawalMethods.length === 0 ? (
+                  <Text style={[styles.withdrawEmptyText, { color: C.textMuted }]}>
+                    No verified payment method available.
+                  </Text>
+                ) : (
+                  withdrawalMethods.map((method) => {
+                    const provider = getMobileMoneyProvider(method.provider);
+                    return (
+                      <TouchableOpacity
+                        key={method.id}
+                        style={[
+                          styles.withdrawGoalRow,
+                          { backgroundColor: C.bgSoft, borderColor: selectedWithdrawalMethodId === method.id ? '#F97316' : C.border },
+                        ]}
+                        onPress={() => setSelectedWithdrawalMethodId(method.id)}
+                        activeOpacity={0.8}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.withdrawGoalName, { color: C.text }]} numberOfLines={1}>
+                            {provider?.label ?? method.provider}
+                          </Text>
+                          <Text style={[styles.withdrawGoalBal, { color: C.textMuted }]}>
+                            {method.masked_number}
+                          </Text>
+                        </View>
+                        {selectedWithdrawalMethodId === method.id && (
+                          <View style={styles.withdrawGoalCheck}>
+                            <Text style={styles.withdrawGoalCheckText}>✓</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })
                 )}
 
                 <Text style={[styles.withdrawFieldLabel, { color: C.textSub, marginTop: 12 }]}>Amount (NLe)</Text>
@@ -882,27 +951,18 @@ const styles = StyleSheet.create({
   heroLabelCol: { flex: 1 },
   heroTopLabel: {
     color: 'rgba(255,255,255,0.95)',
-    fontSize: 18, fontWeight: '800', letterSpacing: -0.3, lineHeight: 22,
+    fontSize: 16, fontWeight: '800', letterSpacing: 0, lineHeight: 21,
   },
   heroEyeCol: { alignItems: 'center', gap: 5 },
   heroEyeBtn: {
     width: 36, height: 36, alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 18,
   },
-  heroBadgeWrap: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
-  heroBadgeRing: {
-    position: 'absolute', width: 34, height: 34, borderRadius: 17,
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)',
-  },
-  heroBadgeCircle: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center',
-  },
   heroBalanceSubLabel: {
     color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '500', lineHeight: 14,
   },
   heroBalanceAmount: {
-    color: '#FFFFFF', fontSize: 28, fontWeight: '800', letterSpacing: -0.5, lineHeight: 34,
+    color: '#FFFFFF', fontSize: 24, fontWeight: '800', letterSpacing: 0, lineHeight: 30,
   },
   heroStatsRow: {
     flexDirection: 'row', alignItems: 'center',
@@ -910,7 +970,7 @@ const styles = StyleSheet.create({
     marginTop: 8, paddingTop: 8,
   },
   heroStatCol: { flex: 1, alignItems: 'center', gap: 2 },
-  heroStatVal: { fontSize: 13, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.3 },
+  heroStatVal: { fontSize: 12, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0 },
   heroStatLbl: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.65)' },
   heroStatDiv: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.2)' },
 
@@ -928,7 +988,7 @@ const styles = StyleSheet.create({
     width: 34, height: 34, borderRadius: 17,
     backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center',
   },
-  floatAddTitle: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  floatAddTitle: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
   floatWithdrawBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9,
     borderRadius: 16, paddingVertical: 15, borderWidth: 1.5, borderColor: '#F97316',
@@ -939,20 +999,27 @@ const styles = StyleSheet.create({
     width: 34, height: 34, borderRadius: 17,
     backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center',
   },
-  floatWithdrawTitle: { fontSize: 14, fontWeight: '700' },
+  floatWithdrawTitle: { fontSize: 13, fontWeight: '700' },
 
   /* ── Shared bottom sheet ────────────────────────────────────── */
+  keyboardLayer: { flex: 1, justifyContent: 'flex-end' },
   sheetBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.35)' },
   sheet: {
     backgroundColor: '#FFFFFF', borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingHorizontal: 20, paddingBottom: 36, paddingTop: 6,
+  },
+  amountSheet: {
+    maxHeight: '72%',
+  },
+  amountSheetContent: {
+    paddingBottom: 4,
   },
   sheetCenter: { alignItems: 'center', paddingVertical: 32 },
   sheetHandle: {
     width: 40, height: 4, borderRadius: 2,
     backgroundColor: '#E5E7EB', alignSelf: 'center', marginTop: 10, marginBottom: 18,
   },
-  sheetTitle: { fontSize: 22, fontWeight: '800', marginBottom: 4 },
+  sheetTitle: { fontSize: 20, fontWeight: '800', marginBottom: 4 },
   sheetSub:   { fontSize: 13, color: '#9CA3AF', marginBottom: 20, lineHeight: 19 },
   sheetOption: {
     flexDirection: 'row', alignItems: 'center', borderRadius: 18,
@@ -963,8 +1030,8 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginRight: 14,
   },
   sheetOptionText: { flex: 1 },
-  sheetOptionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 3 },
-  sheetOptionSub:   { fontSize: 13, color: '#6B7280', lineHeight: 18 },
+  sheetOptionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 3 },
+  sheetOptionSub:   { fontSize: 12, color: '#6B7280', lineHeight: 17 },
   sheetOptionArrow: {
     width: 32, height: 32, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center', marginLeft: 8,
@@ -981,7 +1048,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF', marginRight: 14,
   },
   methodLogo: { width: 74, height: 34 },
-  methodRowName: { flex: 1, fontSize: 15, fontWeight: '700' },
+  methodRowName: { flex: 1, fontSize: 14, fontWeight: '700' },
 
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
   backText: { fontSize: 14, color: '#F97316', fontWeight: '600' },

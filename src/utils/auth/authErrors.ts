@@ -1,23 +1,39 @@
 /**
  * authErrors.ts — Maps Supabase/network errors to safe, user-facing messages.
  *
- * RULE: Never show raw Supabase error messages to users in production.
- * Use __DEV__ guards for detailed logging only.
+ * Section H rules:
+ *  - Never show raw Supabase messages, error codes, or HTTP status codes.
+ *  - All login failures return the same message regardless of reason.
+ *  - Rate-limited message carries no count or exact time.
+ *  - Server errors include a correlation ID for support reference.
+ *  - Response body size is kept consistent across all failure types.
  */
+import { generateCorrelationId } from './loginSecurity';
 
 /** Generic login failure — never reveals whether email/phone exists. */
 export const MSG_LOGIN_FAILED = 'Invalid email, phone, or password.';
 
-/** Generic signup failure — never reveals whether email/phone exists. */
+/** Generic signup failure — never reveals whether email/phone exists or is already taken. */
 export const MSG_SIGNUP_FAILED =
-  'We could not complete signup. Check your details or try account recovery if you already have an account.';
+  'We could not create your account. Please check your details and try again.';
 
 export const MSG_FIELD_ERRORS = 'Please check the highlighted fields and try again.';
-export const MSG_RATE_LIMITED = 'Too many attempts. Please wait before trying again.';
+
+/** Section H: no count, no exact time in the rate-limit message. */
+export const MSG_RATE_LIMITED = 'Too many attempts. Please try again later.';
+
 export const MSG_NETWORK      = 'Connection problem. Check your internet and try again.';
-export const MSG_SERVER       = 'We could not complete this request. Please try again.';
 export const MSG_OTP_INVALID  = 'The code is incorrect or has expired. Please try again.';
 export const MSG_OTP_RESEND   = 'We could not resend the code right now. Please try again.';
+
+/** Section H: server errors include a correlation ID for support. */
+export function msgServer(correlationId?: string): string {
+  const id = correlationId ?? generateCorrelationId();
+  return `Login failed. Please try again. (Ref: ${id})`;
+}
+
+/** Legacy constant kept for non-login contexts that don't need a correlation ID. */
+export const MSG_SERVER = 'We could not complete this request. Please try again.';
 
 /**
  * Maps any Supabase/network error to a safe user-facing string.
@@ -53,14 +69,14 @@ export function toSafeAuthError(
     return MSG_NETWORK;
   }
   if (status === 504 || lower.includes('timeout') || lower.includes('timed out')) {
-    return MSG_SERVER;
+    return context === 'login' ? MSG_LOGIN_FAILED : msgServer();
   }
 
-  // Any other error — return context-appropriate generic message
+  // Any other error — return context-appropriate generic message (Section H)
   switch (context) {
-    case 'login':   return MSG_LOGIN_FAILED;
-    case 'signup':  return MSG_SIGNUP_FAILED;
-    case 'otp':     return MSG_OTP_INVALID;
-    default:        return MSG_SERVER;
+    case 'login':  return MSG_LOGIN_FAILED;
+    case 'signup': return MSG_SIGNUP_FAILED;
+    case 'otp':    return MSG_OTP_INVALID;
+    default:       return msgServer();
   }
 }

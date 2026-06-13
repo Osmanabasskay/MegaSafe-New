@@ -28,7 +28,7 @@ moved to `archive/` and is recoverable from git history.
 
 ## Removed empty directories (husks left by the lib/ → src/ migration)
 
-`hooks/`, `constants/`, `convex/` — all contained zero files (their contents had
+`hooks/`, `constants/` - all contained zero files (their contents had
 already been migrated into `src/`). `lib/`, `stores/`, `components/`, `types/`
 were already gone from disk (tracked only as pending deletions, now committed).
 
@@ -36,10 +36,9 @@ were already gone from disk (tracked only as pending deletions, now committed).
 
 | Item | Status | Reason left in place |
 |---|---|---|
-| `.convex/` (local backend cache) | Gitignored | Machine-local Convex dev cache. Convex is unused (no imports, not a dependency) but this is a regenerable tool cache, not project source. Can be deleted manually anytime. |
-| `convex` MCP entry in `.mcp.json` | Tooling config | Part of the developer's MCP setup, not app source. Recommend removing if Convex is permanently abandoned. |
 | `coverage/`, `dist/` | Gitignored build output | Regenerable; now excluded from git and from tsc. |
 | `testsprite_tests/tmp/mcp.log` | Gitignored | Test-runner scratch. |
+
 
 ## Build artifacts un-tracked (were committed by mistake)
 

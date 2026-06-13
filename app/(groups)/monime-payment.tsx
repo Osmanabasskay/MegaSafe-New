@@ -50,6 +50,11 @@ import {
 import {
   verifyMonimeCheckout,
 } from '../../src/services/paymentService';
+import {
+  fetchSendPaymentIntent,
+  type SendPaymentIntentPreview,
+} from '../../src/services/sendPaymentService';
+import { PAYMENT_METHOD_LABELS } from '../../src/services/paymentMethodLinks';
 
 // ── Status state machine ──────────────────────────────────────────────
 
@@ -103,6 +108,7 @@ export default function MonimePaymentScreen() {
     reference?:           string;
     paymentType?:         string;
     groupId?:             string;
+    paymentIntentId?:     string;
   }>();
 
   const { preferences } = useAppDataStore();
@@ -112,19 +118,48 @@ export default function MonimePaymentScreen() {
   // ── Parsed params ───────────────────────────────────────────────
   const ussdCode            = params.ussdCode ?? '';
   const expiresAt           = params.expiresAt ?? '';
-  const amount              = parseFloat(params.amount ?? '0') || 0;
   const fee                 = parseFloat(params.fee    ?? '0') || 0;
-  const totalAmount         = amount + fee;
-  const provider            = params.provider  ?? 'Orange Money';
-  const reference           = params.reference ?? params.topupId ?? '—';
+  const paymentIntentId     = params.paymentIntentId     ?? undefined;
+  const paymentType         = params.paymentType         ?? undefined;
+  const reference           = params.reference ?? paymentIntentId ?? params.topupId ?? '—';
   const topupId             = params.topupId             ?? undefined;
   const monimePaymentCodeId = params.monimePaymentCodeId ?? undefined;
   const groupId             = params.groupId             ?? undefined;
-  const providerColor       = resolveProviderColor(provider);
 
   // Which backend flow to verify against. Defaults to vault top-up so existing
   // callers that don't pass paymentType keep their exact behavior.
-  const isOsusu = params.paymentType === 'osusu_contribution';
+  const isPaymentCodeCheckout =
+    paymentType === 'osusu_contribution' ||
+    paymentType === 'savings_deposit';
+  const isOsusu = paymentType === 'osusu_contribution';
+  const isSavingsDeposit = paymentType === 'savings_deposit';
+
+  const [sendIntent, setSendIntent] = useState<SendPaymentIntentPreview | null>(null);
+
+  useEffect(() => {
+    if (!isPaymentCodeCheckout || !paymentIntentId) {
+      setSendIntent(null);
+      return;
+    }
+
+    let mounted = true;
+    const loadIntent = async () => {
+      try {
+        const { intent } = await fetchSendPaymentIntent(paymentIntentId);
+        if (mounted) setSendIntent(intent);
+      } catch {
+        if (mounted) setSendIntent(null);
+      }
+    };
+
+    void loadIntent();
+    return () => { mounted = false; };
+  }, [isPaymentCodeCheckout, paymentIntentId]);
+
+  const amount              = (sendIntent?.amount ?? parseFloat(params.amount ?? '0')) || 0;
+  const totalAmount         = amount + fee;
+  const provider            = sendIntent ? PAYMENT_METHOD_LABELS[sendIntent.method] : params.provider ?? 'Orange Money';
+  const providerColor       = resolveProviderColor(provider);
 
   // ── UI state ────────────────────────────────────────────────────
   const [screenStatus, setScreenStatus]   = useState<ScreenStatus>('active');
@@ -226,7 +261,7 @@ export default function MonimePaymentScreen() {
   // effective status. Final completion is set by the Monime webhook
   // (vault-webhook / mobile-money-webhook) via SECURITY DEFINER RPCs.
   const runVerification = useCallback(async (): Promise<PollOutcome> => {
-    if (isOsusu) {
+    if (isPaymentCodeCheckout) {
       // Osusu contribution → verify-payment Edge Function
       if (!monimePaymentCodeId) {
         return { effective: 'not_found', completedAt: null, error: new Error('Missing payment code.') };
@@ -241,7 +276,7 @@ export default function MonimePaymentScreen() {
     }
     const r = await verifyVaultTopupStatus({ topupId, monimePaymentCodeId });
     return { effective: r.effectiveStatus, completedAt: r.completedAt, error: r.error };
-  }, [isOsusu, topupId, monimePaymentCodeId]);
+  }, [isPaymentCodeCheckout, topupId, monimePaymentCodeId]);
 
   // ── Status polling ──────────────────────────────────────────────
   const pollStatus = useCallback(async (): Promise<void> => {
@@ -359,8 +394,12 @@ export default function MonimePaymentScreen() {
       }
       return;
     }
+    if (isSavingsDeposit) {
+      router.replace('/(main)/home');
+      return;
+    }
     router.replace('/(main)/vault');
-  }, [isOsusu, groupId, router]);
+  }, [isOsusu, isSavingsDeposit, groupId, router]);
 
   // ── Manual retry (network/backend error) ────────────────────────
   const handleRetryVerification = useCallback(() => {
@@ -526,8 +565,8 @@ export default function MonimePaymentScreen() {
                 <View style={[styles.paymentTypeBadge, { backgroundColor: C.iconBg }]}>
                   <Wallet size={12} color={C.textMuted} strokeWidth={2} />
                   <Text style={[styles.paymentTypeText, { color: C.textMuted }]}>
-                    {params.paymentType === 'osusu_contribution' ? 'Osusu'
-                      : params.paymentType === 'savings_deposit'  ? 'Savings'
+                    {paymentType === 'osusu_contribution' ? 'Osusu'
+                      : paymentType === 'savings_deposit'  ? 'Savings'
                       : 'Vault Top-Up'}
                   </Text>
                 </View>

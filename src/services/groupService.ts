@@ -66,6 +66,10 @@ export interface GroupMemberSummary {
   userId: string;
   displayName: string;
   phone: string | null;
+  avatarUrl: string | null;
+  username: string | null;
+  role: 'creator' | 'admin' | 'member';
+  paymentStatus: 'paid' | 'pending' | 'missed';
   payoutPosition: number | null;
   joinedAt: string;
 }
@@ -73,6 +77,7 @@ export interface GroupMemberSummary {
 export interface GroupContributionSummary {
   id: string;
   memberId: string;
+  memberName: string;
   amount: number;
   contributionPeriod: string;
   collectionMethod: string;
@@ -81,18 +86,28 @@ export interface GroupContributionSummary {
   receiptNumber: string | null;
 }
 
+export interface GroupActivitySummary {
+  id: string;
+  actionTitle: string;
+  description: string;
+  actorName: string;
+  createdAt: string;
+}
+
 export interface MemberContributionCoverage {
   lastContributionPeriod: string | null;
   lastPaidToDate: string | null;
   nextUnpaidDate: string | null;
 }
 
-interface ProfileSummary {
+export interface ProfileSummary {
   id: string;
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
   email: string | null;
+  avatar_url?: string | null;
+  username?: string | null;
 }
 
 function isFrequency(value: unknown): value is Frequency {
@@ -128,12 +143,13 @@ function asText(value: unknown, fallback = ''): string {
 }
 
 function createLocalId(prefix: string): string {
-  const rand = new Uint16Array(1);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(rand);
-  } else {
-    rand[0] = Math.floor(Math.random() * 65536);
+  // Fail closed: Math.random is not acceptable for ID generation.
+  // crypto.getRandomValues is available in Hermes, Node, and all modern browsers.
+  if (typeof crypto === 'undefined' || !crypto.getRandomValues) {
+    throw new Error('Secure random generation unavailable — cannot create a safe local ID.');
   }
+  const rand = new Uint16Array(1);
+  crypto.getRandomValues(rand);
   return `local-${prefix}-${Date.now()}-${rand[0]}`;
 }
 
@@ -321,7 +337,7 @@ async function fetchProfilesByIds(userIds: string[]): Promise<Map<string, Profil
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id,first_name,last_name,phone,email')
+      .select('id,first_name,last_name,phone,email,avatar_url,username')
       .in('id', cleaned);
 
     if (error) throw new Error(error.message);
@@ -380,15 +396,15 @@ function formatProfileName(profile: ProfileSummary | undefined, fallback: string
 
 export function generateInviteCode(): string {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  // Use crypto.getRandomValues for cryptographically secure randomness.
-  // Available in React Native (Hermes), Node, and browsers.
-  const randomBytes = new Uint8Array(6);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(randomBytes);
-  } else {
-    // Fallback for environments without crypto (should not occur in production)
-    for (let i = 0; i < 6; i++) randomBytes[i] = Math.floor(Math.random() * 256);
+  // Fail closed: Math.random is not acceptable for invite code generation.
+  // The server always generates the authoritative code; this is a client-side
+  // display hint only — but it must still be cryptographically random to avoid
+  // collisions before the server overwrites it.
+  if (typeof crypto === 'undefined' || !crypto.getRandomValues) {
+    throw new Error('Secure random generation unavailable — cannot generate invite code.');
   }
+  const randomBytes = new Uint8Array(6);
+  crypto.getRandomValues(randomBytes);
   let token = '';
   for (let i = 0; i < 6; i += 1) {
     token += alphabet[randomBytes[i]! % alphabet.length];
@@ -735,16 +751,26 @@ export async function fetchGroupMembers(groupId: string): Promise<{
   if (!supabaseConfigured) return { members: [], error: null };
 
   try {
-    const { data, error } = await supabase
-      .from('osusu_group_members')
-      .select('id,user_id,payout_position,joined_at')
-      .eq('group_id', groupId)
-      .eq('is_active', true)
-      .order('joined_at', { ascending: true });
+    const [groupResponse, memberResponse, contributionResponse] = await Promise.all([
+      supabase.from('osusu_groups').select('created_by').eq('id', groupId).maybeSingle(),
+      supabase
+        .from('osusu_group_members')
+        .select('id,user_id,payout_position,joined_at')
+        .eq('group_id', groupId)
+        .eq('is_active', true)
+        .order('joined_at', { ascending: true }),
+      supabase
+        .from('contribution_payments')
+        .select('member_id,status,created_at')
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: false }),
+    ]);
 
-    if (error) throw new Error(error.message);
+    if (groupResponse.error) throw new Error(groupResponse.error.message);
+    if (memberResponse.error) throw new Error(memberResponse.error.message);
+    if (contributionResponse.error) throw new Error(contributionResponse.error.message);
 
-    const memberships = (data ?? []) as Array<{
+    const memberships = (memberResponse.data ?? []) as Array<{
       id: string;
       user_id: string;
       payout_position: number | null;
@@ -752,6 +778,17 @@ export async function fetchGroupMembers(groupId: string): Promise<{
     }>;
 
     const profiles = await fetchProfilesByIds(memberships.map((member) => member.user_id));
+    const paymentStatusByMember = new Map<string, GroupMemberSummary['paymentStatus']>();
+    for (const payment of (contributionResponse.data ?? []) as Array<{ member_id: string | null; status: string | null }>) {
+      if (!payment.member_id || paymentStatusByMember.has(payment.member_id)) continue;
+      const status = payment.status === 'verified' || payment.status === 'collected'
+        ? 'paid'
+        : payment.status === 'disputed' || payment.status === 'refunded'
+          ? 'missed'
+          : 'pending';
+      paymentStatusByMember.set(payment.member_id, status);
+    }
+    const createdBy = asText((groupResponse.data as Record<string, unknown> | null)?.created_by);
 
     return {
       members: memberships.map((member, index) => ({
@@ -759,6 +796,10 @@ export async function fetchGroupMembers(groupId: string): Promise<{
         userId: member.user_id,
         displayName: formatProfileName(profiles.get(member.user_id), `Member ${index + 1}`),
         phone: profiles.get(member.user_id)?.phone ?? null,
+        avatarUrl: profiles.get(member.user_id)?.avatar_url ?? null,
+        username: profiles.get(member.user_id)?.username ?? profiles.get(member.user_id)?.email ?? null,
+        role: member.user_id === createdBy ? 'creator' : 'member',
+        paymentStatus: paymentStatusByMember.get(member.user_id) ?? paymentStatusByMember.get(member.id) ?? 'pending',
         payoutPosition: member.payout_position,
         joinedAt: member.joined_at,
       })),
@@ -776,6 +817,27 @@ export async function fetchGroupContributions(groupId: string): Promise<{
   if (!supabaseConfigured) return { contributions: [], error: null };
 
   try {
+    const { data: ledgerData, error: ledgerError } = await supabase.rpc('get_group_ledger', {
+      p_group_id: groupId,
+    });
+
+    if (!ledgerError && Array.isArray(ledgerData)) {
+      return {
+        contributions: (ledgerData as Array<Record<string, unknown>>).map((item) => ({
+          id: asText(item.id, createLocalId('contribution')),
+          memberId: asText(item.member_id),
+          memberName: asText(item.member_name, 'Group member'),
+          amount: asNumber(item.amount, 0),
+          contributionPeriod: asText(item.created_at, 'Current cycle'),
+          collectionMethod: asText(item.payment_method, 'unknown'),
+          status: (asText(item.status, 'pending') as GroupContributionSummary['status']),
+          createdAt: asText(item.created_at, new Date().toISOString()),
+          receiptNumber: typeof item.transaction_reference === 'string' ? item.transaction_reference : null,
+        })),
+        error: null,
+      };
+    }
+
     const { data, error } = await supabase
       .from('contribution_payments')
       .select('id,member_id,amount,payment_method,status,created_at,receipt_number,collected_at')
@@ -784,21 +846,78 @@ export async function fetchGroupContributions(groupId: string): Promise<{
 
     if (error) throw new Error(error.message);
 
+    const rows = (data ?? []) as Array<Record<string, unknown>>;
+    const memberIds = rows.map((item) => asText(item.member_id)).filter(Boolean);
+    const memberProfiles = await fetchProfilesByIds(memberIds);
+    const memberRows = new Map<string, { user_id: string }>();
+    if (memberIds.length > 0) {
+      const { data: memberships } = await supabase
+        .from('osusu_group_members')
+        .select('id,user_id')
+        .in('id', memberIds);
+      for (const membership of (memberships ?? []) as Array<{ id: string; user_id: string }>) {
+        memberRows.set(membership.id, membership);
+      }
+    }
+    const membershipProfiles = await fetchProfilesByIds([...memberRows.values()].map((item) => item.user_id));
+
     return {
-      contributions: ((data ?? []) as Array<Record<string, unknown>>).map((item) => ({
+      contributions: rows.map((item) => {
+        const memberId = asText(item.member_id);
+        const membershipProfile = membershipProfiles.get(memberRows.get(memberId)?.user_id ?? '');
+        return {
         id: asText(item.id, createLocalId('contribution')),
-        memberId: asText(item.member_id),
+        memberId,
+        memberName: formatProfileName(memberProfiles.get(memberId) ?? membershipProfile, 'Group member'),
         amount: asNumber(item.amount, 0),
         contributionPeriod: asText(item.collected_at, asText(item.created_at, 'Current cycle')),
         collectionMethod: asText(item.payment_method, 'unknown'),
         status: (asText(item.status, 'pending') as GroupContributionSummary['status']),
         createdAt: asText(item.created_at, new Date().toISOString()),
         receiptNumber: typeof item.receipt_number === 'string' ? item.receipt_number : null,
-      })),
+        };
+      }),
       error: null,
     };
   } catch (error) {
     return { contributions: [], error: toBackendError(error, 'Load group contributions') };
+  }
+}
+
+export async function getCurrentUserGroupRole(groupId: string, userId: string): Promise<{
+  role: 'creator' | 'admin' | 'member';
+  error: Error | null;
+}> {
+  const { group, error } = await getGroupById(groupId);
+  if (group?.created_by === userId) return { role: 'creator', error: null };
+  if (error && !group) return { role: 'member', error };
+  return { role: 'member', error: null };
+}
+
+export async function fetchGroupActivity(groupId: string): Promise<{
+  activities: GroupActivitySummary[];
+  error: Error | null;
+}> {
+  if (!supabaseConfigured) return { activities: [], error: null };
+
+  try {
+    const { data, error } = await supabase.rpc('get_group_activity_history', {
+      p_group_id: groupId,
+    });
+    if (error) throw new Error(error.message);
+
+    return {
+      activities: ((data ?? []) as Array<Record<string, unknown>>).map((item) => ({
+        id: asText(item.id, createLocalId('activity')),
+        actionTitle: asText(item.action_title, 'Group activity'),
+        description: asText(item.description, 'Group activity was recorded.'),
+        actorName: asText(item.actor_name, 'Mi Osusu'),
+        createdAt: asText(item.created_at, new Date().toISOString()),
+      })),
+      error: null,
+    };
+  } catch (error) {
+    return { activities: [], error: toBackendError(error, 'Load group activity') };
   }
 }
 
@@ -1198,6 +1317,413 @@ export async function fetchActivePeriodForGroup(groupId: string): Promise<{
     return { periodId: null, periodLabel: null, error: toBackendError(err, 'Fetch active period') };
   }
 }
+
+// ─── Ledger Summary ──────────────────────────────────────────────────────────
+
+export interface GroupLedgerSummary {
+  totalExpected: number;
+  totalReceived: number;
+  outstanding: number;
+  totalPayouts: number;
+  pendingPayouts: number;
+  latePaymentPenalties: number;
+  platformFees: number;
+  groupBalance: number;
+}
+
+export async function getGroupLedgerSummary(groupId: string): Promise<{
+  summary: GroupLedgerSummary;
+  error: Error | null;
+}> {
+  const empty: GroupLedgerSummary = {
+    totalExpected: 0, totalReceived: 0, outstanding: 0,
+    totalPayouts: 0, pendingPayouts: 0, latePaymentPenalties: 0,
+    platformFees: 0, groupBalance: 0,
+  };
+  if (!supabaseConfigured) return { summary: empty, error: null };
+  try {
+    // TODO: Replace with get_group_ledger_summary RPC when available
+    const { data, error } = await supabase.rpc('get_group_ledger_summary', { p_group_id: groupId });
+    if (error) throw new Error(error.message);
+    const row = (data ?? {}) as Record<string, unknown>;
+    return {
+      summary: {
+        totalExpected: asNumber(row.total_expected, 0),
+        totalReceived: asNumber(row.total_received, 0),
+        outstanding: asNumber(row.outstanding, 0),
+        totalPayouts: asNumber(row.total_payouts, 0),
+        pendingPayouts: asNumber(row.pending_payouts, 0),
+        latePaymentPenalties: asNumber(row.late_payment_penalties, 0),
+        platformFees: asNumber(row.platform_fees, 0),
+        groupBalance: asNumber(row.group_balance, 0),
+      },
+      error: null,
+    };
+  } catch (err) {
+    return { summary: empty, error: toBackendError(err, 'Load ledger summary') };
+  }
+}
+
+// ─── Member Administration ────────────────────────────────────────────────────
+
+export async function promoteGroupAdmin(groupId: string, userId: string): Promise<{ success: boolean; error: Error | null }> {
+  if (!supabaseConfigured) return { success: true, error: null };
+  try {
+    // TODO: Replace with promote_group_admin SECURITY DEFINER RPC when available
+    const { data, error } = await supabase.rpc('promote_group_admin', { p_group_id: groupId, p_user_id: userId });
+    if (error) throw error;
+    const result = data as Record<string, unknown>;
+    if (result?.error) throw new Error(result.error as string);
+    return { success: true, error: null };
+  } catch (err) {
+    return { success: false, error: toBackendError(err, 'Promote admin') };
+  }
+}
+
+export async function demoteGroupAdmin(groupId: string, userId: string): Promise<{ success: boolean; error: Error | null }> {
+  if (!supabaseConfigured) return { success: true, error: null };
+  try {
+    // TODO: Replace with demote_group_admin SECURITY DEFINER RPC when available
+    const { data, error } = await supabase.rpc('demote_group_admin', { p_group_id: groupId, p_user_id: userId });
+    if (error) throw error;
+    const result = data as Record<string, unknown>;
+    if (result?.error) throw new Error(result.error as string);
+    return { success: true, error: null };
+  } catch (err) {
+    return { success: false, error: toBackendError(err, 'Remove admin role') };
+  }
+}
+
+export async function suspendGroupMember(groupId: string, membershipId: string): Promise<{ success: boolean; error: Error | null }> {
+  if (!supabaseConfigured) return { success: true, error: null };
+  try {
+    // TODO: Replace with suspend_group_member SECURITY DEFINER RPC when available
+    const { data, error } = await supabase.rpc('suspend_group_member', { p_group_id: groupId, p_membership_id: membershipId });
+    if (error) throw error;
+    const result = data as Record<string, unknown>;
+    if (result?.error) throw new Error(result.error as string);
+    return { success: true, error: null };
+  } catch (err) {
+    return { success: false, error: toBackendError(err, 'Suspend member') };
+  }
+}
+
+export async function reactivateGroupMember(groupId: string, membershipId: string): Promise<{ success: boolean; error: Error | null }> {
+  if (!supabaseConfigured) return { success: true, error: null };
+  try {
+    // TODO: Replace with reactivate_group_member SECURITY DEFINER RPC when available
+    const { data, error } = await supabase.rpc('reactivate_group_member', { p_group_id: groupId, p_membership_id: membershipId });
+    if (error) throw error;
+    const result = data as Record<string, unknown>;
+    if (result?.error) throw new Error(result.error as string);
+    return { success: true, error: null };
+  } catch (err) {
+    return { success: false, error: toBackendError(err, 'Reactivate member') };
+  }
+}
+
+export async function removeGroupMember(groupId: string, membershipId: string): Promise<{ success: boolean; error: Error | null }> {
+  if (!supabaseConfigured) return { success: true, error: null };
+  try {
+    // TODO: Replace with remove_group_member SECURITY DEFINER RPC when available
+    const { data, error } = await supabase.rpc('remove_group_member', { p_group_id: groupId, p_membership_id: membershipId });
+    if (error) throw error;
+    const result = data as Record<string, unknown>;
+    if (result?.error) throw new Error(result.error as string);
+    return { success: true, error: null };
+  } catch (err) {
+    return { success: false, error: toBackendError(err, 'Remove member') };
+  }
+}
+
+// ─── Invite Settings ──────────────────────────────────────────────────────────
+
+export interface GroupInviteSettingsData {
+  inviteCode: string;
+  inviteLink: string;
+  isEnabled: boolean;
+  whoCanInvite: 'admin_only' | 'any_member';
+  requireApproval: boolean;
+  requireKyc: boolean;
+  maxMembers: number;
+  currentMembers: number;
+  expiresAt: string | null;
+  usageLimit: number | null;
+  usageCount: number;
+}
+
+export async function getGroupInviteSettings(groupId: string): Promise<{
+  settings: GroupInviteSettingsData | null;
+  error: Error | null;
+}> {
+  if (!supabaseConfigured) return { settings: null, error: null };
+  try {
+    const [groupRes, countRes] = await Promise.all([
+      supabase
+        .from('osusu_groups')
+        .select('invite_code, max_members, join_requires_approval, is_public')
+        .eq('id', groupId)
+        .maybeSingle(),
+      supabase
+        .from('osusu_group_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('group_id', groupId)
+        .eq('is_active', true),
+    ]);
+    if (groupRes.error) throw new Error(groupRes.error.message);
+    if (!groupRes.data) return { settings: null, error: null };
+    const row = groupRes.data as Record<string, unknown>;
+    const currentMembers = countRes.count ?? 0;
+    return {
+      settings: {
+        inviteCode: asText(row.invite_code),
+        inviteLink: `https://miosusu.app/join/${asText(row.invite_code)}`,
+        isEnabled: Boolean(row.is_public) || Boolean(row.invite_code),
+        whoCanInvite: 'admin_only',
+        requireApproval: Boolean(row.join_requires_approval),
+        requireKyc: false,
+        maxMembers: asNumber(row.max_members, 10),
+        currentMembers,
+        expiresAt: null,
+        usageLimit: asNumber(row.max_members, 10),
+        usageCount: currentMembers,
+      },
+      error: null,
+    };
+  } catch (err) {
+    return { settings: null, error: toBackendError(err, 'Load invite settings') };
+  }
+}
+
+export async function regenerateGroupInviteLink(groupId: string): Promise<{ newCode: string | null; error: Error | null }> {
+  if (!supabaseConfigured) return { newCode: generateInviteCode(), error: null };
+  try {
+    // TODO: Replace with regenerate_invite_link SECURITY DEFINER RPC when available
+    const { data, error } = await supabase.rpc('regenerate_invite_link', { p_group_id: groupId });
+    if (error) throw error;
+    const result = data as Record<string, unknown>;
+    if (result?.error) throw new Error(result.error as string);
+    return { newCode: (result.invite_code as string) ?? null, error: null };
+  } catch (err) {
+    return { newCode: null, error: toBackendError(err, 'Regenerate invite link') };
+  }
+}
+
+export async function updateGroupInviteSettings(
+  groupId: string,
+  settings: Partial<{ requireApproval: boolean; isPublic: boolean }>
+): Promise<{ success: boolean; error: Error | null }> {
+  if (!supabaseConfigured) return { success: true, error: null };
+  try {
+    // TODO: Replace with update_invite_settings SECURITY DEFINER RPC when available
+    const updates: Record<string, unknown> = {};
+    if (settings.requireApproval !== undefined) updates.join_requires_approval = settings.requireApproval;
+    if (settings.isPublic !== undefined) updates.is_public = settings.isPublic;
+    if (Object.keys(updates).length === 0) return { success: true, error: null };
+    const { error } = await supabase.from('osusu_groups').update(updates).eq('id', groupId);
+    if (error) throw new Error(error.message);
+    return { success: true, error: null };
+  } catch (err) {
+    return { success: false, error: toBackendError(err, 'Update invite settings') };
+  }
+}
+
+// ─── Group Settings ───────────────────────────────────────────────────────────
+
+export interface GroupSettingsData {
+  name: string;
+  description: string | null;
+  contributionAmount: number;
+  frequency: Frequency;
+  maxMembers: number;
+  payoutOrder: PayoutOrder;
+  isPublic: boolean;
+  joinRequiresApproval: boolean;
+  cycleStartDate: string;
+  totalCycles: number;
+  // Stored in custom_rules.rules JSON
+  lockGroupName: boolean;
+  lockChat: boolean;
+  // Stored in custom_rules.adminCollectionPhone & group.contribution_number
+  adminCollectionPhone: string | null;
+  contributionNumber: string | null;
+  // Group avatar
+  avatarUrl: string | null;
+}
+
+export async function getGroupSettings(groupId: string): Promise<{
+  settings: GroupSettingsData | null;
+  error: Error | null;
+}> {
+  const { group, error } = await getGroupById(groupId);
+  if (!group) return { settings: null, error };
+  const config = parseGroupConfiguration(group.custom_rules);
+  const rules = (config.rules ?? {}) as Record<string, unknown>;
+  return {
+    settings: {
+      name: group.name,
+      description: group.description,
+      contributionAmount: group.contribution_amount,
+      frequency: group.frequency,
+      maxMembers: group.max_members,
+      payoutOrder: group.payout_order,
+      isPublic: group.is_public,
+      joinRequiresApproval: group.join_requires_approval,
+      cycleStartDate: group.cycle_start_date,
+      totalCycles: group.total_cycles,
+      lockGroupName: rules.lockGroupName === true,
+      lockChat: rules.lockChat === true,
+      adminCollectionPhone: config.adminCollectionPhone ?? null,
+      contributionNumber: group.contribution_number ?? null,
+      avatarUrl: group.avatar_url ?? null,
+    },
+    error: null,
+  };
+}
+
+export async function updateGroupSettings(
+  groupId: string,
+  updates: Partial<GroupSettingsData>
+): Promise<{ success: boolean; error: Error | null }> {
+  if (!supabaseConfigured) return { success: true, error: null };
+  try {
+    const db: Record<string, unknown> = {};
+    if (updates.name !== undefined) db.name = updates.name.trim();
+    if (updates.description !== undefined) db.description = updates.description;
+    if (updates.contributionAmount !== undefined) db.contribution_amount = updates.contributionAmount;
+    if (updates.frequency !== undefined) db.frequency = updates.frequency;
+    if (updates.maxMembers !== undefined) db.max_members = updates.maxMembers;
+    if (updates.payoutOrder !== undefined) db.payout_order = updates.payoutOrder;
+    if (updates.isPublic !== undefined) db.is_public = updates.isPublic;
+    if (updates.joinRequiresApproval !== undefined) db.join_requires_approval = updates.joinRequiresApproval;
+    if (updates.contributionNumber !== undefined) db.contribution_number = updates.contributionNumber;
+    if (updates.avatarUrl !== undefined) db.avatar_url = updates.avatarUrl;
+
+    // Lock settings live inside custom_rules.rules JSON
+    if (updates.lockGroupName !== undefined || updates.lockChat !== undefined || updates.adminCollectionPhone !== undefined) {
+      const { group } = await getGroupById(groupId);
+      const existing = parseGroupConfiguration(group?.custom_rules ?? null);
+      const existingRules = (existing.rules ?? {}) as Record<string, unknown>;
+      const newRules: Record<string, unknown> = { ...existingRules };
+      if (updates.lockGroupName !== undefined) newRules.lockGroupName = updates.lockGroupName;
+      if (updates.lockChat !== undefined) newRules.lockChat = updates.lockChat;
+      db.custom_rules = buildGroupConfiguration({
+        ...existing,
+        adminCollectionPhone: updates.adminCollectionPhone !== undefined
+          ? updates.adminCollectionPhone
+          : existing.adminCollectionPhone,
+        rules: newRules,
+      });
+    }
+
+    if (Object.keys(db).length === 0) return { success: true, error: null };
+    const { error } = await supabase.from('osusu_groups').update(db).eq('id', groupId);
+    if (error) throw new Error(error.message);
+    return { success: true, error: null };
+  } catch (err) {
+    return { success: false, error: toBackendError(err, 'Update group settings') };
+  }
+}
+
+/**
+ * Adds an existing registered user to a group as a member.
+ * Uses a direct membership insert; ideally replace with an RPC for proper validation.
+ */
+export async function addMemberToGroup(groupId: string, userId: string, addedBy: string): Promise<{
+  success: boolean; error: Error | null;
+}> {
+  if (!supabaseConfigured) return { success: true, error: null };
+  try {
+    const { error } = await supabase.from('group_memberships').upsert({
+      group_id: groupId,
+      user_id: userId,
+      role: 'member',
+      added_by: addedBy,
+      joined_at: new Date().toISOString(),
+    }, { onConflict: 'group_id,user_id' });
+    if (error) throw new Error(error.message);
+    return { success: true, error: null };
+  } catch (err) {
+    return { success: false, error: toBackendError(err, 'Add member to group') };
+  }
+}
+
+// ─── Leave Group ──────────────────────────────────────────────────────────────
+
+export interface LeaveGroupEligibility {
+  canLeave: boolean;
+  reasons: string[];
+}
+
+export async function checkLeaveGroupEligibility(groupId: string, userId: string): Promise<{
+  eligibility: LeaveGroupEligibility;
+  error: Error | null;
+}> {
+  if (!supabaseConfigured) return { eligibility: { canLeave: true, reasons: [] }, error: null };
+  try {
+    // TODO: Replace with check_leave_group_eligibility RPC when available
+    const { data, error } = await supabase.rpc('check_leave_group_eligibility', {
+      p_group_id: groupId,
+      p_user_id: userId,
+    });
+    if (error) throw new Error(error.message);
+    const result = (data ?? {}) as Record<string, unknown>;
+    return {
+      eligibility: {
+        canLeave: Boolean(result.can_leave ?? true),
+        reasons: Array.isArray(result.reasons) ? (result.reasons as string[]) : [],
+      },
+      error: null,
+    };
+  } catch {
+    return { eligibility: { canLeave: true, reasons: [] }, error: null };
+  }
+}
+
+export async function leaveGroup(groupId: string, userId: string): Promise<{ success: boolean; error: Error | null }> {
+  if (!supabaseConfigured) return { success: true, error: null };
+  try {
+    // TODO: Replace with leave_group SECURITY DEFINER RPC when available
+    const { data, error } = await supabase.rpc('leave_group', { p_group_id: groupId, p_user_id: userId });
+    if (error) throw error;
+    const result = data as Record<string, unknown>;
+    if (result?.error) throw new Error(result.error as string);
+    return { success: true, error: null };
+  } catch (err) {
+    return { success: false, error: toBackendError(err, 'Leave group') };
+  }
+}
+
+// ─── Delete Group Eligibility ─────────────────────────────────────────────────
+
+export interface DeleteGroupEligibility {
+  canDelete: boolean;
+  reasons: string[];
+}
+
+export async function checkGroupDeleteEligibility(groupId: string): Promise<{
+  eligibility: DeleteGroupEligibility;
+  error: Error | null;
+}> {
+  if (!supabaseConfigured) return { eligibility: { canDelete: true, reasons: [] }, error: null };
+  try {
+    // TODO: Replace with check_group_delete_eligibility RPC when available
+    const { data, error } = await supabase.rpc('check_group_delete_eligibility', { p_group_id: groupId });
+    if (error) throw new Error(error.message);
+    const result = (data ?? {}) as Record<string, unknown>;
+    return {
+      eligibility: {
+        canDelete: Boolean(result.can_delete ?? true),
+        reasons: Array.isArray(result.reasons) ? (result.reasons as string[]) : [],
+      },
+      error: null,
+    };
+  } catch {
+    return { eligibility: { canDelete: true, reasons: [] }, error: null };
+  }
+}
+
+// ─── Collector Deactivation ───────────────────────────────────────────────────
 
 /**
  * Deactivates a collector and notifies all group members instantly.

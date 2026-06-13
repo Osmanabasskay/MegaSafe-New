@@ -416,7 +416,7 @@ BEGIN
 
   -- KYC gate
   SELECT kyc_status INTO v_kyc_status FROM public.profiles WHERE id = v_uid;
-  IF v_kyc_status IS DISTINCT FROM 'approved' THEN
+  IF NOT public.is_user_verified_for_transactions(v_uid) THEN
     RETURN jsonb_build_object('error', 'KYC verification required before adding money to your vault.');
   END IF;
 
@@ -647,7 +647,7 @@ BEGIN
 
   -- KYC gate
   SELECT kyc_status INTO v_kyc_status FROM public.profiles WHERE id = v_uid;
-  IF v_kyc_status IS DISTINCT FROM 'approved' THEN
+  IF NOT public.is_user_verified_for_transactions(v_uid) THEN
     RETURN jsonb_build_object('error', 'KYC verification required to make Osusu contributions.');
   END IF;
 
@@ -859,7 +859,7 @@ BEGIN
 
   -- KYC gate
   SELECT kyc_status INTO v_kyc_status FROM public.profiles WHERE id = v_uid;
-  IF v_kyc_status IS DISTINCT FROM 'approved' THEN
+  IF NOT public.is_user_verified_for_transactions(v_uid) THEN
     RETURN jsonb_build_object('error', 'KYC verification required to deposit to savings.');
   END IF;
 

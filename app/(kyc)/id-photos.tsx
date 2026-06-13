@@ -38,6 +38,10 @@ async function pickFromLibrary(): Promise<PickedFile | null> {
   });
   if (result.canceled) return null;
   const asset = result.assets[0];
+  if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+    Alert.alert('File too large', 'Please choose an image smaller than 5 MB.');
+    return null;
+  }
   return { uri: asset.uri, base64: asset.base64 ?? '', mimeType: asset.mimeType ?? 'image/jpeg' };
 }
 
@@ -55,6 +59,10 @@ async function pickFromCamera(): Promise<PickedFile | null> {
   });
   if (result.canceled) return null;
   const asset = result.assets[0];
+  if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+    Alert.alert('File too large', 'The captured image is too large. Please retake with lower resolution.');
+    return null;
+  }
   return { uri: asset.uri, base64: asset.base64 ?? '', mimeType: asset.mimeType ?? 'image/jpeg' };
 }
 

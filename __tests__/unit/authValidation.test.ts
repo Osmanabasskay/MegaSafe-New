@@ -159,8 +159,8 @@ describe('Name validation', () => {
       expect(nameSchema.safeParse('@Osman').success).toBe(false));
     it('rejects XSS payload "<script>alert(1)</script>"', () =>
       expect(nameSchema.safeParse('<script>alert(1)</script>').success).toBe(false));
-    it('rejects "A" (1 char — too short)', () =>
-      expect(nameSchema.safeParse('A').success).toBe(false));
+    it('accepts "A" (1 char — min is now 1 per spec)', () =>
+      expect(nameSchema.safeParse('A').success).toBe(true));
     it('rejects blank / whitespace only', () =>
       expect(nameSchema.safeParse('   ').success).toBe(false));
     it('rejects name over 50 chars', () =>
@@ -252,8 +252,8 @@ describe('Address validation', () => {
       expect(addressSchema.safeParse('   ').success).toBe(false));
     it('rejects under 5 chars', () =>
       expect(addressSchema.safeParse('Road').success).toBe(false));
-    it('rejects over 150 chars', () =>
-      expect(addressSchema.safeParse('A '.repeat(76)).success).toBe(false));
+    it('rejects over 200 chars', () =>
+      expect(addressSchema.safeParse('Aa '.repeat(68)).success).toBe(false));
     it('rejects emoji', () =>
       expect(addressSchema.safeParse('12 Road 🏠 Freetown').success).toBe(false));
     it('rejects SQL DROP TABLE pattern', () =>

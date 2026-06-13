@@ -26,6 +26,7 @@ import {
   Lock,
   MapPin,
   MoreHorizontal,
+  Shield,
   TrendingUp,
   Users,
 } from 'lucide-react-native';
@@ -322,10 +323,14 @@ export default function HomeScreen() {
     }
   };
 
-  const openSendFlow = (type: 'group' | 'savings') => {
+  const openSendFlow = (type: 'group' | 'savings' | 'vault') => {
     setSendSheetVisible(false);
     setTimeout(() => {
-      router.push({ pathname: '/(send)/select', params: { type, from: 'home' } });
+      if (type === 'vault') {
+        router.push({ pathname: '/(send)/detail', params: { type, from: 'home' } });
+      } else {
+        router.push({ pathname: '/(send)/select', params: { type, from: 'home' } });
+      }
     }, 220);
   };
 
@@ -668,6 +673,23 @@ export default function HomeScreen() {
             </View>
             <View style={styles.sheetOptionArrow}>
               <ArrowUpRight size={18} color="#10B981" />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.sheetOption}
+            onPress={() => openSendFlow('vault')}
+            activeOpacity={0.88}
+          >
+            <View style={[styles.sheetOptionIcon, { backgroundColor: '#EEF2FF' }]}>
+              <Shield size={28} color="#1E2B5A" />
+            </View>
+            <View style={styles.sheetOptionText}>
+              <Text style={[styles.sheetOptionTitle, { color: C.text }]}>Vault</Text>
+              <Text style={styles.sheetOptionSub}>Add money to your secure Mi Osusu vault</Text>
+            </View>
+            <View style={styles.sheetOptionArrow}>
+              <ArrowUpRight size={18} color="#1E2B5A" />
             </View>
           </TouchableOpacity>
 

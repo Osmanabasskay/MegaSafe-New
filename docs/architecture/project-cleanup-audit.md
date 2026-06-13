@@ -47,7 +47,7 @@ New untracked screens also exist: `app/(send)/`, `app/auth/callback.tsx`, `app/(
 
 **Tooling / config:**
 - `.agents/`, `.claude/`, `.codex/`, `.mcp.json`, `skills-lock.json` — AI/agent tooling caches.
-- `.convex/` (3 files) + `convex/` (empty) — **Convex leftovers; backend is Supabase, not Convex.** Likely dead.
+- Backend is Supabase only.
 - `__tests__/` (untracked unit/security tests), `testsprite_tests/` (only `tmp/mcp.log`).
 
 **Design / docs:**
@@ -74,7 +74,7 @@ New untracked screens also exist: `app/(send)/`, `app/auth/callback.tsx`, `app/(
 - `components/` (HEAD) vs `src/components/` — same.
 - `types/` (HEAD) vs `src/types/` — same.
 - `lib/validation/kyc.ts` (still on disk) vs `src/utils/validation/kyc.ts` — **true duplicate to reconcile.**
-- `convex/` + `.convex/` vs `supabase/` — two backends present; **Supabase is canonical**, Convex appears unused.
+- Supabase is the only backend.
 - `app/components/` (route-group screens like `profile`, `settings`, `notifications`) vs `src/components/` (reusable UI) — *not* a duplicate, but the naming is confusing; `app/components/` are actually screens.
 
 ## 4. Duplicate config files
@@ -120,7 +120,6 @@ No conflicting duplicates at root. Single copy each of `app.json`, `app.config.j
 
 ## 11. Files that may be DELETED later (only after archive + verification)
 
-- `convex/`, `.convex/` — if confirmed Convex is unused.
 - `coverage/`, `dist/` — regenerable build output (delete + gitignore).
 - `apps/admin/.next/` — build output (already staged for deletion; add to `.gitignore`).
 - `testsprite_tests/tmp/mcp.log` — log artifact.
@@ -135,7 +134,7 @@ No conflicting duplicates at root. Single copy each of `app.json`, `app.config.j
 3. **Supabase SQL files** — `supabase/prompt*.sql`, `*_migration.sql` may already be **applied to the production database.** Reordering/renaming them into `migrations/` can desync migration history. Per project memory, `prompt2/8/9` SQL is already known-stale and archived. **Do not reorganize applied SQL without confirming what's deployed** (use Supabase `list_migrations`).
 4. **No `@/` path aliases exist yet** — all imports are relative. Moving files *will* break relative imports; adding aliases (Phase 11) should happen alongside, with `tsc --noEmit` after.
 5. **Brand rename in code** — renaming DB tables / env var names / Supabase function names would break production. Only rename display strings; keep technical identifiers (documented in `brand-name-cleanup-report.md`).
-6. **`.gitignore` gaps** — `coverage/`, `apps/admin/.next/`, `convex/`, `*.tsbuildinfo` (partially covered) should be added so build output stops being tracked.
+6. **`.gitignore` gaps** — `coverage/`, `apps/admin/.next/`, `*.tsbuildinfo` (partially covered) should be added so build output stops being tracked.
 7. **Committed build artifacts** — `apps/admin/.next/` was committed; needs `git rm -r --cached` + ignore.
 
 ---
@@ -153,11 +152,10 @@ A scan of **tracked** files found **no hardcoded live secrets.** All `service_ro
 3. **Docs consolidation** — move root `.md`/`.txt` guides + `stitch_*` mockups into `docs/`. Non-code, low risk.
 4. **Asset organization** — relocate loose root logos/images into `assets/` subfolders; archive superseded brand assets; update the (few) imports. Verify with grep + typecheck.
 5. **Finish the `src/` consolidation** — remove the empty `lib/`/`stores/`/`components/`/`types/` husks; reconcile the `lib/validation/kyc.ts` duplicate. Typecheck.
-6. **Convex removal** — confirm unused, archive `convex/`/`.convex/`.
-7. **Supabase SQL organization** — *only after* confirming deployed migrations; reorganize into `migrations/`/`sql/`/`functions/`/`seed/`.
-8. **Brand-string cleanup** in code (display strings only).
-9. **Path aliases** (`@/*`) + import updates + typecheck + tests.
-10. **(Optional / separate project) Monorepo move** of the Expo app into `apps/mobile/` — highest risk, isolated, tested end-to-end.
-11. **Final reports** (Phases 9, 10, 12, 15).
+6. **Supabase SQL organization** — *only after* confirming deployed migrations; reorganize into `migrations/`/`sql/`/`functions/`/`seed/`.
+7. **Brand-string cleanup** in code (display strings only).
+8. **Path aliases** (`@/*`) + import updates + typecheck + tests.
+9. **(Optional / separate project) Monorepo move** of the Expo app into `apps/mobile/` — highest risk, isolated, tested end-to-end.
+10. **Final reports** (Phases 9, 10, 12, 15).
 
 Steps 2–9 deliver ~90% of the "clean, scalable, maintainable" benefit at low risk. Step 10 is the large structural change and should be a deliberate, separately-verified effort.

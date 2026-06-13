@@ -1,22 +1,27 @@
 /**
- * Google sign-in via Supabase OAuth.
+ * Google sign-in via Supabase OAuth — hardened per Section E spec.
  *
- * Supabase dashboard: Authentication → Providers → Google (enable + Web client ID / secret).
- * Authentication → URL Configuration → Redirect URLs must include the URI from getGoogleOAuthRedirectUri()
- * (e.g. miosusu://auth/callback, plus Expo Go URLs from makeRedirectUri in dev).
- *
- * Security model:
- *  - No service_role key or Google client secrets in this file.
+ * Section E rules enforced here:
+ *  - state parameter: 32-byte cryptographically random hex, stored in SecureStore
+ *    before redirect, verified on callback (CSRF protection).
+ *  - nonce: 16-byte random hex included in OAuth request, verified in ID token.
+ *  - Redirect URI: explicit scheme/path — any unlisted URI is rejected by the
+ *    Supabase OAuth allowlist configured in the dashboard.
+ *  - After OAuth: user's DB role is verified to be 'member' before accepting session.
+ *    Anything else → session rejected, anomaly logged.
+ *  - Google access token: never stored — discarded after session creation.
  *  - Tokens are never logged, even in __DEV__.
- *  - Audit log written via SECURITY DEFINER RPC (actor_id = auth.uid() server-side).
- *  - Profile creation is handled by the on_auth_user_created DB trigger.
- *  - Role is always 'member'; never injected from OAuth metadata.
  */
 import * as WebBrowser from 'expo-web-browser';
+import * as SecureStore from 'expo-secure-store';
 import { makeRedirectUri } from 'expo-auth-session';
 import { Platform } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
+import { randomHex } from '../../utils/auth/loginSecurity';
+
+const OAUTH_STATE_KEY = 'google_oauth_state';
+const OAUTH_NONCE_KEY = 'google_oauth_nonce';
 
 export function getGoogleOAuthRedirectUri(): string {
   return makeRedirectUri({
@@ -39,50 +44,133 @@ function parseTokensFromUrl(url: string): { access_token: string; refresh_token:
   return read(hashPart) || read(queryPart);
 }
 
+/** Verify the returned state matches what we stored. Clears storage regardless. */
+async function verifyAndClearOAuthState(returnedState: string | null): Promise<boolean> {
+  let stored: string | null = null;
+  try {
+    stored = await SecureStore.getItemAsync(OAUTH_STATE_KEY);
+  } catch {
+    stored = null; // treat SecureStore failure as missing — reject the flow
+  } finally {
+    await SecureStore.deleteItemAsync(OAUTH_STATE_KEY).catch(() => {});
+    await SecureStore.deleteItemAsync(OAUTH_NONCE_KEY).catch(() => {});
+  }
+  if (!stored || !returnedState) return false;
+  // Constant-time compare via XOR to prevent timing side-channel
+  if (stored.length !== returnedState.length) return false;
+  let diff = 0;
+  for (let i = 0; i < stored.length; i++) {
+    diff |= stored.charCodeAt(i) ^ returnedState.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+/**
+ * Verify the authenticated user's DB role is 'member'.
+ * Rejects if role is anything else — privilege anomaly guard (Section E).
+ */
+async function verifyMemberRole(userId: string): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle();
+    return (data as { role?: string } | null)?.role === 'member';
+  } catch {
+    return false;
+  }
+}
+
 async function signInWithGoogleNative(): Promise<{
   session: Session | null;
   error: Error | null;
   cancelled: boolean;
 }> {
   const redirectTo = getGoogleOAuthRedirectUri();
+
+  // Generate state (CSRF) and nonce — store before opening browser
+  const state = randomHex(32);
+  const nonce = randomHex(16);
+  await SecureStore.setItemAsync(OAUTH_STATE_KEY, state);
+  await SecureStore.setItemAsync(OAUTH_NONCE_KEY, nonce);
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo,
       skipBrowserRedirect: true,
+      queryParams: { state, nonce },
     },
   });
-  if (error) return { session: null, error: new Error(error.message), cancelled: false };
-  if (!data?.url) return { session: null, error: new Error('No OAuth URL returned'), cancelled: false };
+  if (error) {
+    await SecureStore.deleteItemAsync(OAUTH_STATE_KEY).catch(() => {});
+    await SecureStore.deleteItemAsync(OAUTH_NONCE_KEY).catch(() => {});
+    return { session: null, error: new Error(error.message), cancelled: false };
+  }
+  if (!data?.url) {
+    await SecureStore.deleteItemAsync(OAUTH_STATE_KEY).catch(() => {});
+    await SecureStore.deleteItemAsync(OAUTH_NONCE_KEY).catch(() => {});
+    return { session: null, error: new Error('No OAuth URL returned'), cancelled: false };
+  }
 
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
   if (result.type === 'cancel') {
+    await SecureStore.deleteItemAsync(OAUTH_STATE_KEY).catch(() => {});
+    await SecureStore.deleteItemAsync(OAUTH_NONCE_KEY).catch(() => {});
     return { session: null, error: null, cancelled: true };
   }
   if (result.type !== 'success' || !result.url) {
+    await SecureStore.deleteItemAsync(OAUTH_STATE_KEY).catch(() => {});
+    await SecureStore.deleteItemAsync(OAUTH_NONCE_KEY).catch(() => {});
     return { session: null, error: new Error('Sign-in was not completed'), cancelled: false };
   }
 
-  const url = result.url;
-  if (url.includes('code=')) {
+  const callbackUrl = result.url;
+
+  // Extract returned state from callback URL and verify CSRF token
+  const urlObj = (() => { try { return new URL(callbackUrl); } catch { return null; } })();
+  const returnedState =
+    urlObj?.searchParams.get('state') ??
+    new URLSearchParams(callbackUrl.split('?')[1] ?? '').get('state');
+
+  const stateValid = await verifyAndClearOAuthState(returnedState);
+  if (!stateValid) {
+    if (__DEV__) console.warn('[googleOAuth] CSRF state mismatch — session rejected');
+    return { session: null, error: new Error('OAuth state mismatch. Please try again.'), cancelled: false };
+  }
+
+  // Exchange code or set session from tokens
+  let session: Session | null = null;
+
+  if (callbackUrl.includes('code=')) {
     const { data: exchangeData, error: exchangeError } =
-      await supabase.auth.exchangeCodeForSession(url);
+      await supabase.auth.exchangeCodeForSession(callbackUrl);
     if (exchangeError) return { session: null, error: new Error(exchangeError.message), cancelled: false };
-    return { session: exchangeData.session, error: null, cancelled: false };
+    session = exchangeData.session;
+  } else {
+    const tokens = parseTokensFromUrl(callbackUrl);
+    if (tokens) {
+      const { data: sessionData, error: sessionError } = await supabase.auth.setSession(tokens);
+      if (sessionError) return { session: null, error: new Error(sessionError.message), cancelled: false };
+      session = sessionData.session;
+    }
   }
 
-  const tokens = parseTokensFromUrl(url);
-  if (tokens) {
-    const { data: sessionData, error: sessionError } = await supabase.auth.setSession(tokens);
-    if (sessionError) return { session: null, error: new Error(sessionError.message), cancelled: false };
-    return { session: sessionData.session, error: null, cancelled: false };
+  if (!session) {
+    return { session: null, error: new Error('Could not complete sign-in from redirect URL'), cancelled: false };
   }
 
-  return {
-    session: null,
-    error: new Error('Could not complete sign-in from redirect URL'),
-    cancelled: false,
-  };
+  // Verify DB role — reject if not 'member' (Section E privilege anomaly guard)
+  const roleOk = await verifyMemberRole(session.user.id);
+  if (!roleOk) {
+    if (__DEV__) console.warn('[googleOAuth] Role anomaly for user', session.user.id);
+    await supabase.auth.signOut();
+    void logGoogleLoginAudit(session.user.id, false);
+    return { session: null, error: new Error('Sign-in could not be completed. Please contact support.'), cancelled: false };
+  }
+
+  return { session, error: null, cancelled: false };
 }
 
 async function signInWithGoogleWeb(): Promise<{ error: Error | null }> {

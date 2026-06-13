@@ -15,6 +15,14 @@
 export const ROLE_CACHE_COOKIE = 'sb-admin-role-cache';
 export const ROLE_CACHE_TTL_SECONDS = 30;
 
+if (!process.env.ADMIN_ROLE_CACHE_SECRET) {
+  console.warn(
+    '[role-cache] ADMIN_ROLE_CACHE_SECRET is not set — role cache is disabled. ' +
+    'Every admin navigation will query the database for role verification. ' +
+    'Generate a secret with: openssl rand -hex 32'
+  );
+}
+
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 const enc = new TextEncoder();

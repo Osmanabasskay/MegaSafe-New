@@ -23,7 +23,7 @@
  *   { mm_txn_id: "uuid" }
  */
 
-import { corsHeaders, handleCors }              from '../_shared/cors.ts';
+import { corsHeaders, handleCors, readBoundedBody }              from '../_shared/cors.ts';
 import { getAuthUser, createServiceClient }     from '../_shared/auth.ts';
 import { getPaymentCode }                        from '../_shared/monime.ts';
 
@@ -40,9 +40,12 @@ Deno.serve(async (req: Request) => {
   const user       = await getAuthUser(authHeader);
   if (!user) return jsonError('Not authenticated.', 401);
 
+  const { text: rawBody, error: sizeErr } = await readBoundedBody(req);
+  if (sizeErr) return jsonError(sizeErr, 413);
+
   let body: { monime_payment_code_id?: string; mm_txn_id?: string };
   try {
-    body = await req.json();
+    body = JSON.parse(rawBody) as { monime_payment_code_id?: string; mm_txn_id?: string };
   } catch {
     return jsonError('Invalid JSON body.', 400);
   }
@@ -137,14 +140,17 @@ function deriveEffectiveStatus(
 }
 
 function jsonOk(body: unknown): Response {
-  return new Response(JSON.stringify(body), {
+  const data = body != null && typeof body === 'object' && !Array.isArray(body)
+    ? body as Record<string, unknown>
+    : { value: body };
+  return new Response(JSON.stringify({ ...data, success: true, data }), {
     status:  200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
-function jsonError(msg: string, status = 400): Response {
-  return new Response(JSON.stringify({ error: msg }), {
+function jsonError(msg: string, status = 400, code = 'PAYMENT_ERROR'): Response {
+  return new Response(JSON.stringify({ success: false, error: msg, code }), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });

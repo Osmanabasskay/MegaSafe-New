@@ -207,15 +207,27 @@ interface AppDataState {
     accountNumber: string;
   }) => { ok: boolean; message?: string };
   unlinkBankAccount: (id: string) => void;
+  /** Section G: clear all user-specific data from memory on logout. */
+  clearForLogout: () => void;
 }
 
 const nowIso = (): string => new Date().toISOString();
 
-const createId = (prefix: string): string => {
-  const rand = new Uint32Array(1);
-  crypto.getRandomValues(rand); // crypto is available in all supported runtimes (browser, Node 15+, RN 0.70+)
-  return `${prefix}-${Date.now()}-${rand[0]!.toString(16)}`;
-};
+// crypto.getRandomValues is not guaranteed on all Hermes/RN versions at module
+// init time. Use it when available; fall back to Math.random for non-security
+// use (IDs and display codes only — no cryptographic purpose here).
+function safeRandomUint32(): number {
+  const g = globalThis as typeof globalThis & { crypto?: { getRandomValues?: (buf: Uint32Array) => void } };
+  if (typeof g.crypto?.getRandomValues === 'function') {
+    const buf = new Uint32Array(1);
+    g.crypto.getRandomValues(buf);
+    return buf[0]!;
+  }
+  return (Math.random() * 0xFFFF_FFFF) >>> 0;
+}
+
+const createId = (prefix: string): string =>
+  `${prefix}-${Date.now()}-${safeRandomUint32().toString(16)}`;
 
 const toDateOnly = (iso: string): string => iso.slice(0, 10);
 
@@ -242,11 +254,7 @@ const buildDefaultProfile = (): ProfileData => ({
   avatarUrl: null,
   verificationStatus: 'Pending',
   memberSince: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-  referralCode: (() => {
-    const rand = new Uint32Array(1);
-    crypto.getRandomValues(rand);
-    return `MSF-${100000 + (rand[0]! % 900000)}`;
-  })(),
+  referralCode: `MSF-${100000 + (safeRandomUint32() % 900000)}`,
 });
 
 const defaultPreferences: PreferencesData = {
@@ -556,6 +564,23 @@ export const useAppDataStore = create<AppDataState>()(
         set((state) => ({
           linkedBankAccounts: state.linkedBankAccounts.filter((item) => item.id !== id),
         }));
+      },
+
+      // Section G: wipe all user-specific in-memory and persisted data.
+      // Preferences (dark mode, notification settings) are intentionally preserved.
+      clearForLogout: () => {
+        set({
+          initializedUserId:         null,
+          profile:                   buildDefaultProfile(),
+          notifications:             [],
+          receipts:                  [],
+          savingsGoals:              [],
+          vaultTransactions:         [],
+          disputes:                  [],
+          linkedPhoneNumbers:        [],
+          linkedMobileMoneyAccounts: [],
+          linkedBankAccounts:        [],
+        });
       },
     }),
     {

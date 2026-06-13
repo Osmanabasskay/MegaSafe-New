@@ -21,6 +21,7 @@ import {
   Globe,
   HelpCircle,
   Info,
+  KeyRound,
   Lock,
   LogOut,
   Moon,
@@ -33,6 +34,7 @@ import { useAuthStore } from '../../src/store/authStore';
 import { useAppDataStore } from '../../src/store/appDataStore';
 import { darkColors, lightColors } from '../../src/theme/colors';
 import { uploadAvatar } from '../../src/services/profileService';
+import { getTransactionPinStatus, type TransactionPinStatus } from '../../src/services/transactionPinService';
 import { supabaseConfigured } from '../../src/services/supabase';
 import { getCredentialDisplayName, getProfileFirstName } from '../../src/utils/profileName';
 
@@ -57,6 +59,7 @@ export default function SettingsScreen() {
 
   const [showPhoneNumber, setShowPhoneNumber] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [transactionPinStatus, setTransactionPinStatus] = useState<TransactionPinStatus | null>(null);
 
   useEffect(() => {
     initializeForUser(user);
@@ -64,6 +67,18 @@ export default function SettingsScreen() {
       updateProfile({ email: user.email });
     }
   }, [initializeForUser, updateProfile, user]);
+
+  useEffect(() => {
+    let alive = true;
+    const loadPinStatus = async () => {
+      const { status } = await getTransactionPinStatus();
+      if (alive) setTransactionPinStatus(status);
+    };
+    void loadPinStatus();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const unreadNotifications = useMemo(
     () => notifications.filter((item) => !item.read).length,
@@ -116,7 +131,7 @@ export default function SettingsScreen() {
 
       let persistedAvatar = localUri;
       if (user?.id && supabaseConfigured) {
-        const { path, error } = await uploadAvatar(user.id, localUri);
+        const { path, error } = await uploadAvatar(localUri);
         if (error) {
           Alert.alert('Upload warning', `Photo selected, but cloud sync failed: ${error.message}`);
         } else if (path) {
@@ -266,6 +281,18 @@ export default function SettingsScreen() {
               />
             ),
             hideChevron: true,
+          })}
+          {renderItem({
+            title: 'Transaction PIN',
+            subtitle: transactionPinStatus?.isSet ? 'Set' : 'Not set',
+            icon: <KeyRound size={18} color="#000000" />,
+            onPress: () => router.push(transactionPinStatus?.isSet ? '/(settings)/change-transaction-pin' : '/(settings)/create-transaction-pin'),
+          })}
+          {renderItem({
+            title: 'Reset Transaction PIN',
+            subtitle: 'OTP required',
+            icon: <ShieldCheck size={18} color="#000000" />,
+            onPress: () => router.push('/(settings)/reset-transaction-pin'),
           })}
         </View>
 

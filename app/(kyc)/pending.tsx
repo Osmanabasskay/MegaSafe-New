@@ -20,15 +20,29 @@ export default function PendingScreen() {
   const [status, setStatus] = useState<KycStatus | null>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<'network' | 'session' | 'not_found' | null>(null);
 
   const load = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setLoadError('session');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+    setLoadError(null);
     const { profile, error } = await fetchProfile(user.id);
     setLoading(false);
-    if (error || !profile) {
-      setStatus('pending');
-      setReason(null);
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('jwt') || msg.includes('auth') || msg.includes('unauthorized') || msg.includes('401')) {
+        setLoadError('session');
+      } else {
+        setLoadError('network');
+      }
+      return;
+    }
+    if (!profile) {
+      setLoadError('not_found');
       return;
     }
     setStatus((profile.kyc_status as KycStatus) ?? 'pending');
@@ -53,6 +67,34 @@ export default function PendingScreen() {
       <SafeAreaView style={[styles.root, { backgroundColor: C.bg }]}>
         <View style={[styles.center, { backgroundColor: C.bg }]}>
           <ActivityIndicator size="large" color="#F97316" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (loadError) {
+    const errorMsg =
+      loadError === 'session'
+        ? 'Your session has expired. Please log in again.'
+        : loadError === 'not_found'
+          ? 'Profile not found. Please contact support if this persists.'
+          : 'Could not load your KYC status. Please check your connection and try again.';
+    return (
+      <SafeAreaView style={[styles.root, { backgroundColor: C.bg }]}>
+        <KycProgress currentStep={5} label="Status" />
+        <View style={styles.content}>
+          <Text style={styles.emoji}>⚠️</Text>
+          <Text style={[styles.title, { color: C.text }]}>Could not load status</Text>
+          <Text style={[styles.body, { color: C.textSub }]}>{errorMsg}</Text>
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => void load()}>
+            <Text style={styles.primaryBtnText}>Retry</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.secondaryBtn, { backgroundColor: C.iconBg }]}
+            onPress={goHome}
+          >
+            <Text style={[styles.secondaryBtnText, { color: C.textSub }]}>Back to dashboard</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );

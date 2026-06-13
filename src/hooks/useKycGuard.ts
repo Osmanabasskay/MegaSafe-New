@@ -26,6 +26,7 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { fetchProfile, type KycStatus } from '../services/profileService';
 import { supabaseConfigured } from '../services/supabase';
+import { fetchTransactionVerificationRequired } from '../services/platformSettingsService';
 
 export interface KycGuardState {
   /** Null while loading, or the DB value once fetched. */
@@ -34,6 +35,8 @@ export interface KycGuardState {
   isApproved: boolean;
   /** True while the first fetch is in flight. */
   loading: boolean;
+  /** Backend-controlled setting. Defaults to true when unavailable. */
+  verificationRequired: boolean;
   /**
    * Call before any financial action. Returns true if approved (caller may
    * proceed). Returns false and shows an Alert + navigation prompt if blocked.
@@ -49,6 +52,7 @@ export function useKycGuard(): KycGuardState {
   const router = useRouter();
   const { user } = useAuthStore();
   const [kycStatus, setKycStatus] = useState<KycStatus | null>(null);
+  const [verificationRequired, setVerificationRequired] = useState(true);
   const [loading, setLoading]     = useState(true);
 
   const refreshKyc = useCallback(async () => {
@@ -58,8 +62,12 @@ export function useKycGuard(): KycGuardState {
       return;
     }
     setLoading(true);
-    const { profile } = await fetchProfile(user.id);
+    const [{ profile }, required] = await Promise.all([
+      fetchProfile(user.id),
+      fetchTransactionVerificationRequired(),
+    ]);
     setKycStatus((profile?.kyc_status as KycStatus) ?? null);
+    setVerificationRequired(required);
     setLoading(false);
   }, [user?.id]);
 
@@ -76,7 +84,7 @@ export function useKycGuard(): KycGuardState {
         return true;
       }
 
-      if (isApproved) return true;
+      if (!verificationRequired || isApproved) return true;
 
       const statusMsg: Record<string, string> = {
         submitted: 'Your KYC documents are under review. You will be notified when approved.',
@@ -100,8 +108,8 @@ export function useKycGuard(): KycGuardState {
 
       return false;
     },
-    [isApproved, kycStatus, router],
+    [isApproved, kycStatus, router, verificationRequired],
   );
 
-  return { kycStatus, isApproved, loading, requireKyc, refreshKyc };
+  return { kycStatus, isApproved, loading, verificationRequired, requireKyc, refreshKyc };
 }

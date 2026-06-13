@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { MSG_SIGNUP_FAILED, MSG_LOGIN_FAILED } from '../../auth/authErrors';
 import {
   slPhoneSchema,
   emailSchema,
@@ -18,6 +19,8 @@ import {
   normalizeToSierraLeone,
   getPasswordError,
   getPasswordStrength,
+  validatePasswordContext,
+  normalizeNameInput,
 } from '../auth';
 import {
   normalizeToSierraLeone as normalizeSL,
@@ -39,7 +42,7 @@ describe('Phone — Sierra Leone validation', () => {
     expect(slPhoneSchema.safeParse('+23230123456').success).toBe(true);
   });
 
-  // Invalid
+  // Invalid format
   it('rejects less than 8 local digits (+2327612345 = only 7)', () => {
     expect(slPhoneSchema.safeParse('+2327612345').success).toBe(false);
   });
@@ -67,6 +70,20 @@ describe('Phone — Sierra Leone validation', () => {
   it('rejects plain 8 digits without +232 (user must provide normalised form)', () => {
     expect(slPhoneSchema.safeParse('76123456').success).toBe(false);
   });
+
+  // Security additions
+  it('rejects leading zero after country code (+23201234567)', () => {
+    expect(slPhoneSchema.safeParse('+23201234567').success).toBe(false);
+  });
+  it('rejects all-same-digit number (+23211111111)', () => {
+    expect(slPhoneSchema.safeParse('+23211111111').success).toBe(false);
+  });
+  it('rejects all-zeros local number (+23200000000)', () => {
+    expect(slPhoneSchema.safeParse('+23200000000').success).toBe(false);
+  });
+  it('rejects all-nines local number (+23299999999)', () => {
+    expect(slPhoneSchema.safeParse('+23299999999').success).toBe(false);
+  });
 });
 
 describe('normalizeToSierraLeone', () => {
@@ -91,6 +108,9 @@ describe('isValidSierraLeonePhone', () => {
   it('accepts +23276123456', () => expect(isValidSierraLeonePhone('+23276123456')).toBe(true));
   it('rejects +447911123456', () => expect(isValidSierraLeonePhone('+447911123456')).toBe(false));
   it('rejects 76123456 (missing +232)', () => expect(isValidSierraLeonePhone('76123456')).toBe(false));
+  it('rejects leading zero after 232 (+23201234567)', () => {
+    expect(isValidSierraLeonePhone('+23201234567')).toBe(false);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -117,7 +137,7 @@ describe('Email validation', () => {
     expect(result.success).toBe(true);
   });
 
-  // Invalid
+  // Invalid format
   it('rejects "test" (no @)', () => {
     expect(emailSchema.safeParse('test').success).toBe(false);
   });
@@ -137,7 +157,7 @@ describe('Email validation', () => {
     expect(emailSchema.safeParse('te st@gmail.com').success).toBe(false);
   });
   it('rejects email over 254 characters', () => {
-    const long = 'a'.repeat(250) + '@example.com'; // 262 chars, exceeds 254 limit
+    const long = 'a'.repeat(250) + '@example.com';
     expect(emailSchema.safeParse(long).success).toBe(false);
   });
   it('rejects script injection in email', () => {
@@ -145,6 +165,52 @@ describe('Email validation', () => {
   });
   it('rejects double-dot in local part (test..name@gmail.com)', () => {
     expect(emailSchema.safeParse('test..name@gmail.com').success).toBe(false);
+  });
+
+  // RFC-5321 local-part checks
+  it('accepts + tag address user+savings@example.com', () => {
+    expect(emailSchema.safeParse('user+savings@example.com').success).toBe(true);
+  });
+  it('accepts underscore in local part user_name@example.com', () => {
+    expect(emailSchema.safeParse('user_name@example.com').success).toBe(true);
+  });
+  it('rejects semicolon in local part user;name@example.com', () => {
+    expect(emailSchema.safeParse('user;name@example.com').success).toBe(false);
+  });
+  it('rejects backslash in local part user\\name@example.com', () => {
+    expect(emailSchema.safeParse('user\\name@example.com').success).toBe(false);
+  });
+  it('rejects angle-bracket XSS in local part <img@example.com', () => {
+    expect(emailSchema.safeParse('<img@example.com').success).toBe(false);
+  });
+  it('rejects parenthesis in local part user(1)@example.com', () => {
+    expect(emailSchema.safeParse('user(1)@example.com').success).toBe(false);
+  });
+
+  // Disposable domain blocklist
+  it('rejects mailinator.com address', () => {
+    expect(emailSchema.safeParse('user@mailinator.com').success).toBe(false);
+  });
+  it('rejects guerrillamail.com address', () => {
+    expect(emailSchema.safeParse('user@guerrillamail.com').success).toBe(false);
+  });
+  it('rejects tempmail.com address', () => {
+    expect(emailSchema.safeParse('user@tempmail.com').success).toBe(false);
+  });
+  it('rejects yopmail.com address', () => {
+    expect(emailSchema.safeParse('user@yopmail.com').success).toBe(false);
+  });
+  it('rejects trashmail.com address', () => {
+    expect(emailSchema.safeParse('user@trashmail.com').success).toBe(false);
+  });
+  it('rejects maildrop.cc address', () => {
+    expect(emailSchema.safeParse('user@maildrop.cc').success).toBe(false);
+  });
+  it('accepts legitimate gmail.com address', () => {
+    expect(emailSchema.safeParse('user@gmail.com').success).toBe(true);
+  });
+  it('accepts legitimate yahoo.com address', () => {
+    expect(emailSchema.safeParse('user@yahoo.com').success).toBe(true);
   });
 });
 
@@ -167,8 +233,12 @@ describe('Name validation', () => {
   it('accepts two-part name "Mary Jane"', () => {
     expect(nameSchema.safeParse('Mary Jane').success).toBe(true);
   });
+  // Min is now 1 char per spec
+  it('accepts single-char name "A" (min is 1 per spec)', () => {
+    expect(nameSchema.safeParse('A').success).toBe(true);
+  });
 
-  // Invalid
+  // Invalid format
   it('rejects "Osman123" (contains number)', () => {
     expect(nameSchema.safeParse('Osman123').success).toBe(false);
   });
@@ -181,9 +251,6 @@ describe('Name validation', () => {
   it('rejects "<script>alert(1)</script>" (XSS payload)', () => {
     expect(nameSchema.safeParse('<script>alert(1)</script>').success).toBe(false);
   });
-  it('rejects "A" (too short — 1 char)', () => {
-    expect(nameSchema.safeParse('A').success).toBe(false);
-  });
   it('rejects blank / whitespace only', () => {
     expect(nameSchema.safeParse('   ').success).toBe(false);
   });
@@ -195,6 +262,49 @@ describe('Name validation', () => {
   });
   it('rejects # $ % in name', () => {
     expect(nameSchema.safeParse('Omar#1').success).toBe(false);
+  });
+
+  // Security additions — same-char rejection
+  it('rejects all-same-char name "aaaaaaa"', () => {
+    expect(nameSchema.safeParse('aaaaaaa').success).toBe(false);
+  });
+  it('rejects all-same-char name "NNNNNNN"', () => {
+    expect(nameSchema.safeParse('NNNNNNN').success).toBe(false);
+  });
+  it('accepts mixed-char name "Anna" (not all same)', () => {
+    expect(nameSchema.safeParse('Anna').success).toBe(true);
+  });
+
+  // Security additions — injection keyword rejection
+  it('rejects injection keyword "admin"', () => {
+    expect(nameSchema.safeParse('admin').success).toBe(false);
+  });
+  it('rejects injection keyword "null"', () => {
+    expect(nameSchema.safeParse('null').success).toBe(false);
+  });
+  it('rejects injection keyword "undefined"', () => {
+    expect(nameSchema.safeParse('undefined').success).toBe(false);
+  });
+  it('accepts legitimate name "Adam" (not in blocklist)', () => {
+    expect(nameSchema.safeParse('Adam').success).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NAME NORMALIZATION
+// ─────────────────────────────────────────────────────────────────────────────
+describe('normalizeNameInput', () => {
+  it('trims leading and trailing whitespace', () => {
+    expect(normalizeNameInput('  Osman  ')).toBe('Osman');
+  });
+  it('collapses multiple internal spaces to one', () => {
+    expect(normalizeNameInput('Mary   Jane')).toBe('Mary Jane');
+  });
+  it('handles already-clean input without change', () => {
+    expect(normalizeNameInput('Amina Kamara')).toBe('Amina Kamara');
+  });
+  it('handles single word', () => {
+    expect(normalizeNameInput('Osman')).toBe('Osman');
   });
 });
 
@@ -284,6 +394,11 @@ describe('Address validation', () => {
   it('accepts address with apostrophe and slash', () => {
     expect(addressSchema.safeParse("O'Brien's Lane / Block 3").success).toBe(true);
   });
+  it('accepts address of exactly 200 chars', () => {
+    // 200 letters — valid per new max
+    const addr = 'A'.repeat(194) + ' Road.'; // 200 chars, has letters
+    expect(addressSchema.safeParse(addr).success).toBe(true);
+  });
 
   // Invalid
   it('rejects "12345" (numbers only, no letter)', () => {
@@ -301,14 +416,26 @@ describe('Address validation', () => {
   it('rejects address under 5 chars', () => {
     expect(addressSchema.safeParse('Road').success).toBe(false);
   });
-  it('rejects address over 150 chars', () => {
-    expect(addressSchema.safeParse('A '.repeat(76)).success).toBe(false);
+  it('rejects address over 200 chars', () => {
+    // 204 chars (68 × "Aa "), after trim still 203 — exceeds 200
+    expect(addressSchema.safeParse('Aa '.repeat(68)).success).toBe(false);
   });
   it('rejects emoji in address', () => {
     expect(addressSchema.safeParse('12 Road 🏠 Freetown').success).toBe(false);
   });
   it('rejects SQL injection attempt', () => {
     expect(addressSchema.safeParse("'; DROP TABLE profiles; --").success).toBe(false);
+  });
+
+  // URL injection vector
+  it('rejects address containing http:// URL', () => {
+    expect(addressSchema.safeParse('12 Road http://malicious.com Freetown').success).toBe(false);
+  });
+  it('rejects address containing https:// URL', () => {
+    expect(addressSchema.safeParse('https://evil.com').success).toBe(false);
+  });
+  it('rejects address containing www. pattern', () => {
+    expect(addressSchema.safeParse('12 www.example.com Road').success).toBe(false);
   });
 });
 
@@ -328,7 +455,7 @@ describe('Password validation', () => {
     expect(passwordSchema.safeParse(pw).success).toBe(true);
   });
 
-  // Too short / too long
+  // Length
   it('rejects password under 8 chars', () => {
     expect(passwordSchema.safeParse('Aa1!x').success).toBe(false);
   });
@@ -352,20 +479,25 @@ describe('Password validation', () => {
   });
 
   // Common passwords
-  it('rejects "Password123!"', () => {
-    expect(passwordSchema.safeParse('Password123!').success).toBe(false);
-  });
-  it('rejects "12345678" (all digits, too simple)', () => {
-    expect(passwordSchema.safeParse('12345678').success).toBe(false);
-  });
-  it('rejects "Qwerty123!" (common pattern)', () => {
-    // Not in the blocklist but fails uppercase+special+number — actually it passes those
-    // Test the actual blocklist entry
+  it('rejects "password123!"', () => {
     expect(passwordSchema.safeParse('password123!').success).toBe(false);
   });
-  it('rejects "Admin123!" if in common list', () => {
-    // admin123 is in blocklist; "Admin123!" would pass char requirements but test blocklist
+  it('rejects "12345678" (all digits)', () => {
+    expect(passwordSchema.safeParse('12345678').success).toBe(false);
+  });
+  it('rejects "welcome123!"', () => {
     expect(passwordSchema.safeParse('welcome123!').success).toBe(false);
+  });
+
+  // Repeated-character pattern (new rule)
+  it('rejects password where all letters are the same (Aaaaaaaa1!)', () => {
+    expect(passwordSchema.safeParse('Aaaaaaaa1!').success).toBe(false);
+  });
+  it('rejects all-uppercase-same-letter pattern (AAAAAAAA1@)', () => {
+    expect(passwordSchema.safeParse('AAAAAAAA1@').success).toBe(false);
+  });
+  it('accepts password with varied letters (Aa1!Strong)', () => {
+    expect(passwordSchema.safeParse('Aa1!Strong').success).toBe(true);
   });
 
   // getPasswordError helper
@@ -387,6 +519,48 @@ describe('Password strength indicator', () => {
   it('score 4 for "Aa1!strong"', () => {
     expect(getPasswordStrength('Aa1!strong').score).toBe(4);
     expect(getPasswordStrength('Aa1!strong').label).toBe('Strong');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PASSWORD CONTEXT VALIDATION (personal info matching)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('validatePasswordContext', () => {
+  it('rejects password containing first name', () => {
+    expect(
+      validatePasswordContext('Osman@2024!', { firstName: 'Osman' })
+    ).not.toBeNull();
+  });
+  it('rejects password containing last name (case-insensitive)', () => {
+    expect(
+      validatePasswordContext('kamara@2024!', { lastName: 'Kamara' })
+    ).not.toBeNull();
+  });
+  it('rejects password containing email local part', () => {
+    expect(
+      validatePasswordContext('myuser@2024!', { email: 'myuser@example.com' })
+    ).not.toBeNull();
+  });
+  it('rejects password containing phone digits', () => {
+    expect(
+      validatePasswordContext('76123456Abc!', { phone: '+23276123456' })
+    ).not.toBeNull();
+  });
+  it('accepts password with no personal info match', () => {
+    expect(
+      validatePasswordContext('Freetown@2024', {
+        firstName: 'Osman',
+        lastName: 'Kamara',
+        email: 'osman@example.com',
+        phone: '+23276123456',
+      })
+    ).toBeNull();
+  });
+  it('ignores fields shorter than 3 chars to avoid false positives', () => {
+    // "Jo" is 2 chars — should not trigger
+    expect(
+      validatePasswordContext('Jo@2024Abc!', { firstName: 'Jo' })
+    ).toBeNull();
   });
 });
 
@@ -434,9 +608,8 @@ describe('Login identifier validation', () => {
 
   // Security — enumeration resistance
   it('does not distinguish unknown email from valid email (no error on format)', () => {
-    // Unknown emails must be syntactically valid — error only on format, not on existence
     const r = validateLoginIdentifier('unknown@example.com');
-    expect(r.error).toBeNull(); // format is valid; existence checked server-side only
+    expect(r.error).toBeNull(); // format valid; existence checked server-side only
   });
 });
 
@@ -461,5 +634,40 @@ describe('Signup security checks', () => {
   });
   it('address rejects script tag', () => {
     expect(addressSchema.safeParse('<script>alert(1)</script>').success).toBe(false);
+  });
+  it('email rejects disposable domain (guerrillamail)', () => {
+    expect(emailSchema.safeParse('attacker@guerrillamail.com').success).toBe(false);
+  });
+  it('phone rejects all-same-digit', () => {
+    expect(slPhoneSchema.safeParse('+23222222222').success).toBe(false);
+  });
+  it('phone rejects leading-zero-after-232', () => {
+    expect(slPhoneSchema.safeParse('+23209999999').success).toBe(false);
+  });
+  it('address rejects URL injection', () => {
+    expect(addressSchema.safeParse('12 Road http://evil.com').success).toBe(false);
+  });
+  it('password rejects repeated-letter pattern', () => {
+    expect(passwordSchema.safeParse('Bbbbbbbb2@').success).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ERROR MESSAGE — ACCOUNT ENUMERATION RESISTANCE
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Error messages — account enumeration resistance', () => {
+  it('MSG_SIGNUP_FAILED contains no hint about existing accounts', () => {
+    const lower = MSG_SIGNUP_FAILED.toLowerCase();
+    expect(lower).not.toContain('already have');
+    expect(lower).not.toContain('account recovery');
+    expect(lower).not.toContain('already exists');
+    expect(lower).not.toContain('registered');
+  });
+
+  it('MSG_LOGIN_FAILED contains no hints about email or phone existence', () => {
+    const lower = MSG_LOGIN_FAILED.toLowerCase();
+    expect(lower).not.toContain('not found');
+    expect(lower).not.toContain('does not exist');
+    expect(lower).not.toContain('no account');
   });
 });

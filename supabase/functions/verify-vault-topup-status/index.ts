@@ -9,7 +9,7 @@
  * Never use this response to consider a topup complete in the frontend.
  */
 
-import { corsHeaders, handleCors }       from '../_shared/cors.ts';
+import { corsHeaders, handleCors, readBoundedBody }       from '../_shared/cors.ts';
 import { getAuthUser, createUserClient } from '../_shared/auth.ts';
 import { getPaymentCode }                from '../_shared/monime.ts';
 
@@ -28,8 +28,11 @@ Deno.serve(async (req: Request) => {
   const user       = await getAuthUser(authHeader);
   if (!user) return err('Not authenticated.', 401);
 
+  const { text: rawBody, error: sizeErr } = await readBoundedBody(req);
+  if (sizeErr) return err(sizeErr, 413);
+
   let body: RequestBody;
-  try { body = await req.json(); }
+  try { body = JSON.parse(rawBody) as RequestBody; }
   catch { return err('Invalid JSON body.', 400); }
 
   if (!body.topup_id && !body.monime_payment_code_id && !body.monime_session_id)
@@ -40,7 +43,7 @@ Deno.serve(async (req: Request) => {
   // ── 1. Fetch topup record from DB (authoritative source) ──────────────────
   let query = userClient
     .from('vault_topups')
-    .select('id, amount, currency, status, monime_payment_code_id, monime_session_id, ussd_code, created_at, completed_at, failed_at')
+    .select('id, amount, fee_amount, total_amount, currency, status, provider_method, provider_account_masked, monime_payment_code_id, monime_session_id, ussd_code, idempotency_key, expires_at, created_at, completed_at, failed_at, failure_reason')
     .eq('user_id', user.id);
 
   if (body.topup_id) {
@@ -63,12 +66,25 @@ Deno.serve(async (req: Request) => {
 
   // ── 2. Terminal DB states — no need to poll Monime ───────────────────────
   if ((t.status as string) === 'completed') {
+    const { data: tx } = await userClient
+      .from('vault_transactions')
+      .select('reference, created_at')
+      .eq('user_id', user.id)
+      .eq('idempotency_key', t.idempotency_key as string)
+      .maybeSingle();
+
     return ok({
       topup_id:         t.id,
       db_status:        'completed',
       effective_status: 'completed',
       amount:           t.amount,
+      fee:              t.fee_amount,
+      total_amount:     t.total_amount,
       currency:         t.currency,
+      provider:         t.provider_method,
+      masked_phone:     t.provider_account_masked,
+      transaction_id:   (tx as Record<string, unknown> | null)?.reference ?? null,
+      transaction_date: (tx as Record<string, unknown> | null)?.created_at ?? t.completed_at,
       completed_at:     t.completed_at,
     });
   }
@@ -79,7 +95,12 @@ Deno.serve(async (req: Request) => {
       db_status:        t.status,
       effective_status: t.status,
       amount:           t.amount,
+      fee:              t.fee_amount,
+      total_amount:     t.total_amount,
       currency:         t.currency,
+      provider:         t.provider_method,
+      masked_phone:     t.provider_account_masked,
+      failure_reason:   t.failure_reason,
       failed_at:        t.failed_at,
     });
   }
@@ -103,22 +124,30 @@ Deno.serve(async (req: Request) => {
     monime_status:          monimeStatus,
     effective_status:       t.status,
     amount:                 t.amount,
+    fee:                    t.fee_amount,
+    total_amount:           t.total_amount,
     currency:               t.currency,
+    provider:               t.provider_method,
+    masked_phone:           t.provider_account_masked,
     ussd_code:              t.ussd_code,
     monime_payment_code_id: t.monime_payment_code_id,
+    expires_at:             t.expires_at,
     created_at:             t.created_at,
   });
 });
 
 function ok(body: unknown): Response {
-  return new Response(JSON.stringify(body), {
+  const data = body != null && typeof body === 'object' && !Array.isArray(body)
+    ? body as Record<string, unknown>
+    : { value: body };
+  return new Response(JSON.stringify({ ...data, success: true, data }), {
     status:  200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
-function err(msg: string, status = 400): Response {
-  return new Response(JSON.stringify({ error: msg }), {
+function err(msg: string, status = 400, code = 'PAYMENT_ERROR'): Response {
+  return new Response(JSON.stringify({ success: false, error: msg, code }), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });

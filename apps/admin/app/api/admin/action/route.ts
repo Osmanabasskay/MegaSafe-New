@@ -35,6 +35,7 @@ const actionSchema = z.object({
     'freeze_payout',
     'unfreeze_payout',
     'freeze_transaction',
+    'set_transaction_verification_required',
     // risk / fraud
     'mark_risk_reviewed',
     'update_risk_status',
@@ -49,6 +50,77 @@ const actionSchema = z.object({
 });
 
 type ActionPayload = z.infer<typeof actionSchema>;
+type ServiceClient = ReturnType<typeof createServiceClient>;
+
+const SUPABASE_AUTH_COOKIE = /^sb-.+-auth-token(?:\.\d+)?$/;
+const COOKIE_CHUNK_SUFFIX = /\.\d+$/;
+const BASE64_PREFIX = 'base64-';
+
+const base64UrlDecode = (value: string): string => {
+  const padded = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(
+    Math.ceil(value.length / 4) * 4,
+    '=',
+  );
+  return Buffer.from(padded, 'base64').toString('utf8');
+};
+
+const parseSessionJson = (raw: string): unknown => {
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return JSON.parse(decodeURIComponent(raw)) as unknown;
+  }
+};
+
+const accessTokenFromSessionCookie = (request: Request): string | null => {
+  const cookieHeader = request.headers.get('cookie') ?? '';
+  const cookiePairs = cookieHeader
+    .split(';')
+    .map((part) => {
+      const separator = part.indexOf('=');
+      if (separator === -1) return null;
+      return {
+        name: decodeURIComponent(part.slice(0, separator).trim()),
+        value: part.slice(separator + 1).trim(),
+      };
+    })
+    .filter((cookie): cookie is { name: string; value: string } => Boolean(cookie));
+
+  const authCookies = cookiePairs.filter((cookie) => SUPABASE_AUTH_COOKIE.test(cookie.name));
+  const baseName = authCookies[0]?.name.replace(COOKIE_CHUNK_SUFFIX, '');
+  if (!baseName) return null;
+
+  const directValue = authCookies.find((cookie) => cookie.name === baseName)?.value;
+  const chunkedValue = authCookies
+    .filter((cookie) => cookie.name.startsWith(`${baseName}.`))
+    .sort((a, b) => Number(a.name.slice(baseName.length + 1)) - Number(b.name.slice(baseName.length + 1)))
+    .map((cookie) => cookie.value)
+    .join('');
+
+  const rawCookie = directValue || chunkedValue;
+  if (!rawCookie) return null;
+
+  const decodedCookie = rawCookie.startsWith(BASE64_PREFIX)
+    ? base64UrlDecode(rawCookie.slice(BASE64_PREFIX.length))
+    : rawCookie;
+
+  let session: unknown;
+  try {
+    session = parseSessionJson(decodedCookie);
+  } catch {
+    return null;
+  }
+  if (
+    typeof session === 'object' &&
+    session !== null &&
+    'access_token' in session &&
+    typeof session.access_token === 'string'
+  ) {
+    return session.access_token;
+  }
+
+  return null;
+};
 
 const readPayload = async (request: Request): Promise<Record<string, unknown>> => {
   const ct = request.headers.get('content-type') ?? '';
@@ -157,22 +229,157 @@ export async function POST(request: Request) {
   try {
     switch (payload.action) {
       // ── KYC ──
-      case 'approve_kyc':
-        await svc.from('profiles').update({ kyc_status: 'approved', kyc_rejection_reason: null }).eq('id', payload.targetUserId);
+      case 'approve_kyc': {
+        const app = await resolveKycApplication(svc, payload);
+        if (app?.status === 'retake_required') {
+          throw new Error('Cannot approve a KYC application that requires a fresh selfie.');
+        }
+        // Set kyc_verified=true here, same as mark_kyc_verified, so isKycVerified()
+        // (which reads kyc_verified, not kyc_status) correctly allows the user through.
+        await svc.from('profiles').update({
+          kyc_status: 'approved',
+          kyc_verified: true,
+          kyc_verified_at: nowIso,
+          kyc_rejection_reason: null,
+        }).eq('id', payload.targetUserId);
+        if (app) {
+          await svc.from('kyc_applications').update({
+            status: 'approved',
+            reviewed_at: nowIso,
+            reviewed_by: user.id,
+            rejection_reason: null,
+            updated_at: nowIso,
+          }).eq('id', app.id);
+          await svc.from('kyc_reviews').insert({
+            application_id: app.id,
+            reviewer_id: user.id,
+            action: 'approved',
+            note: payload.reason?.trim() || 'Approved by manual review.',
+          } as never);
+          await writeKycAudit(svc, {
+            applicationId: app.id,
+            userId: app.user_id,
+            actorUserId: user.id,
+            eventType: 'manual_review_decision',
+            status: 'success',
+            reasonCode: 'admin_approved',
+            metadata: { action: payload.action },
+          });
+        }
         break;
-      case 'reject_kyc':
+      }
+      case 'reject_kyc': {
+        const app = await resolveKycApplication(svc, payload);
         await svc.from('profiles').update({ kyc_status: 'rejected', kyc_rejection_reason: payload.reason?.trim() || 'KYC rejected by admin.' }).eq('id', payload.targetUserId);
+        if (app) {
+          await svc.from('kyc_applications').update({
+            status: 'rejected',
+            reviewed_at: nowIso,
+            reviewed_by: user.id,
+            rejection_reason: payload.reason?.trim() || 'KYC rejected by admin.',
+            updated_at: nowIso,
+          }).eq('id', app.id);
+          await svc.from('kyc_reviews').insert({
+            application_id: app.id,
+            reviewer_id: user.id,
+            action: 'rejected',
+            note: payload.reason?.trim() || 'KYC rejected by admin.',
+          } as never);
+          await writeKycAudit(svc, {
+            applicationId: app.id,
+            userId: app.user_id,
+            actorUserId: user.id,
+            eventType: 'manual_review_decision',
+            status: 'success',
+            reasonCode: 'admin_rejected',
+            metadata: { action: payload.action },
+          });
+        }
         break;
-      case 'request_kyc_resubmission':
-        await svc.from('profiles').update({ kyc_status: 'pending', kyc_rejection_reason: payload.reason?.trim() ?? null }).eq('id', payload.targetUserId);
+      }
+      case 'request_kyc_resubmission': {
+        const app = await resolveKycApplication(svc, payload);
+        await svc.from('profiles').update({ kyc_status: 'rejected', kyc_rejection_reason: payload.reason?.trim() ?? null }).eq('id', payload.targetUserId);
+        if (app) {
+          await svc.from('kyc_applications').update({
+            status: 'retake_required',
+            reviewed_at: nowIso,
+            reviewed_by: user.id,
+            rejection_reason: payload.reason?.trim() ?? null,
+            updated_at: nowIso,
+          }).eq('id', app.id);
+          await svc.from('kyc_reviews').insert({
+            application_id: app.id,
+            reviewer_id: user.id,
+            action: 'requested_info',
+            note: payload.reason?.trim() || 'Resubmission requested.',
+          } as never);
+          await writeKycAudit(svc, {
+            applicationId: app.id,
+            userId: app.user_id,
+            actorUserId: user.id,
+            eventType: 'retake_requested',
+            status: 'warning',
+            reasonCode: 'admin_requested_resubmission',
+            metadata: { action: payload.action },
+          });
+        }
         break;
-      case 'mark_kyc_verified':
+      }
+      case 'mark_kyc_verified': {
+        const app = await resolveKycApplication(svc, payload);
+        if (app?.status === 'retake_required') {
+          throw new Error('Cannot verify a KYC application that requires a fresh selfie.');
+        }
         await svc.from('profiles').update({ kyc_status: 'approved', kyc_verified: true, kyc_verified_at: nowIso, kyc_rejection_reason: null }).eq('id', payload.targetUserId);
+        if (app) {
+          await svc.from('kyc_applications').update({
+            status: 'approved',
+            reviewed_at: nowIso,
+            reviewed_by: user.id,
+            rejection_reason: null,
+            updated_at: nowIso,
+          }).eq('id', app.id);
+          await svc.from('kyc_reviews').insert({
+            application_id: app.id,
+            reviewer_id: user.id,
+            action: 'approved',
+            note: payload.reason?.trim() || 'Marked verified by manual review.',
+          } as never);
+          await writeKycAudit(svc, {
+            applicationId: app.id,
+            userId: app.user_id,
+            actorUserId: user.id,
+            eventType: 'manual_review_decision',
+            status: 'success',
+            reasonCode: 'admin_marked_verified',
+            metadata: { action: payload.action },
+          });
+        }
         break;
-      case 'escalate_kyc':
+      }
+      case 'escalate_kyc': {
+        const app = await resolveKycApplication(svc, payload);
         // keep document for manual review; flag via risk event below
         await svc.from('profiles').update({ kyc_status: 'submitted' }).eq('id', payload.targetUserId);
+        if (app) {
+          await svc.from('kyc_applications').update({
+            status: 'manual_review',
+            manual_review_reason: payload.reason?.trim() || 'Escalated by admin.',
+            updated_at: nowIso,
+          }).eq('id', app.id);
+          await writeKycAudit(svc, {
+            applicationId: app.id,
+            userId: app.user_id,
+            actorUserId: user.id,
+            eventType: 'manual_review_queued',
+            status: 'warning',
+            reasonCode: 'admin_escalated',
+            metadata: { action: payload.action },
+          });
+        }
         break;
+      }
 
       // ── Account status ──
       case 'suspend_user':
@@ -227,9 +434,28 @@ export async function POST(request: Request) {
         break;
 
       // ── Finance ──
-      case 'approve_withdrawal':
-        await svc.from('withdrawal_requests').update({ status: 'approved', reviewed_by: user.id, reviewed_at: nowIso }).eq('id', targetRecordId);
+      case 'approve_withdrawal': {
+        // Delegate to the approve-withdrawal Edge Function which:
+        //   (1) calls the approve_withdrawal_request RPC (DB update + balance debit),
+        //   (2) initiates the Monime / Flutterwave payout disbursement,
+        //   (3) records the payout result and notifies the user.
+        // A direct DB update here would mark the withdrawal "approved" without
+        // actually sending the funds — a silent business logic gap.
+        const accessToken = accessTokenFromSessionCookie(request);
+        if (!accessToken) throw new Error('Could not retrieve admin session token for withdrawal approval.');
+
+        const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/approve-withdrawal`;
+        const fnRes = await fetch(fnUrl, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+          body:    JSON.stringify({ withdrawal_id: targetRecordId }),
+        });
+        if (!fnRes.ok) {
+          const fnBody = await fnRes.text().catch(() => fnRes.statusText);
+          throw new Error(`approve-withdrawal function returned ${fnRes.status}: ${fnBody}`);
+        }
         break;
+      }
       case 'reject_withdrawal':
         await svc.from('withdrawal_requests').update({ status: 'rejected', reviewed_by: user.id, reviewed_at: nowIso, review_note: payload.reason?.trim() || 'Rejected by admin.' }).eq('id', targetRecordId);
         break;
@@ -242,6 +468,14 @@ export async function POST(request: Request) {
       case 'freeze_transaction':
         // mobile_money_status has no 'frozen'; represent freeze as a risk flag (below)
         break;
+      case 'set_transaction_verification_required': {
+        const required = payload.newStatus === 'true' || payload.newStatus === 'on' || payload.newStatus === 'required';
+        const { error } = await svc.rpc('set_transaction_verification_required', {
+          p_required: required,
+        });
+        if (error) throw new Error(error.message);
+        break;
+      }
 
       // ── Risk / fraud ──
       case 'mark_risk_reviewed':
@@ -304,19 +538,30 @@ export async function POST(request: Request) {
     metadata: { userAgent, riskScore: riskScoreForAction(payload.action) },
   });
 
-  // Redirect back to same-origin referer only
-  const referer = request.headers.get('referer');
-  if (referer) {
+  // Redirect back to same-origin referer only.
+  // If NEXT_PUBLIC_ADMIN_URL is not configured, skip redirect entirely (fail closed —
+  // never redirect to an unknown or attacker-controlled origin).
+  const adminOrigin = (() => {
     try {
-      const refUrl = new URL(referer);
-      const adminOrigin = process.env.NEXT_PUBLIC_ADMIN_URL
+      return process.env.NEXT_PUBLIC_ADMIN_URL
         ? new URL(process.env.NEXT_PUBLIC_ADMIN_URL).origin
         : null;
-      if (adminOrigin && refUrl.origin === adminOrigin) {
-        return NextResponse.redirect(referer, { status: 303 });
-      }
     } catch {
-      // Malformed Referer — fall through
+      return null;
+    }
+  })();
+
+  if (adminOrigin) {
+    const referer = request.headers.get('referer');
+    if (referer) {
+      try {
+        const refUrl = new URL(referer);
+        if (refUrl.origin === adminOrigin) {
+          return NextResponse.redirect(referer, { status: 303 });
+        }
+      } catch {
+        // Malformed Referer — fall through to JSON response
+      }
     }
   }
   return NextResponse.json({ ok: true });
@@ -329,7 +574,62 @@ function resolveTableName(action: string): string {
   if (['resolve_dispute', 'reject_dispute'].includes(action)) return 'disputes';
   if (['approve_withdrawal', 'reject_withdrawal', 'freeze_payout', 'unfreeze_payout'].includes(action)) return 'withdrawal_requests';
   if (['freeze_transaction'].includes(action)) return 'mobile_money_transactions';
+  if (['set_transaction_verification_required'].includes(action)) return 'platform_settings';
   if (['mark_risk_reviewed', 'update_risk_status'].includes(action)) return 'risk_events';
   if (['create_fraud_case', 'update_fraud_case'].includes(action)) return 'fraud_cases';
   return 'admin_actions';
+}
+
+async function resolveKycApplication(svc: ServiceClient, payload: ActionPayload): Promise<{
+  id: string;
+  user_id: string;
+  status: string;
+} | null> {
+  if (payload.targetRecordId) {
+    const { data } = await svc
+      .from('kyc_applications')
+      .select('id,user_id,status')
+      .eq('id', payload.targetRecordId)
+      .maybeSingle();
+    return data
+      ? { id: String(data.id), user_id: String(data.user_id), status: String(data.status ?? '') }
+      : null;
+  }
+
+  if (!payload.targetUserId) return null;
+
+  const { data } = await svc
+    .from('kyc_applications')
+    .select('id,user_id,status')
+    .eq('user_id', payload.targetUserId)
+    .order('submitted_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data
+    ? { id: String(data.id), user_id: String(data.user_id), status: String(data.status ?? '') }
+    : null;
+}
+
+async function writeKycAudit(svc: ServiceClient, params: {
+  applicationId: string;
+  userId: string;
+  actorUserId: string;
+  eventType: string;
+  status: 'success' | 'failed' | 'warning' | 'info';
+  reasonCode: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const { error } = await svc.rpc('record_kyc_audit_event', {
+    p_application_id: params.applicationId,
+    p_user_id: params.userId,
+    p_event_type: params.eventType,
+    p_status: params.status,
+    p_reason_code: params.reasonCode,
+    p_metadata: params.metadata ?? {},
+    p_actor_user_id: params.actorUserId,
+  });
+  if (error) {
+    console.error('[admin/action] failed to write KYC audit event:', error.message);
+  }
 }

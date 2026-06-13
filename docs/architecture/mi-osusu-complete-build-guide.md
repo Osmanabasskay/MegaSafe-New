@@ -1857,7 +1857,7 @@ EXPO_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJxxxxx
 
 # Edge Functions (set via supabase secrets set, not .env)
-SUPABASE_SERVICE_ROLE_KEY=eyJxxxxx
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 MONEMI_API_KEY=xxxxx
 MONEMI_BASE_URL=https://api.monemi.com/v1
 FLUTTERWAVE_SECRET_KEY=FLWSECK_TEST-xxxxx

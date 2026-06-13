@@ -1,17 +1,13 @@
 /**
- * Send flow — Step 3: Summary → confirm (password / biometric) → success + Share Receipt.
+ * Send flow - Step 3: server-authoritative review and confirmation.
  *
- * Route params:
- *   type        'group' | 'savings'
- *   from        'home' | 'vault'
- *   targetId    string
- *   targetName  string
- *   amount      string  (NLe)
- *   method      SupportedPaymentMethod
- *   account     string  (account number / phone)
+ * Summary data and receipts are fetched from Supabase Edge Functions by
+ * paymentIntentId. Route params cannot set amount, account, destination, method,
+ * status, reference, or receipt content.
  */
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Easing,
@@ -19,31 +15,26 @@ import {
   Share,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  ArrowLeft,
-  CheckCircle,
-  Edit3,
-  Lock,
-  Share2,
-} from 'lucide-react-native';
+import { ArrowLeft, CheckCircle, Edit3, Lock, Share2 } from 'lucide-react-native';
 import { useAuthStore } from '../../src/store/authStore';
 import { useAppDataStore } from '../../src/store/appDataStore';
 import { darkColors, lightColors } from '../../src/theme/colors';
 import {
-  getLinkedMobileMoneyAccount,
-  PAYMENT_METHOD_LABELS,
-} from '../../src/services/paymentMethodLinks';
-import { processSavingsDeposit } from '../../src/services/savingsService';
-import type { SupportedPaymentMethod } from '../../src/services/paymentService';
+  confirmSendPayment,
+  fetchSendPaymentIntent,
+  type SendPaymentIntentPreview,
+  type SendReceipt,
+} from '../../src/services/sendPaymentService';
+import { generateIdempotencyKey } from '../../src/services/paymentService';
+import { PAYMENT_METHOD_LABELS } from '../../src/services/paymentMethodLinks';
+import { EnterTransactionPinModal } from '../../src/components/security/EnterTransactionPinModal';
 
-// ─── Summary row ────────────────────────────────────────────────
 function SRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   const { preferences } = useAppDataStore();
   const C = preferences.darkMode ? darkColors : lightColors;
@@ -56,60 +47,67 @@ function SRow({ label, value, highlight }: { label: string; value: string; highl
     </View>
   );
 }
+
 const sRowStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-  },
-  label: { fontSize: 13, fontWeight: '600' },
-  value: {
-    fontSize: 13, fontWeight: '700',
-    flexShrink: 1, textAlign: 'right', marginLeft: 16,
-  },
-  valueHighlight: { color: '#F97316', fontSize: 15 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1 },
+  label: { fontSize: 16, fontWeight: '500', color: '#6B7280' },
+  value: { fontSize: 18, fontWeight: '500', color: '#12121A', flexShrink: 1, textAlign: 'right', marginLeft: 16 },
+  valueHighlight: { color: '#F97316', fontWeight: '600', fontSize: 18 },
 });
 
-// ─── Unique reference number ────────────────────────────────────
-function makeRef(): string {
-  return `MG-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+function receiptToText(receipt: SendReceipt): string {
+  return [
+    'Mi Osusu Payment Receipt',
+    `Receipt: ${receipt.receiptNumber}`,
+    `Intent: ${receipt.paymentIntentId}`,
+    receipt.transactionId ? `Transaction: ${receipt.transactionId}` : null,
+    `Status: ${receipt.status}`,
+    `Time: ${receipt.timestamp}`,
+    `Amount: ${receipt.currency} ${receipt.amount.toFixed(2)}`,
+    `Account: ${receipt.maskedAccount}`,
+    receipt.providerReference ? `Provider ref: ${receipt.providerReference}` : null,
+  ].filter(Boolean).join('\n');
 }
 
-// ─── Screen ─────────────────────────────────────────────────────
 export default function SendSummaryScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const {
-    linkedMobileMoneyAccounts,
-    linkedBankAccounts,
-    preferences,
-  } = useAppDataStore();
+  const { preferences } = useAppDataStore();
   const isDark = preferences.darkMode;
   const C = isDark ? darkColors : lightColors;
+  const { from, paymentIntentId } = useLocalSearchParams<{ from?: string; paymentIntentId?: string }>();
 
-  const {
-    type, from, targetId, targetName, amount, method, account,
-  } = useLocalSearchParams<{
-    type?: string; from?: string; targetId?: string;
-    targetName?: string; amount?: string; method?: string; account?: string;
-  }>();
-
-  const isGroup  = type !== 'savings';
-  const amtNum   = Number(amount ?? '0');
-  const pmMethod = (method ?? 'orange_money') as SupportedPaymentMethod;
-  const today    = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  const refNum   = useRef(makeRef()).current;
-
-  const [password,   setPassword]   = useState('');
+  const [intent, setIntent] = useState<SendPaymentIntentPreview | null>(null);
+  const [receipt, setReceipt] = useState<SendReceipt | null>(null);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [confirmed,  setConfirmed]  = useState(false);
-  const [receipt,    setReceipt]    = useState('');
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const idempotencyKeyRef = useRef(generateIdempotencyKey());
 
-  // Success animation
   const successScale = useRef(new Animated.Value(0)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      if (!user?.id || !paymentIntentId) {
+        setLoading(false);
+        return;
+      }
+      const { intent: row, error } = await fetchSendPaymentIntent(paymentIntentId);
+      if (!mounted) return;
+      if (error || !row) {
+        Alert.alert('Payment unavailable', error?.message ?? 'Please recreate the payment.');
+      } else {
+        setIntent(row);
+      }
+      setLoading(false);
+    };
+    void load();
+    return () => { mounted = false; };
+  }, [paymentIntentId, user?.id]);
 
   const playSuccess = () => {
     Animated.parallel([
@@ -118,135 +116,141 @@ export default function SendSummaryScreen() {
     ]).start();
   };
 
-  // ── Biometric helper ─────────────────────────────────────────
-  const tryBiometric = async (): Promise<boolean> => {
+  const requireBiometric = async (): Promise<boolean> => {
     const hasHW = await LocalAuthentication.hasHardwareAsync();
     const enrolled = await LocalAuthentication.isEnrolledAsync();
-    if (!hasHW || !enrolled) return false;
+    if (!hasHW || !enrolled) {
+      Alert.alert('Secure confirmation required', 'Set up biometric authentication before confirming payments.');
+      return false;
+    }
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: 'Confirm payment',
-      cancelLabel: 'Use password instead',
+      cancelLabel: 'Cancel payment',
+      disableDeviceFallback: true,
     });
-    return result.success;
+    if (!result.success) {
+      Alert.alert('Confirmation failed', 'Payment was not submitted.');
+      return false;
+    }
+    return true;
   };
 
-  // ── Confirm payment ──────────────────────────────────────────
   const handleConfirm = async () => {
-    if (!password.trim()) {
-      Alert.alert('Password required', 'Enter your password to authorise this payment.');
-      return;
-    }
+    if (!intent || !paymentIntentId || submitting) return;
     if (!user?.id) {
       Alert.alert('Not signed in', 'Please sign in and try again.');
       return;
     }
+
     setSubmitting(true);
+    const biometricOk = await requireBiometric();
+    setSubmitting(false);
+    if (!biometricOk) return;
+    setPinError(null);
+    setPinModalVisible(true);
+  };
 
-    // Try biometric — fall back to password (already validated above)
-    await tryBiometric();
+  const handleConfirmWithPin = async (transactionPin: string) => {
+    if (!intent || !paymentIntentId || submitting) return;
+    setSubmitting(true);
+    const { receipt: serverReceipt, status, paymentCode, error } = await confirmSendPayment({
+      paymentIntentId,
+      idempotencyKey: idempotencyKeyRef.current,
+      localAuthMethod: 'biometric',
+      transactionPin,
+    });
+    setSubmitting(false);
 
-    // NOTE: Real financial processing must go through a Supabase Edge Function
-    //       with an idempotency key. Never trust amounts from the client.
-    if (!isGroup && targetId) {
-      const { error } = await processSavingsDeposit({
-        goalId: targetId,
-        amount: amtNum,
-        paymentMethod: pmMethod,
-      });
-      if (error) {
-        setSubmitting(false);
-        Alert.alert('Payment failed', error.message);
-        return;
-      }
+    if (error) {
+      setPinError(error.message);
+      return;
     }
 
-    // Receipt is generated server-side; display-only reference shown below.
+    setPinModalVisible(false);
+    if (!serverReceipt) {
+      if (paymentCode?.ussdCode || paymentCode?.monimePaymentCodeId) {
+        router.replace({
+          pathname: '/(groups)/monime-payment',
+          params: {
+            monimePaymentCodeId: paymentCode.monimePaymentCodeId ?? paymentCode.providerReference ?? undefined,
+            ussdCode: paymentCode.ussdCode ?? undefined,
+            expiresAt: paymentCode.expiresAt ?? undefined,
+            paymentIntentId,
+            reference: paymentCode.providerReference ?? paymentCode.monimePaymentCodeId ?? paymentIntentId,
+            paymentType: intent.targetType === 'savings' ? 'savings_deposit' : 'osusu_contribution',
+            groupId: intent.targetType === 'group' ? intent.targetId : undefined,
+          },
+        });
+        return;
+      }
+      Alert.alert('Payment pending', `Current status: ${status ?? 'pending'}. We will update it after provider confirmation.`);
+      return;
+    }
 
-    const receiptLines = [
-      '━━━━━━━━━━━━━━━━━━━━━━━━━━',
-      '    Mi Osusu Payment Receipt',
-      '━━━━━━━━━━━━━━━━━━━━━━━━━━',
-      `Ref:     ${refNum}`,
-      `Date:    ${today}`,
-      `To:      ${targetName ?? '—'}`,
-      `Amount:  NLe ${amtNum.toFixed(2)}`,
-      `Method:  ${PAYMENT_METHOD_LABELS[pmMethod]}`,
-      `Account: ${account ?? '—'}`,
-      `Type:    ${isGroup ? 'Osusu contribution' : 'Savings deposit'}`,
-      `Status:  ${isGroup ? 'Processing' : 'Confirmed'}`,
-      '━━━━━━━━━━━━━━━━━━━━━━━━━━',
-      '   Thank you for using Mi Osusu',
-      '   Sierra Leone · miosusu.app',
-    ].join('\n');
-
-    setReceipt(receiptLines);
-    setSubmitting(false);
+    setReceipt(serverReceipt);
     setConfirmed(true);
     playSuccess();
   };
 
-  // ── Share receipt ────────────────────────────────────────────
   const handleShare = async () => {
+    if (!receipt) return;
     try {
-      await Share.share({ message: receipt, title: `Mi Osusu Receipt ${refNum}` });
+      await Share.share({ message: receiptToText(receipt), title: `Mi Osusu Receipt ${receipt.receiptNumber}` });
     } catch {
       Alert.alert('Share failed', 'Could not open the share sheet.');
     }
   };
 
-  // ── Done navigation ──────────────────────────────────────────
   const handleDone = () => {
-    if (from === 'vault') {
-      router.replace('/(main)/vault');
-    } else {
-      router.replace('/(main)/home');
-    }
+    router.replace(from === 'vault' ? '/(main)/vault' : '/(main)/home');
   };
 
-  // ═══════════════════════════════════════════════════════════════
-  // SUCCESS VIEW
-  // ═══════════════════════════════════════════════════════════════
-  if (confirmed) {
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.center, { backgroundColor: C.bgSoft }]} edges={['top', 'bottom']}>
+        <ActivityIndicator color="#F97316" size="large" />
+        <Text style={[styles.loadingText, { color: C.textSub }]}>Loading secure payment preview...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!intent) {
+    return (
+      <SafeAreaView style={[styles.container, styles.center, { backgroundColor: C.bgSoft }]} edges={['top', 'bottom']}>
+        <Text style={[styles.emptyTitle, { color: C.text }]}>Payment unavailable</Text>
+        <TouchableOpacity style={styles.doneBtn} onPress={() => router.replace('/(send)/select')}>
+          <Text style={styles.doneBtnText}>Choose destination again</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  if (confirmed && receipt) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: C.bg }]} edges={['top', 'bottom']}>
-        <Animated.View
-          style={[
-            styles.successContainer,
-            { opacity: successOpacity, transform: [{ scale: successScale }] },
-          ]}
-        >
-          {/* Icon */}
+        <Animated.View style={[styles.successContainer, { opacity: successOpacity, transform: [{ scale: successScale }] }]}>
           <View style={styles.successIconRing}>
-            <CheckCircle size={60} color="#10B981" strokeWidth={1.5} />
+            <CheckCircle size={48} color="#10B981" strokeWidth={1.5} />
           </View>
-
-          <Text style={[styles.successTitle, { color: C.text }]}>Payment Confirmed!</Text>
+          <Text style={[styles.successTitle, { color: C.text }]}>Payment Submitted</Text>
           <Text style={[styles.successSub, { color: C.textSub }]}>
-            NLe {amtNum.toFixed(2)} {isGroup ? 'sent to' : 'saved to'}{'\n'}
-            <Text style={{ fontWeight: '800', color: C.text }}>{targetName}</Text>
+            {receipt.currency} {receipt.amount.toFixed(2)} for{'\n'}
+            <Text style={{ fontWeight: '800', color: C.text }}>{intent.targetName}</Text>
           </Text>
-
           <View style={styles.successMeta}>
-            <Text style={styles.successMetaLabel}>Reference</Text>
-            <Text style={styles.successMetaValue}>{refNum}</Text>
-          </View>
-          <View style={styles.successMeta}>
-            <Text style={styles.successMetaLabel}>Date</Text>
-            <Text style={styles.successMetaValue}>{today}</Text>
+            <Text style={styles.successMetaLabel}>Receipt</Text>
+            <Text style={styles.successMetaValue}>{receipt.receiptNumber}</Text>
           </View>
           <View style={styles.successMeta}>
             <Text style={styles.successMetaLabel}>Status</Text>
-            <Text style={[styles.successMetaValue, { color: isGroup ? '#F59E0B' : '#10B981' }]}>
-              {isGroup ? '⏳ Processing' : '✓ Confirmed'}
+            <Text style={[styles.successMetaValue, { color: receipt.status === 'completed' ? '#10B981' : '#F59E0B' }]}>
+              {receipt.status}
             </Text>
           </View>
-
-          {/* Share receipt */}
           <TouchableOpacity style={styles.shareBtn} onPress={() => void handleShare()}>
             <Share2 size={18} color="#FFFFFF" />
             <Text style={styles.shareBtnText}>Share Receipt</Text>
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.doneBtn} onPress={handleDone}>
             <Text style={styles.doneBtnText}>Done</Text>
           </TouchableOpacity>
@@ -255,183 +259,150 @@ export default function SendSummaryScreen() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // SUMMARY + CONFIRM VIEW
-  // ═══════════════════════════════════════════════════════════════
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: C.bgSoft }]} edges={['top', 'bottom']}>
-      {/* ── Header ────────────────────────────────────────── */}
       <View style={[styles.header, { backgroundColor: C.bg, borderBottomColor: C.border }]}>
         <TouchableOpacity style={[styles.backBtn, { backgroundColor: isDark ? '#431407' : '#FFF7ED' }]} onPress={() => router.back()}>
-          <ArrowLeft size={22} color="#F97316" />
+          <ArrowLeft size={28} color="#F97316" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: C.text }]}>Review & Confirm</Text>
-          <Text style={[styles.headerSub, { color: C.textMuted }]}>Check details before paying</Text>
+          <Text style={[styles.headerSub, { color: C.textMuted }]}>Server-verified payment details</Text>
         </View>
         <View style={{ width: 38 }} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* ── Summary card ───────────────────────────────── */}
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={[styles.sectionLabel, { color: C.textMuted }]}>Transaction Summary</Text>
         <View style={[styles.summaryCard, { backgroundColor: C.card }]}>
-          <SRow label="Sending to"  value={targetName ?? '—'} />
-          <SRow label="Amount"      value={`NLe ${amtNum.toFixed(2)}`} highlight />
-          <SRow label="Method"      value={PAYMENT_METHOD_LABELS[pmMethod]} />
-          <SRow label="Account"     value={account || '—'} />
-          <SRow label="Date"        value={today} />
-          <SRow label="Type"        value={isGroup ? 'Osusu contribution' : 'Savings deposit'} />
-          <SRow label="Reference"   value={refNum} />
+          <SRow label="Sending to" value={intent.targetName} />
+          <SRow label="Amount" value={`${intent.currency} ${intent.amount.toFixed(2)}`} highlight />
+          <SRow label="Method" value={PAYMENT_METHOD_LABELS[intent.method]} />
+          <SRow label="Account" value={intent.maskedAccount} />
+          <SRow label="Type" value={intent.targetType === 'group' ? 'Osusu contribution' : 'Savings deposit'} />
+          <SRow label="Status" value={intent.status} />
         </View>
 
-        {/* Edit link */}
         <TouchableOpacity style={styles.editRow} onPress={() => router.back()}>
           <Edit3 size={14} color={C.textSub} />
           <Text style={[styles.editRowText, { color: C.textSub }]}>Edit payment details</Text>
         </TouchableOpacity>
 
-        {/* ── Confirm section ────────────────────────────── */}
         <View style={[styles.confirmCard, { backgroundColor: C.card }]}>
           <View style={styles.lockRow}>
             <Lock size={16} color="#F97316" />
             <Text style={[styles.confirmTitle, { color: C.text }]}>Authorise Payment</Text>
           </View>
           <Text style={[styles.confirmSub, { color: C.textSub }]}>
-            Enter your password below — or tap Confirm to use biometric authentication.
+            Confirm with biometrics. Backend authorization still verifies your session, ownership, intent status, amount, and payment method.
           </Text>
-          <TextInput
-            style={[styles.passwordInput, { backgroundColor: C.inputBg, borderColor: C.borderStrong, color: C.text }]}
-            placeholder="Enter password"
-            placeholderTextColor={C.textMuted}
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            returnKeyType="done"
-            onSubmitEditing={() => void handleConfirm()}
-          />
         </View>
 
-        {/* ── Confirm button ─────────────────────────────── */}
         <TouchableOpacity
-          style={[
-            styles.confirmBtn,
-            (!password.trim() || submitting) && styles.confirmBtnDisabled,
-          ]}
-          disabled={!password.trim() || submitting}
+          style={[styles.confirmBtn, submitting && styles.confirmBtnDisabled]}
+          disabled={submitting}
           onPress={() => void handleConfirm()}
         >
           <CheckCircle size={18} color="#FFFFFF" />
-          <Text style={styles.confirmBtnText}>
-            {submitting ? 'Processing…' : 'Confirm Payment'}
-          </Text>
+          <Text style={styles.confirmBtnText}>{submitting ? 'Submitting...' : 'Confirm Payment'}</Text>
         </TouchableOpacity>
 
         <Text style={[styles.secureNote, { color: C.textMuted }]}>
-          🔒 End-to-end encrypted · Mi Osusu Sierra Leone
+          Secured by encrypted connection and server verification.
         </Text>
       </ScrollView>
+      <EnterTransactionPinModal
+        visible={pinModalVisible}
+        subtitle={`Enter your Transaction PIN to authorise NLe ${intent?.amount.toFixed(2) ?? '0.00'} for ${intent?.targetName ?? 'this payment'}.`}
+        loading={submitting}
+        error={pinError}
+        onCancel={() => {
+          setPinModalVisible(false);
+          setPinError(null);
+        }}
+        onConfirm={handleConfirmWithPin}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  center: { alignItems: 'center', justifyContent: 'center', padding: 24 },
+  loadingText: { marginTop: 14, fontSize: 16, fontWeight: '500', color: '#9CA3AF' },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#12121A', marginBottom: 20 },
 
-  /* Header */
+  /* Header — 20dp title, 28dp back arrow, 24dp H padding */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     paddingVertical: 14,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    gap: 10,
+    borderBottomColor: '#F0F2F5',
+    gap: 12,
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: '#FFF7ED',
     alignItems: 'center', justifyContent: 'center',
   },
   headerCenter: { flex: 1 },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: '#1E2B5A' },
-  headerSub:   { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#12121A' },
+  headerSub: { fontSize: 14, fontWeight: '500', color: '#9CA3AF', marginTop: 2 },
 
-  /* Content */
-  content: { padding: 20, paddingBottom: 40 },
-
-  /* Section label */
+  /* Content — 24dp H padding, 32dp between sections */
+  content: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 },
   sectionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '500',
     color: '#9CA3AF',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
-    marginBottom: 12,
+    marginBottom: 14,
   },
-
-  /* Summary card */
   summaryCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingHorizontal: 18,
+    borderRadius: 16,
+    paddingHorizontal: 20,
     paddingTop: 4,
     paddingBottom: 4,
-    marginBottom: 8,
-    shadowColor: '#1E2B5A',
+    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: '#F0F2F5',
+    shadowColor: '#12121A',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 2,
   },
-
-  /* Edit row */
   editRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     justifyContent: 'center',
-    marginBottom: 20,
-    paddingVertical: 8,
+    marginBottom: 32,
+    paddingVertical: 10,
   },
-  editRowText: { fontSize: 13, color: '#6B7280', fontWeight: '600' },
-
-  /* Confirm card */
+  editRowText: { fontSize: 16, fontWeight: '500', color: '#6B7280' },
   confirmCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 16,
-    shadowColor: '#1E2B5A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  lockRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  confirmTitle: { fontSize: 16, fontWeight: '800', color: '#1E2B5A' },
-  confirmSub: { fontSize: 13, color: '#6B7280', lineHeight: 19, marginBottom: 14 },
-  passwordInput: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
+    backgroundColor: '#FFF7ED',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: '#1E2B5A',
+    borderColor: '#FED7AA',
   },
+  lockRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  confirmTitle: { fontSize: 18, fontWeight: '600', color: '#12121A' },
+  confirmSub: { fontSize: 14, fontWeight: '500', color: '#6B7280', lineHeight: 21 },
 
-  /* Confirm button */
+  /* Primary confirm button — 52dp, 14dp radius, 17dp semi-bold */
   confirmBtn: {
     backgroundColor: '#F97316',
-    borderRadius: 16,
-    paddingVertical: 16,
+    borderRadius: 14,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -444,73 +415,57 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   confirmBtnDisabled: { opacity: 0.5, shadowOpacity: 0 },
-  confirmBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+  confirmBtnText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+  secureNote: { fontSize: 13, fontWeight: '500', color: '#9CA3AF', textAlign: 'center' },
 
-  /* Secure note */
-  secureNote: { fontSize: 11, color: '#9CA3AF', textAlign: 'center' },
-
-  /* ── Success view ─────────────────────────────────────── */
-  successContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 28,
-  },
+  /* Success state */
+  successContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   successIconRing: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: '#ECFDF5',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
   },
-  successTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#1E2B5A',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  successSub: {
-    fontSize: 15,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 28,
-  },
+  successTitle: { fontSize: 20, fontWeight: '700', color: '#12121A', marginBottom: 10, textAlign: 'center' },
+  successSub: { fontSize: 16, fontWeight: '500', color: '#6B7280', textAlign: 'center', lineHeight: 24, marginBottom: 32 },
   successMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    paddingVertical: 10,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#F0F2F5',
   },
-  successMetaLabel: { fontSize: 13, color: '#9CA3AF', fontWeight: '600' },
-  successMetaValue: { fontSize: 13, color: '#1E2B5A', fontWeight: '700' },
+  successMetaLabel: { fontSize: 16, fontWeight: '500', color: '#9CA3AF' },
+  successMetaValue: { fontSize: 16, fontWeight: '600', color: '#12121A' },
 
+  /* Share button — 52dp, 14dp radius, 17dp semi-bold */
   shareBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: '#1E2B5A',
-    borderRadius: 16,
-    paddingVertical: 15,
+    backgroundColor: '#12121A',
+    borderRadius: 14,
+    height: 52,
     width: '100%',
-    marginTop: 28,
+    marginTop: 32,
   },
-  shareBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
+  shareBtnText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
 
+  /* Done button — 52dp, 14dp radius, outline style */
   doneBtn: {
     width: '100%',
-    borderRadius: 16,
-    paddingVertical: 15,
+    height: 52,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    borderColor: '#F0F2F5',
     marginTop: 12,
   },
-  doneBtnText: { color: '#6B7280', fontSize: 15, fontWeight: '700' },
+  doneBtnText: { color: '#6B7280', fontSize: 17, fontWeight: '600' },
 });

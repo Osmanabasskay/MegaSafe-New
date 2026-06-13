@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 -p 3001",
-    "build": "next build",
-    "start": "next start -p 3001",
+    "dev": "node scripts/next-canonical-cwd.mjs dev -H 0.0.0.0 -p 3001",
+    "build": "node scripts/next-canonical-cwd.mjs build",
+    "start": "node scripts/next-canonical-cwd.mjs start -p 3001",
     "lint": "next lint",
     "verify:auth": "node scripts/verify-auth.mjs"
   },

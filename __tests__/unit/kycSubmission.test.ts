@@ -73,6 +73,10 @@ function makeGuarantor(overrides: Partial<GuarantorForm> = {}): GuarantorForm {
 
 const GUARANTOR_BASE64 = 'Z3VhcmFudG9y'; // base64 for "guarantor"
 const GUARANTOR_MIME   = 'image/jpeg';
+const SUBMIT_KYC_SUCCESS = {
+  data: { success: true, application_id: 'app-1' },
+  error: null,
+};
 
 // ── Helper to get mock handles ────────────────────────────────────────────────
 
@@ -195,7 +199,7 @@ describe('submitKycPackage — upload flow', () => {
     const { mockUpload, mockRpc } = await getMocks();
 
     mockUpload.mockResolvedValue({ storagePath: 'kyc/user-1/sub-1/file.jpg', error: null });
-    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+    mockRpc.mockResolvedValue(SUBMIT_KYC_SUCCESS);
 
     await submitKycPackage({
       userId:          'user-1',
@@ -214,7 +218,7 @@ describe('submitKycPackage — upload flow', () => {
     const { mockUpload, mockRpc } = await getMocks();
 
     mockUpload.mockResolvedValue({ storagePath: 'kyc/user-1/sub-1/file.jpg', error: null });
-    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+    mockRpc.mockResolvedValue(SUBMIT_KYC_SUCCESS);
 
     await submitKycPackage({
       userId:          'user-1',
@@ -236,7 +240,7 @@ describe('submitKycPackage — upload flow', () => {
     const { mockUpload, mockRpc } = await getMocks();
 
     mockUpload.mockResolvedValue({ storagePath: 'kyc/user-1/sub-1/file.jpg', error: null });
-    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+    mockRpc.mockResolvedValue(SUBMIT_KYC_SUCCESS);
 
     const draft = makeDraft({
       idFrontBase64: 'frontB64',
@@ -284,13 +288,16 @@ describe('submitKycPackage — upload flow', () => {
     });
 
     expect(error).toBeInstanceOf(Error);
-    // Should mention the file label, not expose the raw DB error
+    // Service returns a user-friendly message that mentions the file label.
+    // The raw upload error (e.g. 'Network timeout') is intentionally NOT exposed
+    // to the user — it is logged internally only.
     expect(error!.message).toMatch(/ID front/i);
-    expect(error!.message).toMatch(/Network timeout/i);
+    expect(error!.message).toMatch(/check your connection/i);
     // Only 1 upload should have been attempted
     expect(mockUpload).toHaveBeenCalledTimes(1);
-    // RPC must NOT be called
-    expect(mockRpc).not.toHaveBeenCalled();
+    // submit_kyc_package RPC must NOT be called (audit fire-and-forget calls are OK)
+    const submitCalls = mockRpc.mock.calls.filter((c: unknown[]) => c[0] === 'submit_kyc_package');
+    expect(submitCalls).toHaveLength(0);
   });
 
   it('does NOT call submit_kyc_package RPC with kyc_status=approved', async () => {
@@ -299,7 +306,7 @@ describe('submitKycPackage — upload flow', () => {
     const { mockUpload, mockRpc } = await getMocks();
 
     mockUpload.mockResolvedValue({ storagePath: 'kyc/user-1/sub-1/file.jpg', error: null });
-    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+    mockRpc.mockResolvedValue(SUBMIT_KYC_SUCCESS);
 
     await submitKycPackage({
       userId:          'user-1',
@@ -310,9 +317,10 @@ describe('submitKycPackage — upload flow', () => {
       guarantorMime:   GUARANTOR_MIME,
     });
 
-    // The RPC call args must not contain any 'approved' value
-    const rpcArgs = mockRpc.mock.calls[0];
-    const paramsJson = JSON.stringify(rpcArgs);
+    // The submit_kyc_package RPC args must not contain any 'approved' value
+    const submitCall = mockRpc.mock.calls.find((c: unknown[]) => c[0] === 'submit_kyc_package');
+    expect(submitCall).toBeDefined();
+    const paramsJson = JSON.stringify(submitCall);
     expect(paramsJson).not.toContain('approved');
   });
 });
@@ -327,7 +335,7 @@ describe('submitKycPackage — RPC call', () => {
     const { mockUpload, mockRpc } = await getMocks();
 
     mockUpload.mockResolvedValue({ storagePath: 'kyc/user-1/sub-1/file.jpg', error: null });
-    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+    mockRpc.mockResolvedValue(SUBMIT_KYC_SUCCESS);
 
     await submitKycPackage({
       userId:          'user-1',
@@ -338,8 +346,10 @@ describe('submitKycPackage — RPC call', () => {
       guarantorMime:   GUARANTOR_MIME,
     });
 
-    expect(mockRpc).toHaveBeenCalledTimes(1);
-    expect(mockRpc.mock.calls[0][0]).toBe('submit_kyc_package');
+    // logKycAudit fires create_audit_log (fire-and-forget) before and after the RPC,
+    // so total RPC calls > 1. Filter for the specific submit call.
+    const submitCalls = mockRpc.mock.calls.filter((c: unknown[]) => c[0] === 'submit_kyc_package');
+    expect(submitCalls).toHaveLength(1);
   });
 
   it('passes personal details to RPC as named params', async () => {
@@ -347,7 +357,7 @@ describe('submitKycPackage — RPC call', () => {
     const { mockUpload, mockRpc } = await getMocks();
 
     mockUpload.mockResolvedValue({ storagePath: 'kyc/user-1/sub-1/file.jpg', error: null });
-    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+    mockRpc.mockResolvedValue(SUBMIT_KYC_SUCCESS);
 
     await submitKycPackage({
       userId:          'user-1',
@@ -358,7 +368,11 @@ describe('submitKycPackage — RPC call', () => {
       guarantorMime:   GUARANTOR_MIME,
     });
 
-    const params = mockRpc.mock.calls[0][1] as Record<string, unknown>;
+    // logKycAudit fires create_audit_log (fire-and-forget) before the RPC call;
+    // find the submit_kyc_package call specifically.
+    const submitCall = mockRpc.mock.calls.find((c: unknown[]) => c[0] === 'submit_kyc_package');
+    expect(submitCall).toBeDefined();
+    const params = submitCall![1] as Record<string, unknown>;
     expect(params.p_first_name).toBe('Aminata');
     expect(params.p_last_name).toBe('Koroma');
     expect(params.p_phone).toBe('+23276000001');
@@ -371,7 +385,7 @@ describe('submitKycPackage — RPC call', () => {
     const { mockUpload, mockRpc } = await getMocks();
 
     mockUpload.mockResolvedValue({ storagePath: 'kyc/user-1/sub-1/file.jpg', error: null });
-    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+    mockRpc.mockResolvedValue(SUBMIT_KYC_SUCCESS);
 
     await submitKycPackage({
       userId:          'user-1',
@@ -382,7 +396,9 @@ describe('submitKycPackage — RPC call', () => {
       guarantorMime:   GUARANTOR_MIME,
     });
 
-    const params = mockRpc.mock.calls[0][1] as Record<string, unknown>;
+    const submitCall = mockRpc.mock.calls.find((c: unknown[]) => c[0] === 'submit_kyc_package');
+    expect(submitCall).toBeDefined();
+    const params = submitCall![1] as Record<string, unknown>;
     expect(typeof params.p_submission_id).toBe('string');
     // Should be a UUID v4 pattern
     expect(params.p_submission_id as string).toMatch(
@@ -395,7 +411,7 @@ describe('submitKycPackage — RPC call', () => {
     const { mockUpload, mockRpc } = await getMocks();
 
     mockUpload.mockResolvedValue({ storagePath: 'kyc/user-1/sub-1/file.jpg', error: null });
-    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+    mockRpc.mockResolvedValue(SUBMIT_KYC_SUCCESS);
 
     await submitKycPackage({
       userId:          'user-1',
@@ -406,7 +422,9 @@ describe('submitKycPackage — RPC call', () => {
       guarantorMime:   GUARANTOR_MIME,
     });
 
-    const params = mockRpc.mock.calls[0][1] as Record<string, unknown>;
+    const submitCall = mockRpc.mock.calls.find((c: unknown[]) => c[0] === 'submit_kyc_package');
+    expect(submitCall).toBeDefined();
+    const params = submitCall![1] as Record<string, unknown>;
     const subId  = params.p_submission_id as string;
 
     expect((params.p_national_id_front_url as string)).toContain(`kyc/user-1/${subId}/`);
@@ -432,7 +450,9 @@ describe('submitKycPackage — RPC call', () => {
     });
 
     expect(error).toBeInstanceOf(Error);
-    expect(error!.message).toBe('Connection refused');
+    // Service returns a safe user-facing message; the raw server error is logged
+    // internally (not exposed) to prevent information leakage to the client.
+    expect(error!.message).toMatch(/Could not submit your KYC application/i);
   });
 
   it('returns error when RPC returns { error: "..." } in payload', async () => {
@@ -455,7 +475,9 @@ describe('submitKycPackage — RPC call', () => {
     });
 
     expect(error).toBeInstanceOf(Error);
-    expect(error!.message).toBe('You must be at least 18 years old to complete KYC.');
+    // Service wraps all RPC-level errors in a user-facing message to avoid
+    // leaking internal server error strings (security hardening).
+    expect(error!.message).toMatch(/Could not submit your KYC application/i);
   });
 
   it('returns { error: null } on full success', async () => {
@@ -463,7 +485,7 @@ describe('submitKycPackage — RPC call', () => {
     const { mockUpload, mockRpc } = await getMocks();
 
     mockUpload.mockResolvedValue({ storagePath: 'ok', error: null });
-    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+    mockRpc.mockResolvedValue(SUBMIT_KYC_SUCCESS);
 
     const { error } = await submitKycPackage({
       userId:          'user-1',
@@ -488,7 +510,7 @@ describe('submitKycPackage — progress callback', () => {
     const { mockUpload, mockRpc } = await getMocks();
 
     mockUpload.mockResolvedValue({ storagePath: 'ok', error: null });
-    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+    mockRpc.mockResolvedValue(SUBMIT_KYC_SUCCESS);
 
     const progress: number[] = [];
     await submitKycPackage({
@@ -511,7 +533,7 @@ describe('submitKycPackage — progress callback', () => {
     const { mockUpload, mockRpc } = await getMocks();
 
     mockUpload.mockResolvedValue({ storagePath: 'ok', error: null });
-    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+    mockRpc.mockResolvedValue(SUBMIT_KYC_SUCCESS);
 
     const progress: number[] = [];
     await submitKycPackage({
@@ -535,7 +557,7 @@ describe('submitKycPackage — progress callback', () => {
     const { mockUpload, mockRpc } = await getMocks();
 
     mockUpload.mockResolvedValue({ storagePath: 'ok', error: null });
-    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+    mockRpc.mockResolvedValue(SUBMIT_KYC_SUCCESS);
 
     await expect(
       submitKycPackage({
@@ -563,7 +585,7 @@ describe('submitKycPackage — security rules', () => {
     const { mockUpload, mockRpc, mockFrom } = await getMocks();
 
     mockUpload.mockResolvedValue({ storagePath: 'ok', error: null });
-    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+    mockRpc.mockResolvedValue(SUBMIT_KYC_SUCCESS);
 
     await submitKycPackage({
       userId:          'user-1',
@@ -584,7 +606,7 @@ describe('submitKycPackage — security rules', () => {
     const { mockUpload, mockRpc } = await getMocks();
 
     mockUpload.mockResolvedValue({ storagePath: 'ok', error: null });
-    mockRpc.mockResolvedValue({ data: { success: true }, error: null });
+    mockRpc.mockResolvedValue(SUBMIT_KYC_SUCCESS);
 
     // Call twice
     await submitKycPackage({
@@ -601,4 +623,3 @@ describe('submitKycPackage — security rules', () => {
     expect(subId1).not.toBe(subId2);
   });
 });
-

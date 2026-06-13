@@ -28,6 +28,7 @@ import { useKycGuard }           from '../../src/hooks/useKycGuard';
 import { getVaultSummary, payOsusuFromVault } from '../../src/services/vaultService';
 import type { VaultSummary }     from '../../src/services/vaultService';
 import { initiateGroupPayment }  from '../../src/services/paymentService';
+import { EnterTransactionPinModal } from '../../src/components/security/EnterTransactionPinModal';
 
 // Mobile money providers supported by Monime (QMoney intentionally excluded).
 type MobileMoneyMethod = 'orange_money' | 'afrimoney';
@@ -54,6 +55,9 @@ export default function ContributeScreen() {
   const [paidAmount, setPaidAmount]     = useState(0);
   // Tracks which mobile money provider button is mid-initiation (null = none).
   const [mmProcessing, setMmProcessing] = useState<MobileMoneyMethod | null>(null);
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pinPurpose, setPinPurpose] = useState<'vault' | MobileMoneyMethod | null>(null);
+  const [pinError, setPinError] = useState<string | null>(null);
 
   const [groupData, setGroupData] = useState({
     name:               'Savings Group',
@@ -106,7 +110,7 @@ export default function ContributeScreen() {
     if (!hasEnoughBalance) {
       Alert.alert(
         'Insufficient Vault Balance',
-        `You need NLe ${shortfall.toFixed(2)} more in your vault. Add funds first.`,
+        'Insufficient vault balance. Add money to your vault or pay with mobile money.',
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Add Money to Vault', onPress: () => router.push('/(main)/vault') },
@@ -115,20 +119,24 @@ export default function ContributeScreen() {
       return;
     }
 
+    setPinPurpose('vault');
+    setPinError(null);
+    setPinModalVisible(true);
+  };
+
+  const submitPayFromVault = async (transactionPin: string) => {
     setIsProcessing(true);
     try {
-      const { success, amount, error } = await payOsusuFromVault({ groupId });
+      const { success, amount, error } = await payOsusuFromVault({ groupId, transactionPin });
 
       if (error) throw error;
       if (!success) throw new Error('Payment could not be processed. Please try again.');
 
+      setPinModalVisible(false);
       setPaidAmount(amount ?? groupData.contributionAmount);
       setShowSuccess(true);
     } catch (err) {
-      Alert.alert(
-        'Contribution failed',
-        err instanceof Error ? err.message : 'Unable to process your contribution right now.'
-      );
+      setPinError(err instanceof Error ? err.message : 'Unable to process your contribution right now.');
     } finally {
       setIsProcessing(false);
     }
@@ -155,6 +163,12 @@ export default function ContributeScreen() {
       return;
     }
 
+    setPinPurpose(method);
+    setPinError(null);
+    setPinModalVisible(true);
+  };
+
+  const submitPayWithMobileMoney = async (method: MobileMoneyMethod, transactionPin: string) => {
     setMmProcessing(method);
     try {
       // periodId is omitted on purpose — the Edge Function resolves the group's
@@ -163,6 +177,7 @@ export default function ContributeScreen() {
         groupId,
         amount: groupData.contributionAmount,
         method,
+        transactionPin,
       });
 
       if (result.error) throw result.error;
@@ -171,6 +186,7 @@ export default function ContributeScreen() {
       }
 
       const providerLabel = method === 'orange_money' ? 'Orange Money' : 'AfriMoney';
+      setPinModalVisible(false);
       router.push({
         pathname: '/(groups)/monime-payment',
         params: {
@@ -188,12 +204,19 @@ export default function ContributeScreen() {
         },
       });
     } catch (err) {
-      Alert.alert(
-        'Mobile money payment failed',
-        err instanceof Error ? err.message : 'Unable to start the payment right now.'
-      );
+      setPinError(err instanceof Error ? err.message : 'Unable to start the payment right now.');
     } finally {
       setMmProcessing(null);
+    }
+  };
+
+  const handlePinConfirm = (transactionPin: string) => {
+    if (pinPurpose === 'vault') {
+      void submitPayFromVault(transactionPin);
+      return;
+    }
+    if (pinPurpose === 'orange_money' || pinPurpose === 'afrimoney') {
+      void submitPayWithMobileMoney(pinPurpose, transactionPin);
     }
   };
 
@@ -289,8 +312,9 @@ export default function ContributeScreen() {
             <View style={styles.insufficientContent}>
               <Text style={styles.insufficientTitle}>Insufficient Vault Balance</Text>
               <Text style={styles.insufficientText}>
-                You need NLe {shortfall.toFixed(2)} more to cover this contribution.
-                Add funds to your vault first.
+                Insufficient vault balance. Add money to your vault or pay with
+                mobile money. (You need NLe {shortfall.toFixed(2)} more to pay
+                from your vault.)
               </Text>
             </View>
           </View>
@@ -397,6 +421,18 @@ export default function ContributeScreen() {
           By proceeding, you confirm this contribution amount and authorize the vault deduction.
         </Text>
       </ScrollView>
+      <EnterTransactionPinModal
+        visible={pinModalVisible}
+        subtitle={`Enter your Transaction PIN to pay NLe ${groupData.contributionAmount.toFixed(2)} for ${groupData.name}.`}
+        loading={isProcessing || mmProcessing != null}
+        error={pinError}
+        onCancel={() => {
+          setPinModalVisible(false);
+          setPinError(null);
+          setPinPurpose(null);
+        }}
+        onConfirm={handlePinConfirm}
+      />
     </SafeAreaView>
   );
 }

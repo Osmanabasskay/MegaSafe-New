@@ -4,6 +4,9 @@
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=upuhjekwmtjnjksqikdu"
     },
+    "monime-docs": {
+      "url": "https://docs.monime.io/mcp"
+    },
     "TestSprite": {
       "type": "stdio",
       "command": "npx",

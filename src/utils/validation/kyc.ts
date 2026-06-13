@@ -46,7 +46,7 @@ export const kycDetailsSchema = z.object({
     .min(1, 'Date of birth is required')
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD'),
   gender: z.enum(['male', 'female', 'other'], {
-    errorMap: () => ({ message: 'Select gender' }),
+    message: 'Select gender',
   }),
   addressLine1: z.string().trim().min(1, 'Address is required'),
   addressLine2: z.string().trim().optional(),

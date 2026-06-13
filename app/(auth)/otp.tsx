@@ -19,6 +19,19 @@ import { useAppDataStore } from '../../src/store/appDataStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MSG_OTP_INVALID, MSG_OTP_RESEND, toSafeAuthError } from '../../src/utils/auth/authErrors';
 import { recordSuccess } from '../../src/utils/auth/rateLimiter';
+import {
+  emailSchema,
+  nameSchema,
+  addressSchema,
+  slPhoneSchema,
+} from '../../src/utils/validation/auth';
+import {
+  OTP_LENGTH        as CFG_OTP_LENGTH,
+  OTP_COOLDOWN_SECS,
+  OTP_MAX_VERIFY_ATTEMPTS,
+  OTP_MAX_RESENDS,
+  EF_OTP_SECURITY,
+} from '../../src/utils/auth/securityConfig';
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 const C = {
@@ -34,8 +47,12 @@ const C = {
   error: '#FF7878',
 };
 
-const COOLDOWN_SEC = 60;
-const OTP_LENGTH = 6;
+// UI constants from centralized config — values match server-side defaults.
+// Server enforces hard limits independently via otp-security Edge Function.
+const COOLDOWN_SEC     = OTP_COOLDOWN_SECS;
+const OTP_LENGTH       = CFG_OTP_LENGTH;
+const MAX_OTP_ATTEMPTS = OTP_MAX_VERIFY_ATTEMPTS;
+const MAX_OTP_RESENDS  = OTP_MAX_RESENDS;
 
 const decodeParam = (value: unknown): string => {
   if (value == null) return '';
@@ -76,7 +93,11 @@ export default function OTPScreen() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  const autoSubmitRef = useRef(false);
+  // After MAX_OTP_ATTEMPTS wrong codes the user must request a fresh code
+  const [requiresResend, setRequiresResend] = useState(false);
+  const autoSubmitRef   = useRef(false);
+  const otpAttemptsRef  = useRef(0);   // wrong-code counter; reset on successful resend
+  const resendCountRef  = useRef(0);   // resend counter; prevents infinite resend loops
 
   const refs = useRef<(TextInput | null)[]>(Array(OTP_LENGTH).fill(null));
 
@@ -100,23 +121,63 @@ export default function OTPScreen() {
 
   const sendOtp = useCallback(async () => {
     if (!supabaseConfigured) return;
+
+    // Frontend hard resend limit (UI guard — server enforces independently)
+    if (resendCountRef.current >= MAX_OTP_RESENDS) {
+      setErrorMessage('Too many code requests. Please wait a while and try again.');
+      return;
+    }
+
+    // ── Server-side rate-limit check (otp-security Edge Function) ─────────
+    const identifier = isEmailFlow ? email : phoneE164;
+    const idType     = isEmailFlow ? 'email' : 'phone';
+    try {
+      const { data: rlData, error: rlErr } = await (supabase.functions.invoke as Function)(
+        EF_OTP_SECURITY,
+        { body: { action: 'check_send', identifier, identifier_type: idType } },
+      );
+      if (rlErr || (rlData as { allowed?: boolean })?.allowed === false) {
+        setErrorMessage('Too many code requests. Please wait a while and try again.');
+        return;
+      }
+    } catch {
+      // Fail closed: if the rate-limit check throws, block the send
+      setErrorMessage('Too many code requests. Please wait a while and try again.');
+      return;
+    }
+
     setIsResending(true);
     setErrorMessage(null);
+
+    let sendError: boolean;
     if (isEmailFlow) {
       const { error } = type === 'register'
         ? await supabase.auth.resend({ type: 'signup', email })
         : await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-      setIsResending(false);
-      // Use generic message — don't reveal whether email exists
-      if (error) { setErrorMessage(MSG_OTP_RESEND); return; }
+      sendError = !!error;
     } else {
       const { error } = await supabase.auth.signInWithOtp({
         phone: phoneE164,
-        options: { shouldCreateUser: false }, // login only; registration done via email flow
+        options: { shouldCreateUser: false },
       });
-      setIsResending(false);
-      if (error) { setErrorMessage(MSG_OTP_RESEND); return; }
+      sendError = !!error;
     }
+
+    setIsResending(false);
+    if (sendError) {
+      // Use generic message — don't reveal whether identifier exists
+      setErrorMessage(MSG_OTP_RESEND);
+      return;
+    }
+
+    // Record successful send server-side
+    void (supabase.functions.invoke as Function)(EF_OTP_SECURITY, {
+      body: { action: 'record_send', identifier, identifier_type: idType },
+    }).catch(() => {}); // record_send failure must not block UX
+
+    resendCountRef.current++;
+    otpAttemptsRef.current = 0; // fresh code resets attempt counter
+    setRequiresResend(false);
     setCooldown(COOLDOWN_SEC);
   }, [isEmailFlow, type, email, phoneE164]);
 
@@ -174,7 +235,7 @@ export default function OTPScreen() {
   const handleVerify = useCallback(async (overrideDigits?: string[]) => {
     const token = (overrideDigits ?? digits).join('').trim();
     if (token.length < OTP_LENGTH) {
-      setErrorMessage('Enter the full 6-digit code.');
+      setErrorMessage(`Enter the full ${OTP_LENGTH}-digit code.`);
       autoSubmitRef.current = false;
       return;
     }
@@ -190,11 +251,14 @@ export default function OTPScreen() {
       let verifyResult: Awaited<ReturnType<typeof supabase.auth.verifyOtp>>;
 
       if (isEmailFlow) {
-        // 'signup' matches accounts created via signUp(); 'email' matches signInWithOtp()
+        // This screen follows supabase.auth.signUp() and resend({ type: 'signup' }).
+        // Verify the matching signup confirmation token once; do not retry with
+        // another type because failed verification attempts can invalidate or
+        // rotate token state.
         verifyResult = await supabase.auth.verifyOtp({
           email,
           token,
-          type: type === 'register' ? 'signup' : 'email',
+          type: 'signup',
         });
       } else {
         verifyResult = await supabase.auth.verifyOtp({
@@ -207,9 +271,38 @@ export default function OTPScreen() {
       const { data, error } = verifyResult;
 
       if (error) {
+        if (__DEV__) {
+          console.warn('[OTP] verify error:', {
+            message: error.message,
+            code: (error as { code?: string }).code,
+            status: (error as { status?: number }).status,
+            flow: isEmailFlow ? 'email-signup' : 'phone-sms',
+            verifyType: isEmailFlow ? 'signup' : 'sms',
+            email: isEmailFlow ? email : undefined,
+          });
+        }
+        otpAttemptsRef.current++;
+
+        // Record failed attempt server-side (otp-security Edge Function)
+        void (supabase.functions.invoke as Function)(EF_OTP_SECURITY, {
+          body: {
+            action:          'record_verify_attempt',
+            identifier:      isEmailFlow ? email : phoneE164,
+            identifier_type: isEmailFlow ? 'email' : 'phone',
+            success:         false,
+          },
+        }).catch(() => {}); // record failure must not block UX
+
+        if (otpAttemptsRef.current >= MAX_OTP_ATTEMPTS) {
+          setDigits(Array(OTP_LENGTH).fill(''));
+          setRequiresResend(true);
+          setErrorMessage('Too many incorrect attempts. Please request a new code.');
+          otpAttemptsRef.current = 0;
+        } else {
+          setErrorMessage(MSG_OTP_INVALID);
+        }
         setIsVerifying(false);
-        setErrorMessage(MSG_OTP_INVALID);
-        if (__DEV__) console.warn('[OTP] verify error:', error.message);
+        autoSubmitRef.current = false;
         return;
       }
 
@@ -218,6 +311,16 @@ export default function OTPScreen() {
         setErrorMessage('Session was not created. Please retry verification.');
         return;
       }
+
+      // Record successful verification server-side (resets verify_fails counter)
+      void (supabase.functions.invoke as Function)(EF_OTP_SECURITY, {
+        body: {
+          action:          'record_verify_attempt',
+          identifier:      isEmailFlow ? email : phoneE164,
+          identifier_type: isEmailFlow ? 'email' : 'phone',
+          success:         true,
+        },
+      }).catch(() => {});
 
       setSession(data.session);
       setUser(data.session.user);
@@ -233,24 +336,40 @@ export default function OTPScreen() {
       }
 
       if (data.session.user?.id) {
-        // Write all profile fields including address + DOB (collected during registration)
+        // ── Re-validate all route params with the same Zod schemas used at
+        //    registration. Route params are UNTRUSTED client input — we never
+        //    write arbitrary strings directly to the DB.
+        const safeEmail     = emailSchema.safeParse(email).success ? email : null;
+        const safeFirstName = nameSchema.safeParse(firstName).success ? firstName : null;
+        const safeLastName  = nameSchema.safeParse(lastName).success ? lastName : null;
+        const safePhone     = slPhoneSchema.safeParse(phoneE164).success ? phoneE164 : null;
+        const safeAddress   = addressSchema.safeParse(address).success ? address : null;
+        // dateOfBirth: accept only ISO YYYY-MM-DD; validation already happened during
+        // registration; re-check format before passing to RPC.
+        const safeDOB = dateOfBirth && /^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)
+          ? dateOfBirth
+          : null;
+
+        // Write validated profile fields — RPC enforces additional server-side checks
         const { error: profileError } = await upsertBasicProfile({
           userId:      data.session.user.id,
-          firstName,
-          lastName,
-          email,
-          phone:       phoneE164,
-          address:     address || undefined,
-          dateOfBirth: dateOfBirth || undefined,
+          firstName:   safeFirstName ?? undefined,
+          lastName:    safeLastName ?? undefined,
+          email:       safeEmail ?? undefined,
+          phone:       safePhone ?? undefined,
+          address:     safeAddress ?? undefined,
+          dateOfBirth: safeDOB ?? undefined,
         });
         if (profileError && __DEV__) {
           console.warn('[OTP] Could not upsert profile basics:', profileError.message);
         }
 
+        // Legal acceptance: legalAcceptedAt from route params is NOT trusted.
+        // logLegalAcceptance now calls a SECURITY DEFINER RPC that uses now()
+        // server-side — the client cannot supply or tamper with the acceptance timestamp.
         if (legalAcceptedAt) {
           const { error: legalError } = await logLegalAcceptance({
             userId: data.session.user.id,
-            acceptedAt: legalAcceptedAt,
           });
           if (legalError && __DEV__) {
             console.warn('[OTP] Could not log legal acceptance:', legalError.message);
@@ -271,7 +390,7 @@ export default function OTPScreen() {
   }, [digits, isEmailFlow, email, phoneE164, firstName, lastName, address, dateOfBirth, legalAcceptedAt,
       setSession, setUser, initializeForUser, updateProfile, router]);
 
-  // ── Auto-submit when all 6 digits are present ─────────────────
+  // ── Auto-submit when all digits are present ─────────────────
   useEffect(() => {
     const allFilled = digits.every(d => d !== '');
     if (!allFilled) {
@@ -316,12 +435,12 @@ export default function OTPScreen() {
           <View style={styles.titleSection}>
             <Text style={styles.title}>Verify your email</Text>
             <Text style={styles.subtitle}>
-              We sent a 6-digit code to{'\n'}
+              We sent an {OTP_LENGTH}-digit code to{'\n'}
               <Text style={styles.highlight}>{displayTarget}</Text>
             </Text>
           </View>
 
-          {/* 6 digit boxes */}
+          {/* OTP digit boxes */}
           <View style={styles.otpRow}>
             {Array(OTP_LENGTH).fill(null).map((_, idx) => (
               <TextInput
@@ -426,10 +545,11 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '700', color: C.text, marginBottom: 10 },
   subtitle: { fontSize: 15, color: C.muted, textAlign: 'center', lineHeight: 22 },
   highlight: { color: C.orange, fontWeight: '700' },
-  otpRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  otpRow: { flexDirection: 'row', gap: 5, marginBottom: 20, width: '100%' },
   digitBox: {
-    width: 50,
-    height: 62,
+    flex: 1,
+    maxWidth: 50,
+    height: 60,
     borderRadius: 14,
     borderWidth: 1.5,
     backgroundColor: C.inputBg,

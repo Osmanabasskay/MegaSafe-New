@@ -21,34 +21,34 @@ const PROVIDER_SECRETS: Record<string, string | undefined> = {
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+  if (req.method !== 'POST') return jsonErr('Method not allowed', 405, 'METHOD_NOT_ALLOWED');
 
   const rawBody = await req.text();
   let payload: Record<string, unknown>;
   try {
     payload = JSON.parse(rawBody);
   } catch {
-    return new Response('Invalid JSON', { status: 400 });
+    return jsonErr('Invalid JSON', 400, 'INVALID_JSON');
   }
 
   const provider = detectProvider(req.headers, payload);
   if (!provider) {
     console.warn('Unknown provider in webhook');
-    return new Response('Unknown provider', { status: 400 });
+    return jsonErr('Unknown provider', 400, 'UNKNOWN_PROVIDER');
   }
 
   // ── HMAC Signature Validation ───────────────────────────────
   const secret = PROVIDER_SECRETS[provider];
   if (!secret) {
     console.error(`No webhook secret configured for: ${provider}`);
-    return new Response('Provider not configured', { status: 500 });
+    return jsonErr('Provider not configured', 500, 'PROVIDER_NOT_CONFIGURED');
   }
 
   const sigHeader  = getSignatureHeader(req.headers, provider);
   const sigValid   = await verifySignature(rawBody, sigHeader, secret, provider);
   if (!sigValid) {
     console.warn(`Invalid signature for provider: ${provider}`);
-    return new Response('Invalid signature', { status: 401 });
+    return jsonErr('Invalid signature', 401, 'INVALID_SIGNATURE');
   }
 
   // ── Extract IDs ─────────────────────────────────────────────
@@ -57,7 +57,7 @@ Deno.serve(async (req: Request) => {
   const isSuccess   = extractIsSuccess(payload, provider);
 
   if (!eventId || !providerRef) {
-    return new Response('Missing event_id or provider_reference', { status: 400 });
+    return jsonErr('Missing event_id or provider_reference', 400, 'MISSING_WEBHOOK_REFERENCE');
   }
 
   const svc = createServiceClient();
@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
   }
   if (dedupErr) {
     console.error('webhook_events insert error:', dedupErr.message);
-    return new Response('Internal error', { status: 500 });
+    return jsonErr('Internal error', 500, 'WEBHOOK_DEDUP_FAILED');
   }
 
   // ── Look up mobile_money_transaction by provider_reference ──
@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
 
   if (mmErr) {
     console.error('mobile_money_transactions lookup error:', mmErr.message);
-    return new Response('Internal error', { status: 500 });
+    return jsonErr('Internal error', 500, 'MOBILE_MONEY_LOOKUP_FAILED');
   }
 
   if (!mmTxn) {
@@ -133,13 +133,13 @@ Deno.serve(async (req: Request) => {
 
   if (finalErr) {
     console.error('finalize_verified_payment error:', finalErr.message);
-    return new Response('Internal error during finalization', { status: 500 });
+    return jsonErr('Internal error during finalization', 500, 'PAYMENT_FINALIZATION_FAILED');
   }
 
   const result = finalResult as Record<string, unknown>;
   if (result?.error) {
     console.error('finalize_verified_payment returned error:', result.error);
-    return new Response(JSON.stringify({ error: result.error }), { status: 500 });
+    return jsonErr(String(result.error), 500, 'PAYMENT_FINALIZATION_REJECTED');
   }
 
   // ── Commission ───────────────────────────────────────────────
@@ -257,8 +257,18 @@ function extractIsSuccess(payload: Record<string, unknown>, provider: string): b
 }
 
 function jsonOk(body: unknown): Response {
-  return new Response(JSON.stringify(body), {
+  const data = body != null && typeof body === 'object' && !Array.isArray(body)
+    ? body as Record<string, unknown>
+    : { value: body };
+  return new Response(JSON.stringify({ ...data, success: true, data }), {
     status:  200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function jsonErr(error: string, status: number, code = 'PAYMENT_WEBHOOK_ERROR'): Response {
+  return new Response(JSON.stringify({ success: false, error, code }), {
+    status,
     headers: { 'Content-Type': 'application/json' },
   });
 }

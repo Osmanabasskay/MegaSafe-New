@@ -19,6 +19,9 @@ import type {
   SavingsGoalRow,
   SavingsTransactionRow,
   SecuritySummary,
+  SendPaymentIntentRow,
+  SendPaymentMonitorSummary,
+  SendPaymentRiskEventRow,
   TimeSeriesPoint,
   VaultAccountRow,
   VaultSummary,
@@ -413,10 +416,12 @@ export const getKycQueue = async (): Promise<KycQueueItem[]> => {
   const { svc } = await requireSuperAdmin();
 
   const { data } = await svc
-    .from('profiles')
-    .select('id,first_name,last_name,national_id_front_url,national_id_back_url,selfie_url,updated_at,kyc_status')
-    .in('kyc_status', ['submitted', 'pending'])
-    .order('updated_at', { ascending: true })
+    .from('kyc_applications')
+    .select(
+      'id,user_id,full_name,first_name,last_name,status,submitted_at,ai_verification_status,ai_verification_reason_code,suspicious_flags,manual_review_reason,kyc_documents(document_kind,storage_path)'
+    )
+    .in('status', ['pending', 'verification_processing', 'under_review', 'manual_review'])
+    .order('submitted_at', { ascending: true })
     .limit(200);
 
   if (!data || data.length === 0) return [];
@@ -431,15 +436,29 @@ export const getKycQueue = async (): Promise<KycQueueItem[]> => {
   };
 
   return Promise.all(
-    data.map(async (r) => ({
-      userId: String(r.id),
-      userName: [r.first_name, r.last_name].filter(Boolean).join(' ') || 'Unknown User',
-      idFrontUrl: await signUrl(r.national_id_front_url ?? null),
-      idBackUrl: await signUrl(r.national_id_back_url ?? null),
-      selfieUrl: await signUrl(r.selfie_url ?? null),
-      submittedAt: String(r.updated_at ?? ''),
-      kycStatus: String(r.kyc_status ?? 'pending'),
-    }))
+    data.map(async (r) => {
+      const docs = Array.isArray(r.kyc_documents)
+        ? (r.kyc_documents as Array<{ document_kind?: string; storage_path?: string }>)
+        : [];
+      const docPath = (kind: string) =>
+        docs.find((d) => d.document_kind === kind)?.storage_path ?? null;
+      return {
+        applicationId: String(r.id),
+        userId: String(r.user_id),
+        userName:
+          [r.first_name, r.last_name].filter(Boolean).join(' ') ||
+          String(r.full_name ?? 'Unknown User'),
+        idFrontUrl: await signUrl(docPath('id_front')),
+        idBackUrl: await signUrl(docPath('id_back')),
+        selfieUrl: await signUrl(docPath('selfie')),
+        submittedAt: String(r.submitted_at ?? ''),
+        kycStatus: String(r.status ?? 'pending'),
+        aiStatus: String(r.ai_verification_status ?? 'not_started'),
+        reasonCode: r.ai_verification_reason_code ? String(r.ai_verification_reason_code) : null,
+        suspiciousFlags: Array.isArray(r.suspicious_flags) ? r.suspicious_flags.map(String) : [],
+        manualReviewReason: r.manual_review_reason ? String(r.manual_review_reason) : null,
+      };
+    })
   );
 };
 
@@ -456,7 +475,7 @@ export const getKycApplications = async (filters?: {
   let query = svc
     .from('kyc_applications')
     .select(
-      'id,user_id,full_name,first_name,last_name,phone_number,status,document_type,national_id_number,submitted_at,reviewed_at,rejection_reason',
+      'id,user_id,full_name,first_name,last_name,phone_number,status,ai_verification_status,ai_verification_reason_code,suspicious_flags,document_type,national_id_number,submitted_at,reviewed_at,rejection_reason',
       { count: 'exact' }
     )
     .order('submitted_at', { ascending: false })
@@ -475,6 +494,9 @@ export const getKycApplications = async (filters?: {
         String(r.full_name ?? 'Unknown'),
       phone: String(r.phone_number ?? '-'),
       status: String(r.status ?? ''),
+      aiStatus: String(r.ai_verification_status ?? 'not_started'),
+      reasonCode: r.ai_verification_reason_code ? String(r.ai_verification_reason_code) : null,
+      suspiciousFlags: Array.isArray(r.suspicious_flags) ? r.suspicious_flags.map(String) : [],
       documentType: String(r.document_type ?? '-'),
       nationalIdNumber: String(r.national_id_number ?? '-'),
       submittedAt: String(r.submitted_at ?? ''),
@@ -486,7 +508,7 @@ export const getKycApplications = async (filters?: {
 };
 
 export interface KycSignals {
-  counts: { pending: number; submitted: number; approved: number; rejected: number };
+  counts: { pending: number; submitted: number; approved: number; rejected: number; manualReview: number; retakeRequired: number };
   duplicatePhones: Array<{ phone: string; count: number }>;
   duplicateDocuments: Array<{ checksum: string; count: number; distinctUsers: number }>;
   underageCount: number;
@@ -499,12 +521,14 @@ export const getKycSignals = async (): Promise<KycSignals> => {
   const eighteenYearsAgo = new Date();
   eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
 
-  const [pendingRes, submittedRes, approvedRes, rejectedRes, phonesRes, docsRes, underageRes, missingRes] =
+  const [pendingRes, submittedRes, approvedRes, rejectedRes, manualReviewRes, retakeRes, phonesRes, docsRes, underageRes, missingRes] =
     await Promise.all([
       svc.from('profiles').select('id', { count: 'exact', head: true }).eq('kyc_status', 'pending'),
       svc.from('profiles').select('id', { count: 'exact', head: true }).eq('kyc_status', 'submitted'),
       svc.from('profiles').select('id', { count: 'exact', head: true }).eq('kyc_status', 'approved'),
       svc.from('profiles').select('id', { count: 'exact', head: true }).eq('kyc_status', 'rejected'),
+      svc.from('kyc_applications').select('id', { count: 'exact', head: true }).eq('status', 'manual_review'),
+      svc.from('kyc_applications').select('id', { count: 'exact', head: true }).eq('status', 'retake_required'),
       svc.from('v_same_phone_accounts').select('phone,account_count').limit(50),
       svc.from('v_duplicate_kyc_documents').select('checksum,doc_count,distinct_users').limit(50),
       svc.from('profiles').select('id', { count: 'exact', head: true }).gt('date_of_birth', eighteenYearsAgo.toISOString().slice(0, 10)).in('kyc_status', ['submitted', 'pending']),
@@ -517,6 +541,8 @@ export const getKycSignals = async (): Promise<KycSignals> => {
       submitted: submittedRes.count ?? 0,
       approved: approvedRes.count ?? 0,
       rejected: rejectedRes.count ?? 0,
+      manualReview: manualReviewRes.count ?? 0,
+      retakeRequired: retakeRes.count ?? 0,
     },
     duplicatePhones: (phonesRes.data ?? []).map((r) => ({ phone: String(r.phone), count: Number(r.account_count ?? 0) })),
     duplicateDocuments: (docsRes.data ?? []).map((r) => ({ checksum: String(r.checksum).slice(0, 16), count: Number(r.doc_count ?? 0), distinctUsers: Number(r.distinct_users ?? 0) })),
@@ -651,12 +677,16 @@ export const getPaymentsSummary = async (filters?: {
 }): Promise<{
   mobileMoneyTxs: MobileMoneyTxRow[];
   webhookEvents: WebhookEventRow[];
+  sendMonitor: SendPaymentMonitorSummary;
+  sendIntents: SendPaymentIntentRow[];
+  sendRiskEvents: SendPaymentRiskEventRow[];
   total: number;
 }> => {
   const { svc } = await requireSuperAdmin();
   const page = Math.max(1, filters?.page ?? 1);
   const pageSize = 50;
   const from = (page - 1) * pageSize;
+  const ago24 = hoursAgo(24);
 
   let mmQuery = svc
     .from('mobile_money_transactions')
@@ -667,9 +697,37 @@ export const getPaymentsSummary = async (filters?: {
   if (filters?.provider) mmQuery = mmQuery.eq('provider', filters.provider);
   if (filters?.status) mmQuery = mmQuery.eq('status', filters.status);
 
-  const [mmRes, webhookRes] = await Promise.all([
+  const [
+    mmRes,
+    webhookRes,
+    pendingIntentsRes,
+    failedConfirmationsRes,
+    duplicateAttemptsRes,
+    unauthorizedAttemptsRes,
+    webhookFailuresRes,
+    suspiciousActivityRes,
+    sendIntentRes,
+    sendRiskRes,
+  ] = await Promise.all([
     mmQuery,
     svc.from('payment_webhook_events').select('id,provider,event_type,session_id,reference,signature_valid,created_at').order('created_at', { ascending: false }).limit(50),
+    svc.from('payment_intents').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    svc.from('payment_intents').select('id', { count: 'exact', head: true }).eq('status', 'failed').gte('failed_at', ago24),
+    svc.from('rate_limit_log').select('id', { count: 'exact', head: true }).in('action', ['create_send_payment_intent', 'confirm_send_payment']).gte('created_at', ago24),
+    svc.from('audit_logs').select('id', { count: 'exact', head: true }).in('action', ['payment_intent_unauthorized_target', 'payment_intent_create_rejected']).gte('created_at', ago24),
+    svc.from('payment_webhook_events').select('id', { count: 'exact', head: true }).or('signature_valid.eq.false,event_type.ilike.%fail%').gte('created_at', ago24),
+    svc.from('audit_logs').select('id', { count: 'exact', head: true }).in('action', ['payment_intent_unauthorized_target', 'payment_intent_create_rejected', 'payment_failed', 'payment_confirmation_unlinked_method', 'payment_intent_unlinked_method', 'payment_intent_expired', 'payment_intent_rate_limited']).gte('created_at', ago24),
+    svc
+      .from('payment_intents')
+      .select('id,user_id,target_type,target_name,amount,currency,method,status,reference,provider_reference,created_at,expires_at')
+      .order('created_at', { ascending: false })
+      .limit(50),
+    svc
+      .from('audit_logs')
+      .select('id,actor_id,action,table_name,record_id,created_at')
+      .in('action', ['payment_intent_created', 'payment_intent_create_rejected', 'payment_intent_unauthorized_target', 'payment_intent_unlinked_method', 'payment_intent_rate_limited', 'payment_provider_confirmation_started', 'payment_succeeded', 'payment_failed', 'payment_confirmation_unlinked_method', 'payment_intent_expired'])
+      .order('created_at', { ascending: false })
+      .limit(50),
   ]);
 
   return {
@@ -692,6 +750,36 @@ export const getPaymentsSummary = async (filters?: {
       sessionId: r.session_id ? String(r.session_id) : null,
       reference: r.reference ? String(r.reference) : null,
       signatureValid: Boolean(r.signature_valid),
+      createdAt: String(r.created_at ?? ''),
+    })),
+    sendMonitor: {
+      pendingIntents: pendingIntentsRes.count ?? 0,
+      failedConfirmations: failedConfirmationsRes.count ?? 0,
+      duplicateIdempotencyAttempts: duplicateAttemptsRes.count ?? 0,
+      unauthorizedTargetAttempts: unauthorizedAttemptsRes.count ?? 0,
+      providerWebhookFailures: webhookFailuresRes.count ?? 0,
+      suspiciousActivity: suspiciousActivityRes.count ?? 0,
+    },
+    sendIntents: (sendIntentRes.data ?? []).map((r) => ({
+      id: String(r.id),
+      userId: String(r.user_id),
+      targetType: String(r.target_type ?? ''),
+      targetName: String(r.target_name ?? ''),
+      amount: Number(r.amount ?? 0),
+      currency: String(r.currency ?? 'NLe'),
+      method: String(r.method ?? ''),
+      status: String(r.status ?? ''),
+      reference: r.reference ? String(r.reference) : null,
+      providerReference: r.provider_reference ? String(r.provider_reference) : null,
+      createdAt: String(r.created_at ?? ''),
+      expiresAt: String(r.expires_at ?? ''),
+    })),
+    sendRiskEvents: (sendRiskRes.data ?? []).map((r) => ({
+      id: String(r.id),
+      actorId: r.actor_id ? String(r.actor_id) : null,
+      action: String(r.action ?? ''),
+      tableName: String(r.table_name ?? ''),
+      recordId: r.record_id ? String(r.record_id) : null,
       createdAt: String(r.created_at ?? ''),
     })),
     total: mmRes.count ?? 0,
@@ -1384,5 +1472,35 @@ export const getSecuritySummary = async (): Promise<{
       reviewedAt: r.reviewed_at ? String(r.reviewed_at) : null,
       completedAt: r.completed_at ? String(r.completed_at) : null,
     })),
+  };
+};
+
+export const getTransactionVerificationSetting = async (): Promise<{
+  required: boolean;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}> => {
+  const { svc } = await requireSuperAdmin();
+  const { data, error } = await svc
+    .from('platform_settings')
+    .select('value,updated_at,updated_by')
+    .eq('key', 'verification_required_for_transactions')
+    .maybeSingle();
+
+  if (error) {
+    console.error('[admin-data] transaction verification setting:', error.message);
+  }
+
+  const rawValue = data?.value as boolean | { enabled?: boolean } | null | undefined;
+  const required = typeof rawValue === 'boolean'
+    ? rawValue
+    : rawValue && typeof rawValue === 'object'
+      ? rawValue.enabled !== false
+      : true;
+
+  return {
+    required,
+    updatedAt: data?.updated_at ? String(data.updated_at) : null,
+    updatedBy: data?.updated_by ? String(data.updated_by) : null,
   };
 };

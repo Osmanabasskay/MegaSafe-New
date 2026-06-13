@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { KycDraftState } from '../store/kycDraftStore';
+import { useKycDraftStore } from '../store/kycDraftStore';
 import { uploadFromUri, uploadKycFile } from './storageUpload';
 import type { GuarantorForm } from '../utils/validation/kyc';
 import { isValidSierraLeonePhone, normalizeToSierraLeone } from './auth/phone';
@@ -11,6 +12,13 @@ import { isValidSierraLeonePhone, normalizeToSierraLeone } from './auth/phone';
  */
 export type KycStatus = 'not_submitted' | 'pending' | 'submitted' | 'approved' | 'rejected';
 
+type BackendKycValidationAction = 'submitted_for_review' | 'manual_review' | 'retake_required';
+
+/**
+ * Columns returned by fetchProfile. Intentionally limited to what the mobile
+ * app actually reads — KYC document URLs, national ID, address fields, and
+ * other admin-only data are excluded to minimise over-exposure.
+ */
 export interface ProfileRow {
   id: string;
   email: string | null;
@@ -18,19 +26,6 @@ export interface ProfileRow {
   last_name: string | null;
   phone: string | null;
   avatar_url: string | null;
-  date_of_birth: string | null;
-  gender: string | null;
-  address_line1: string | null;
-  address_line2: string | null;
-  city: string | null;
-  state_province: string | null;
-  postal_code: string | null;
-  country_id: string | null;
-  national_id_number: string | null;
-  national_id_type: string | null;
-  national_id_front_url: string | null;
-  national_id_back_url: string | null;
-  selfie_url: string | null;
   kyc_status: KycStatus | null;
   kyc_rejection_reason: string | null;
 }
@@ -54,12 +49,62 @@ export interface CountryRegionProvince {
   name: string;
 }
 
+// ── KYC audit logger (fire-and-forget, never throws) ─────────────────────────
+//
+// Logs KYC lifecycle events to the audit_logs table via the same SECURITY
+// DEFINER RPC used by the auth store. Only non-PII metadata is logged —
+// no ID numbers, names, base64 data, or document images.
+function logKycAudit(
+  userId: string,
+  action: string,
+  data: Record<string, unknown>,
+): void {
+  void supabase
+    .rpc('create_audit_log', {
+      p_action:     action,
+      p_table_name: 'kyc_submissions',
+      p_record_id:  userId,
+      p_old_data:   null,
+      p_new_data:   data,
+    })
+    .then(undefined, () => {}); // fire-and-forget; never blocks submission
+}
+
 // ── UUID v4 generator (no external dep needed) ────────────────────────────────
 function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
   });
+}
+
+async function requestBackendKycValidation(params: {
+  userId: string;
+  submissionId: string;
+  applicationId: string;
+}): Promise<{ action: BackendKycValidationAction | null; error: Error | null }> {
+  const { data, error } = await supabase.functions.invoke('validate-kyc-identity', {
+    body: { application_id: params.applicationId },
+  });
+
+  if (error) {
+    if (__DEV__) {
+      console.warn('[KYC] validate-kyc-identity function error:', error.message);
+    }
+    logKycAudit(params.userId, 'kyc_backend_validation_unavailable', {
+      submission_id: params.submissionId,
+      application_id: params.applicationId,
+    });
+    return { action: null, error: new Error(error.message) };
+  }
+
+  const action = (data as { action?: BackendKycValidationAction } | null)?.action ?? null;
+  logKycAudit(params.userId, 'kyc_backend_validation_completed', {
+    submission_id: params.submissionId,
+    application_id: params.applicationId,
+    action: action ?? 'unknown',
+  });
+  return { action, error: null };
 }
 
 /**
@@ -142,11 +187,18 @@ export async function fetchCountryRegions(countryId: string): Promise<{
   };
 }
 
+const PROFILE_COLUMNS =
+  'id, email, first_name, last_name, phone, avatar_url, kyc_status, kyc_rejection_reason';
+
 export async function fetchProfile(userId: string): Promise<{
   profile: ProfileRow | null;
   error: Error | null;
 }> {
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(PROFILE_COLUMNS)
+    .eq('id', userId)
+    .maybeSingle();
 
   if (error) return { profile: null, error: new Error(error.message) };
   return { profile: data as ProfileRow | null, error: null };
@@ -238,6 +290,10 @@ export async function submitKycPackage(params: {
 
   // ── 2. Generate submission UUID (path-safe, unique per submission) ──────────
   const submissionId = generateUUID();
+
+  // Audit: KYC flow entered — logged before uploads so a crash mid-upload
+  // still leaves a record that submission was attempted.
+  logKycAudit(userId, 'kyc_submission_started', { submission_id: submissionId });
   const base = `kyc/${userId}/${submissionId}`;
 
   // Derive file extensions from stored MIME types
@@ -269,15 +325,25 @@ export async function submitKycPackage(params: {
     });
 
     if (uploadError) {
+      if (__DEV__) {
+        console.warn(`[KYC] Upload failed (${u.label}):`, uploadError.message);
+      }
+      logKycAudit(userId, 'kyc_upload_failed', {
+        submission_id: submissionId,
+        document_slot: u.label,
+      });
       return {
         error: new Error(
-          `Could not upload your ${u.label} photo. ` +
-          `Please check your internet connection and try again.\n` +
-          `(${uploadError.message})`,
+          `Could not upload your ${u.label} photo. Please check your connection and try again.`,
         ),
       };
     }
   }
+
+  // Clear base64 image buffers from Zustand now that all files are uploaded.
+  // This wipes sensitive identity-document imagery from in-memory state before
+  // the RPC call, so a crash during the RPC does not leave raw images in the store.
+  useKycDraftStore.getState().clearImageBuffers();
 
   onProgress?.(85); // uploads done, calling RPC
 
@@ -312,48 +378,117 @@ export async function submitKycPackage(params: {
 
   onProgress?.(100);
 
-  if (rpcError) return { error: new Error(rpcError.message) };
+  if (rpcError) {
+    if (__DEV__) {
+      console.warn('[KYC] RPC submit_kyc_package error:', rpcError.message);
+    }
+    logKycAudit(userId, 'kyc_submission_failed', {
+      submission_id: submissionId,
+      stage: 'rpc',
+    });
+    return {
+      error: new Error(
+        'Could not submit your KYC application. Please try again or contact support.',
+      ),
+    };
+  }
 
-  const result = data as { success?: boolean; error?: string } | null;
-  if (result?.error) return { error: new Error(result.error) };
+  const result = data as {
+    success?: boolean;
+    error?: string;
+    application_id?: string;
+    status?: string;
+  } | null;
+  if (result?.error) {
+    if (__DEV__) {
+      console.warn('[KYC] RPC returned application error:', result.error);
+    }
+    logKycAudit(userId, 'kyc_submission_failed', {
+      submission_id: submissionId,
+      stage: 'rpc_result',
+    });
+    return {
+      error: new Error(
+        'Could not submit your KYC application. Please try again or contact support.',
+      ),
+    };
+  }
 
+  if (!result?.application_id) {
+    logKycAudit(userId, 'kyc_submission_failed', {
+      submission_id: submissionId,
+      stage: 'missing_application_id',
+    });
+    return {
+      error: new Error(
+        'Could not submit your KYC application. Please try again or contact support.',
+      ),
+    };
+  }
+
+  const validation = await requestBackendKycValidation({
+    userId,
+    submissionId,
+    applicationId: result.application_id,
+  });
+
+  if (validation.action === 'retake_required') {
+    logKycAudit(userId, 'kyc_selfie_retake_required', {
+      submission_id: submissionId,
+      application_id: result.application_id,
+    });
+    return {
+      error: new Error(
+        'Please retake your selfie in a bright place with your full face inside the guide.',
+      ),
+    };
+  }
+
+  logKycAudit(userId, 'kyc_submission_completed', { submission_id: submissionId });
   return { error: null };
 }
 
-export async function uploadAvatar(userId: string, uri: string): Promise<{ path: string | null; error: Error | null }> {
-  const path = `${userId}/avatar.jpg`;
-  const { error } = await uploadFromUri('avatars', path, uri);
+export async function uploadAvatar(uri: string): Promise<{ path: string | null; error: Error | null }> {
+  // user_id derived from the authenticated session — never accepted from caller.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { path: null, error: new Error('Not authenticated') };
+
+  const storagePath = `${user.id}/avatar.jpg`;
+  const { error } = await uploadFromUri('avatars', storagePath, uri);
   if (error) return { path: null, error };
 
-  const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+  const { data } = supabase.storage.from('avatars').getPublicUrl(storagePath);
   const publicUrl = data.publicUrl;
 
-  const { error: upError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', userId);
+  // avatar_url is not a protected field; RLS still enforces id = auth.uid().
+  const { error: upError } = await supabase
+    .from('profiles')
+    .update({ avatar_url: publicUrl })
+    .eq('id', user.id);
   if (upError) return { path: null, error: new Error(upError.message) };
 
   return { path: publicUrl, error: null };
 }
 
 export async function upsertBasicProfile(params: {
-  userId:      string;
-  email?:      string;
-  phone?:      string;
-  firstName?:  string;
-  lastName?:   string;
-  /** Free-text home address (maps to address_line1). */
-  address?:    string;
+  userId:       string;
+  email?:       string;
+  phone?:       string;
+  firstName?:   string;
+  lastName?:    string;
+  /** Free-text home address (maps to address_line1 via the RPC). */
+  address?:     string;
   /** ISO date string YYYY-MM-DD */
   dateOfBirth?: string;
 }): Promise<{ error: Error | null }> {
-  const firstName  = params.firstName?.trim()  || null;
-  const lastName   = params.lastName?.trim()   || null;
-  const email      = params.email?.trim().toLowerCase() || null;
-  const addressLine1 = params.address?.trim()  || null;
+  // Client-side sanitisation — first line of defence; RPC re-validates server-side.
+  const firstName    = params.firstName?.trim()        || null;
+  const lastName     = params.lastName?.trim()         || null;
+  const email        = params.email?.trim().toLowerCase() || null;
+  const addressLine1 = params.address?.trim()          || null;
 
-  // profiles.phone has a DB CHECK constraint (^\+232[0-9]{8}$). Canonicalise to
-  // Sierra Leone E.164 here so callers (sign-up, profile edit) can pass the raw
-  // value the user typed without tripping the constraint. A supplied-but-invalid
-  // number returns a clear error instead of a raw DB constraint failure.
+  // Normalise and validate Sierra Leone phone before sending to RPC.
+  // A bad phone here gives a clear, immediate error without a round trip.
   let phone: string | null = null;
   if (params.phone && params.phone.trim()) {
     const normalized = normalizeToSierraLeone(params.phone);
@@ -364,45 +499,45 @@ export async function upsertBasicProfile(params: {
     }
     phone = normalized;
   }
-  // Validate date format before writing; reject if clearly wrong
+
+  // Validate ISO date format before sending; RPC accepts a date type.
   const dob = params.dateOfBirth && /^\d{4}-\d{2}-\d{2}$/.test(params.dateOfBirth)
     ? params.dateOfBirth
     : null;
 
-  const payload: Record<string, unknown> = {
-    id:           params.userId,
-    email,
-    phone,
-    first_name:   firstName,
-    last_name:    lastName,
-  };
+  // Use the SECURITY DEFINER RPC — never writes directly to the profiles table.
+  // The RPC enforces: auth.uid() ownership, phone format, and immutable-field protection.
+  const { data, error: rpcError } = await supabase.rpc('upsert_basic_profile', {
+    p_email:      email,
+    p_phone:      phone,
+    p_first_name: firstName,
+    p_last_name:  lastName,
+    p_address:    addressLine1,
+    p_dob:        dob,
+  });
 
-  // Only include optional fields if they have a value, so existing data isn't overwritten with null
-  if (addressLine1) payload.address_line1 = addressLine1;
-  if (dob)          payload.date_of_birth = dob;
+  if (rpcError) return { error: new Error(rpcError.message) };
 
-  const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
-  if (error) return { error: new Error(error.message) };
+  const result = data as { success?: boolean; error?: string } | null;
+  if (result?.error) return { error: new Error(result.error) };
+
   return { error: null };
 }
 
 export async function logLegalAcceptance(params: {
   userId: string;
-  acceptedAt: string;
+  // acceptedAt is intentionally NOT accepted from the caller — the server
+  // generates the timestamp via now() inside the SECURITY DEFINER RPC.
+  // This prevents clients from supplying back-dated or fabricated acceptance times.
 }): Promise<{ error: Error | null }> {
-  // Use the SECURITY DEFINER RPC so the client cannot fabricate audit records
-  // (direct INSERT to audit_logs is no longer permitted by RLS).
-  // Note: the function is create_audit_log, action is settings_changed (closest enum value).
-  const { error } = await supabase.rpc('create_audit_log', {
-    p_action:     'settings_changed',
-    p_table_name: 'profiles',
-    p_record_id:  params.userId,
-    p_old_data:   null,
-    p_new_data:   {
-      legal_accepted_at: params.acceptedAt,
-      terms_version:     '2024-11-01',
-      privacy_version:   '2024-11-01',
-    },
+  // log_legal_acceptance is a SECURITY DEFINER function that:
+  //  - derives user_id from auth.uid() (never trusted from client)
+  //  - sets accepted_at = now() server-side
+  //  - stores terms_version and privacy_version from environment/DB config
+  //  - inserts into legal_acceptances (RLS: INSERT via RPC only)
+  const { error } = await supabase.rpc('log_legal_acceptance', {
+    p_terms_version:   '2024-11-01',
+    p_privacy_version: '2024-11-01',
   });
 
   if (error) return { error: new Error(error.message) };

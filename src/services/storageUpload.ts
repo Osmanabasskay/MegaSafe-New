@@ -13,6 +13,29 @@
 
 import { supabase } from './supabase';
 
+// ── Magic byte validation ──────────────────────────────────────────────────────
+
+const AVATAR_ALLOWED_MIME = new Set(['image/jpeg', 'image/png']);
+
+/** Maximum file size for KYC identity documents: 5 MB, matching the private bucket policy. */
+const KYC_MAX_BYTES = 5 * 1024 * 1024;
+
+/** Allowed MIME types for KYC identity document photos. */
+const KYC_ALLOWED_MIME = new Set(['image/jpeg', 'image/png']);
+
+/**
+ * Detect MIME type from the first bytes of a buffer.
+ * Returns null if the content is not a recognised image type.
+ * Used for avatar uploads to prevent storing HTML/executables as images.
+ */
+function detectImageMime(bytes: Uint8Array): string | null {
+  // JPEG: FF D8 FF
+  if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) return 'image/jpeg';
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) return 'image/png';
+  return null;
+}
+
 // ── Base64 → binary conversion ────────────────────────────────────────────────
 
 /**
@@ -41,6 +64,8 @@ export interface KycUploadFile {
 /**
  * Upload a KYC document to the private kyc-documents bucket.
  *
+ * - Validates MIME type via magic bytes (not just the picker-reported string).
+ * - Enforces KYC_MAX_BYTES (5 MB) size limit.
  * - Uses base64 data directly (no XHR file read; works for content:// URIs).
  * - Does NOT upsert — returns an error if the path already exists.
  *   This prevents overwriting an already-reviewed submission.
@@ -61,10 +86,30 @@ export async function uploadKycFile(
     return { storagePath: null, error: new Error('Could not decode file data. Please try again.') };
   }
 
+  // ── File-size check ───────────────────────────────────────────────────────
+  if (bytes.length > KYC_MAX_BYTES) {
+    return {
+      storagePath: null,
+      error: new Error(`File is too large (max ${KYC_MAX_BYTES / 1024 / 1024} MB). Please compress the image and try again.`),
+    };
+  }
+
+  // ── Magic-byte MIME validation ────────────────────────────────────────────
+  // Re-detect MIME from actual bytes — never trust the picker-reported string.
+  const detectedMime = detectImageMime(bytes);
+  if (!detectedMime || !KYC_ALLOWED_MIME.has(detectedMime)) {
+    return {
+      storagePath: null,
+      error: new Error('Only JPEG and PNG images are accepted for identity documents.'),
+    };
+  }
+  // Use the detected MIME, not the client-supplied string.
+  const verifiedMimeType = detectedMime;
+
   const { error: uploadError } = await supabase.storage
     .from('kyc-documents')
     .upload(objectPath, bytes, {
-      contentType: file.mimeType,
+      contentType: verifiedMimeType,
       upsert: false,   // Do NOT overwrite existing KYC files
     });
 
@@ -115,15 +160,6 @@ function readUriAsBytes(uri: string): Promise<Uint8Array> {
   });
 }
 
-/** Infer MIME type from the URI extension. Defaults to JPEG for camera files. */
-function guessContentType(uri: string): string {
-  const lower = uri.toLowerCase().split('?')[0];
-  if (lower.endsWith('.png'))  return 'image/png';
-  if (lower.endsWith('.webp')) return 'image/webp';
-  if (lower.endsWith('.pdf'))  return 'application/pdf';
-  return 'image/jpeg';
-}
-
 /**
  * Upload a local device URI to any Supabase Storage bucket (XHR-based).
  * Kept for avatars (public bucket, always file:// URI on both platforms).
@@ -135,8 +171,15 @@ export async function uploadFromUri(
   uri: string,
 ): Promise<{ publicUrl: string | null; error: Error | null }> {
   try {
-    const contentType = guessContentType(uri);
     const bytes = await readUriAsBytes(uri);
+
+    // Magic byte check — reject non-image content regardless of URI extension.
+    const detectedMime = detectImageMime(bytes);
+    if (!detectedMime || !AVATAR_ALLOWED_MIME.has(detectedMime)) {
+      return { publicUrl: null, error: new Error('Only JPEG and PNG images are allowed for avatars.') };
+    }
+
+    const contentType = detectedMime;
 
     const { error: uploadError } = await supabase.storage
       .from(bucket)

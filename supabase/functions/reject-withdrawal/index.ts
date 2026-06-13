@@ -6,19 +6,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-// ── Inline shared utilities ───────────────────────────────────
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-function handleCors(req: Request): Response | null {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  return null;
-}
+import { corsHeaders, handleCors, readBoundedBody } from '../_shared/cors.ts';
 
 function createServiceClient() {
   return createClient(
@@ -79,9 +67,12 @@ Deno.serve(async (req: Request) => {
     return jsonError('Admin access required.', 403);
   }
 
+  const { text: rawBody, error: sizeErr } = await readBoundedBody(req);
+  if (sizeErr) return jsonError(sizeErr, 413);
+
   let body: RequestBody;
   try {
-    body = await req.json();
+    body = JSON.parse(rawBody) as RequestBody;
   } catch {
     return jsonError('Invalid JSON body.', 400);
   }
@@ -95,7 +86,10 @@ Deno.serve(async (req: Request) => {
     p_reason:        body.reason?.trim() ?? null,
   });
 
-  if (rpcErr) return jsonError(rpcErr.message, 500);
+  if (rpcErr) {
+    console.error('reject_withdrawal_request RPC error:', rpcErr.message);
+    return jsonError('Could not reject withdrawal request. Please try again.', 500);
+  }
   const r = result as Record<string, unknown>;
   if (r?.error) return jsonError(r.error as string, 400);
 

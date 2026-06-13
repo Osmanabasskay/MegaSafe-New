@@ -59,7 +59,9 @@ const METHOD_LABELS: Record<CollectionMethod, string> = {
   cash_collected: 'Cash',
   orange_money: 'Orange Money',
   afrimoney: 'Afrimoney',
-  qmoney: 'QMoney',
+  // QMoney is manual/physical collection only — NOT a Monime digital payment method.
+  // Backend reconciles it as a cash-equivalent manual transaction, not a Monime checkout.
+  qmoney: 'QMoney (Manual)',
 };
 
 const METHOD_LOGOS: Partial<Record<CollectionMethod, { source: number; title: string }>> = {
@@ -548,6 +550,15 @@ export default function CollectorScreen() {
     }
     if (!activeCollector) {
       Alert.alert('Collector Required', 'No active collector is assigned to this group. Ask the admin to assign a verified collector before collecting payment.');
+      return false;
+    }
+    // Guard: the signed-in user must be the active collector for this group.
+    // The record_physical_collection RPC enforces the same check server-side.
+    if (!user || activeCollector.profileId !== user.id) {
+      Alert.alert(
+        'Not Authorised',
+        `Only the assigned collector can record payments for this group. The active collector is ${activeCollector.displayName}.`,
+      );
       return false;
     }
     if (!activePeriodId) {
@@ -1159,11 +1170,12 @@ function DetailsStep({
         <TextInput
           style={[styles.notesInput, { backgroundColor: C.inputBg, color: C.text, borderColor: C.borderStrong }]}
           value={notes}
-          onChangeText={setNotes}
+          onChangeText={(t) => setNotes(t.slice(0, 280))}
           placeholder="Add any comments about this payment..."
           placeholderTextColor={C.textMuted}
           multiline
           numberOfLines={3}
+          maxLength={280}
         />
       </View>
 

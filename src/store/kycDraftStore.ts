@@ -65,12 +65,23 @@ const initialDraft: KycDraftState = {
 
 interface KycDraftStore extends KycDraftState {
   setDraft: (partial: Partial<KycDraftState>) => void;
+  /** Wipe base64 image buffers from memory without clearing PII text fields.
+   *  Call immediately after each file is uploaded to storage. */
+  clearImageBuffers: () => void;
+  /** Full reset — called after successful KYC submission to wipe all PII. */
   reset: () => void;
 }
 
 export const useKycDraftStore = create<KycDraftStore>((set) => ({
   ...initialDraft,
   setDraft: (partial) => set((s) => ({ ...s, ...partial })),
+  clearImageBuffers: () =>
+    set((s) => ({
+      ...s,
+      idFrontBase64: null,
+      idBackBase64:  null,
+      selfieBase64:  null,
+    })),
   reset: () => set({ ...initialDraft }),
 }));
 

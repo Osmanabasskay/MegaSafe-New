@@ -19,6 +19,24 @@ out/
 .agents/
 .codex/
 .claude/skills/
+.agent/
+.codebuddy/
+.continue/
+.cursor/
+.gemini/
+.kiro/
+.opencode/
+.qoder/
+.roo/
+.trae/
+.windsurf/
+.github/prompts/
+
+# Secret-scrubbing scratch (may contain real token fragments — never commit)
+replace-secrets.txt
+
+# Supabase CLI machine-local state
+supabase/.temp/
 
 # Test runner scratch
 testsprite_tests/tmp/

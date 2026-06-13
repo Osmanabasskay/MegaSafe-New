@@ -86,9 +86,18 @@ export default function InviteMembersScreen() {
 
   useEffect(() => {
     if (inviteCode) return;
-    const generated = generateInviteCode();
-    setInviteCode(generated);
-    setDraftInviteCode(generated);
+    // This client-side code is a DISPLAY HINT only.
+    // The server always generates the authoritative invite code when createGroup() is called.
+    // This preview code is shown in the UI before submission so the admin can share it early.
+    try {
+      const generated = generateInviteCode();
+      setInviteCode(generated);
+      setDraftInviteCode(generated);
+    } catch {
+      // If crypto is unavailable, show a placeholder — the server will generate the real code.
+      setInviteCode('PENDING');
+      setDraftInviteCode('PENDING');
+    }
   }, [inviteCode, setDraftInviteCode]);
 
   const shareText = async (message: string) => {
@@ -100,6 +109,21 @@ export default function InviteMembersScreen() {
   };
 
   const openContactPicker = useCallback(async () => {
+    // Explain why contacts are needed before requesting permission (privacy best practice).
+    // We only read Name and Phone fields — no email, address, or other personal data.
+    await new Promise<void>((resolve) => {
+      Alert.alert(
+        'Access Your Contacts',
+        'Mi Osusu will show your contacts so you can select people to invite to this group. ' +
+        'Only names and phone numbers are read. Contact data is not uploaded or stored permanently — ' +
+        'only the phone numbers you explicitly select will be saved with this group.',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve() },
+          { text: 'Continue', onPress: () => resolve() },
+        ],
+      );
+    });
+
     setPickerVisible(true);
     setLoadingContacts(true);
     setContactSearch('');
@@ -297,16 +321,23 @@ export default function InviteMembersScreen() {
           </View>
 
           <View style={styles.codeBox}>
-            <Text style={styles.codeText}>{inviteCode}</Text>
-            <TouchableOpacity
-              style={styles.copyBtn}
-              onPress={() => shareText(`Join my Mi Osusu group using invite code: ${inviteCode}`)}
-              activeOpacity={0.75}
-            >
-              <Copy size={16} color="#6B7280" />
-              <Text style={styles.copyBtnText}>Copy</Text>
-            </TouchableOpacity>
+            <Text style={styles.codeText}>{inviteCode === 'PENDING' ? '—' : inviteCode}</Text>
+            {inviteCode !== 'PENDING' && (
+              <TouchableOpacity
+                style={styles.copyBtn}
+                onPress={() => shareText(`Join my Mi Osusu group using invite code: ${inviteCode}`)}
+                activeOpacity={0.75}
+              >
+                <Copy size={16} color="#6B7280" />
+                <Text style={styles.copyBtnText}>Copy</Text>
+              </TouchableOpacity>
+            )}
           </View>
+          {/* The server generates the authoritative invite code when the group is created.
+              This preview code is replaced by the server-issued code shown in Setup Complete. */}
+          <Text style={styles.codeDisclaimer}>
+            Preview only — the final code is confirmed after the group is created.
+          </Text>
         </View>
 
         <View style={styles.orDivider}>
@@ -532,8 +563,9 @@ const styles = StyleSheet.create({
   rowDivider: { height: 1, backgroundColor: '#F9FAFB', marginVertical: 8 },
 
   // Invite code
-  codeBox:      { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF7ED', borderRadius: 14, paddingHorizontal: 20, paddingVertical: 16 },
-  codeText:     { flex: 1, fontSize: 22, fontWeight: '800', color: '#F97316', letterSpacing: 4 },
+  codeBox:         { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF7ED', borderRadius: 14, paddingHorizontal: 20, paddingVertical: 16 },
+  codeText:        { flex: 1, fontSize: 22, fontWeight: '800', color: '#F97316', letterSpacing: 4 },
+  codeDisclaimer:  { fontSize: 11, color: '#9CA3AF', marginTop: 6, paddingHorizontal: 4, lineHeight: 16 },
   copyBtn:      { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFFFF', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
   copyBtnText:  { fontSize: 13, fontWeight: '700', color: '#374151' },
 

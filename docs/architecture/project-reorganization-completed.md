@@ -59,7 +59,7 @@ See `unused-files-report.md` for the full rationale per file.
 
 - `lib/validation/kyc.ts` — single confirmed 0-byte dead file (canonical version
   is `src/utils/validation/kyc.ts`). Recoverable from git history.
-- Empty husk directories removed: `hooks/`, `constants/`, `convex/`.
+- Empty husk directories removed: `hooks/`, `constants/`.
 
 ## 5. Import paths updated
 
@@ -150,8 +150,6 @@ service-role key is server-side only. `.gitignore` hardened; committed
   full end-to-end retest. Recommended as its own dedicated effort.
 - **`packages/shared/`**: extract shared constants/types/validation once the
   mobile and admin apps need to share code (not currently required).
-- **Convex teardown**: remove `.convex/` cache and the `convex` entry in
-  `.mcp.json` if Convex is permanently abandoned.
 - **Incremental `@/` alias adoption**: new/edited files should use `@/…` imports;
   optionally codemod existing relative imports later.
 

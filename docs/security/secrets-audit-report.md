@@ -39,8 +39,7 @@ The root `.env.example` correctly documents the security boundary:
 ## `.gitignore` hardening done in this cleanup
 
 Added ignores so build output and machine-local caches can never be committed:
-`coverage/`, `.next/`, `apps/*/.next/`, `out/`, `.convex/`, `convex/`,
-`.agents/`, `.codex/`, `.claude/skills/`, `testsprite_tests/tmp/`, `*.log`.
+`coverage/`, `.next/`, `apps/*/.next/`, `out/`, `.agents/`, `.codex/`, `.claude/skills/`, `testsprite_tests/tmp/`, `*.log`.
 Previously-committed `apps/admin/.next/**` build artifacts were removed from
 tracking.
 

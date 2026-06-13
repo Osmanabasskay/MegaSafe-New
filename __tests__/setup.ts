@@ -12,6 +12,12 @@ vi.mock('../src/services/supabase', () => {
     getUser: vi.fn(),
     signOut: vi.fn(),
   };
+  const mockFunctions = {
+    invoke: vi.fn().mockResolvedValue({
+      data: { action: 'submitted_for_review' },
+      error: null,
+    }),
+  };
 
   const chainable = {
     select: vi.fn().mockReturnThis(),
@@ -29,11 +35,12 @@ vi.mock('../src/services/supabase', () => {
   mockFrom.mockReturnValue(chainable);
 
   return {
-    supabase: { rpc: mockRpc, from: mockFrom, auth: mockAuth },
+    supabase: { rpc: mockRpc, from: mockFrom, auth: mockAuth, functions: mockFunctions },
     supabaseConfigured: true,
     __mockRpc: mockRpc,
     __mockFrom: mockFrom,
     __mockAuth: mockAuth,
+    __mockFunctions: mockFunctions,
     __chainable: chainable,
   };
 });

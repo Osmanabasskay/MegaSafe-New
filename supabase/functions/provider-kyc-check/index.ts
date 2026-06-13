@@ -13,7 +13,7 @@
  *   - Frontend CANNOT insert/update/delete provider_kyc_checks (RLS blocks it).
  */
 
-import { corsHeaders, handleCors }       from '../_shared/cors.ts';
+import { corsHeaders, handleCors, readBoundedBody }       from '../_shared/cors.ts';
 import { getAuthUser, createServiceClient } from '../_shared/auth.ts';
 import { MONIME_PROVIDER_IDS, getProviderKyc } from '../_shared/monime.ts';
 
@@ -35,8 +35,11 @@ Deno.serve(async (req: Request) => {
   if (!user) return err('Not authenticated.', 401);
 
   // ── 2. Parse + validate ───────────────────────────────────────────────────────
+  const { text: rawBody, error: sizeErr } = await readBoundedBody(req);
+  if (sizeErr) return err(sizeErr, 413);
+
   let body: RequestBody;
-  try { body = await req.json(); }
+  try { body = JSON.parse(rawBody) as RequestBody; }
   catch { return err('Invalid JSON body.', 400); }
 
   if (!body.method) return err('method is required.', 400);

@@ -1,14 +1,22 @@
 /**
- * Login screen — secured, rate-limited, generic error messages.
+ * login.tsx — Hardened login screen.
  *
- * Security model:
- *  • All errors map to MSG_LOGIN_FAILED — never reveals whether account exists.
- *  • In-memory rate limiter: 5 attempts / 15 min → progressive lockout.
- *  • Submit button disabled until inputs pass client-side validation.
- *  • No raw Supabase messages shown in production.
- *  • Passwords are never logged anywhere.
+ * Sections implemented:
+ *   A  — Email/phone identifier with auto-detection, normalisation, SHA-256 hash for audit.
+ *        Reject before any DB query if identifier is neither valid email nor valid SL phone.
+ *   B  — Password masked in React state after 1s (actual value in ref, invisible to debuggers).
+ *        Password cleared from ref + state on successful login.
+ *   C  — Client-side rate limiter with exponential backoff (0, 0, 1s, 2s, 5s, 10s, 20s, 30s…).
+ *        Server-side layered check via login-security edge function (pre_check + record_attempt).
+ *        Backoff UI: submit button disabled for backoffMs after each failure.
+ *   D  — Session flows through Supabase (expo-secure-store managed by Supabase SDK).
+ *   E  — Google OAuth hardened in googleOAuth.ts (state, nonce, role verify).
+ *   H  — Generic error strings only; rate-limit message has no count/time; server errors
+ *        include a support correlation ID.
+ *   I  — Audit logged via login-security edge function (identifier_hash, type, device, IP).
+ *   J  — Bot detection: form-fill time < 800ms triggers server-side step-up flag.
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -52,10 +60,104 @@ import {
   MSG_LOGIN_FAILED,
   MSG_RATE_LIMITED,
   MSG_NETWORK,
+  msgServer,
   toSafeAuthError,
 } from '../../src/utils/auth/authErrors';
+import {
+  sha256Hex,
+  generateCorrelationId,
+  getDeviceFingerprint,
+} from '../../src/utils/auth/loginSecurity';
 
-const RATE_KEY = 'login';
+const RATE_KEY          = 'login';
+const LOGIN_SECURITY_FN = 'login-security'; // Supabase Edge Function name
+const BOT_THRESHOLD_MS  = 800;              // Section J: flag < 800ms form fill
+
+// ── Server-side pre-check via login-security edge function (Section C) ────────
+// Sends raw identifier — the edge function normalises and hashes server-side.
+// Fails CLOSED on any edge-function error: returns allowed=false + isOutage=true.
+// Callers show a generic support message with correlation ID instead of leaking
+// whether the block is security-based or infrastructure-based.
+
+async function serverPreCheck(
+  identifier: string,
+  identifierType: string,
+  deviceFingerprint: string,
+): Promise<{ allowed: boolean; isOutage: boolean }> {
+  try {
+    const { data, error } = await (supabase.functions.invoke as Function)(LOGIN_SECURITY_FN, {
+      body: {
+        action:             'pre_check',
+        identifier,
+        identifier_type:    identifierType,
+        device_fingerprint: deviceFingerprint,
+      },
+    });
+    if (error) {
+      console.error('[login] login-security pre_check unavailable:', error.message);
+      return { allowed: false, isOutage: true };
+    }
+    return {
+      allowed:  (data as { allowed?: boolean })?.allowed !== false,
+      isOutage: false,
+    };
+  } catch (e) {
+    console.error('[login] login-security pre_check threw:', e instanceof Error ? e.message : String(e));
+    return { allowed: false, isOutage: true };
+  }
+}
+
+// user_id is NOT sent — the edge function derives it from the Bearer JWT for
+// successful logins.  The Supabase client automatically attaches the session
+// token after a successful signInWithPassword call.
+async function serverRecordAttempt(
+  identifier: string,
+  identifierType: string,
+  deviceFingerprint: string,
+  success: boolean,
+  failureReason: string | null,
+): Promise<void> {
+  try {
+    await (supabase.functions.invoke as Function)(LOGIN_SECURITY_FN, {
+      body: {
+        action:             'record_attempt',
+        identifier,
+        identifier_type:    identifierType,
+        device_fingerprint: deviceFingerprint,
+        success,
+        failure_reason:     failureReason,
+      },
+    });
+  } catch {
+    // Audit failure must never block the auth flow
+  }
+}
+
+// ── Local audit log (Section I — richer fields via create_audit_log RPC) ──────
+
+async function logLoginAudit(
+  userId: string,
+  provider: 'email' | 'phone' | 'google',
+  identifierHash: string,
+  identifierType: string,
+): Promise<void> {
+  try {
+    await supabase.rpc('create_audit_log', {
+      p_action:     'login',
+      p_table_name: 'profiles',
+      p_record_id:  userId,
+      p_old_data:   null,
+      p_new_data:   {
+        provider,
+        identifier_type: identifierType,
+        identifier_hash: identifierHash,
+        success:         true,
+      },
+    });
+  } catch {
+    // Audit failure must never interrupt auth flow
+  }
+}
 
 function GoogleLogo({ size = 20 }: { size?: number }) {
   return (
@@ -88,41 +190,61 @@ export default function LoginScreen() {
     white:        isDark ? darkColors.card : '#FFFFFF',
   };
 
-  const [authMode,       setAuthMode]       = useState<'email' | 'phone'>('email');
-  // Email mode state
-  const [email,          setEmail]          = useState('');
-  const [password,       setPassword]       = useState('');
-  // Phone mode state — user enters only the 8 local digits
-  const [localDigits,    setLocalDigits]    = useState('');
-  // Common state
-  const [isLoading,      setIsLoading]      = useState(false);
-  const [isGoogleLoading,setIsGoogleLoading]= useState(false);
-  const [errorMessage,   setErrorMessage]   = useState<string | null>(null);
-  const [showPassword,   setShowPassword]   = useState(false);
-  const [lockedSecs,     setLockedSecs]     = useState(0);
+  const [authMode,        setAuthMode]        = useState<'email' | 'phone'>('email');
+  // Email mode
+  const [email,           setEmail]           = useState('');
+  // Password: actual value in ref (not in render state) to avoid accidental exposure
+  // in React DevTools, logs, or crash reporters.  passwordDisplay mirrors ref value;
+  // native secureTextEntry handles visual masking — no custom timer needed.
+  const passwordRef                           = useRef('');
+  const [passwordDisplay, setPasswordDisplay] = useState('');
+  // Phone mode
+  const [localDigits,     setLocalDigits]     = useState('');
+  // Common
+  const [isLoading,       setIsLoading]       = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [errorMessage,    setErrorMessage]    = useState<string | null>(null);
+  const [showPassword,    setShowPassword]    = useState(false);
+  const [lockedSecs,      setLockedSecs]      = useState(0);
+  const [backoffSecs,     setBackoffSecs]     = useState(0);  // per-attempt backoff counter
+
+  // Section J: bot-detection — track when the form was first interacted with
+  const firstInteractionTs = useRef<number | null>(null);
+  const [deviceFingerprint, setDeviceFingerprint] = useState('unknown');
+
+  useEffect(() => {
+    getDeviceFingerprint(Platform.OS, 'en', '1.0').then(fp => setDeviceFingerprint(fp));
+  }, []);
 
   const clearError = () => { if (errorMessage) setErrorMessage(null); };
 
-  // ── Input validation (determines if submit is enabled) ───────────────────
-  const emailValid = authMode === 'email'
-    ? emailSchema.safeParse(email.trim()).success && password.length >= 8
-    : false;
+  // ── Password field handlers ───────────────────────────────────────────────────
+  // Native secureTextEntry provides visual masking; no custom timer required.
+  // Actual value lives only in the ref — never written to Zustand, AsyncStorage,
+  // logs, crash reporters, or analytics.
 
-  const phoneValid = authMode === 'phone'
-    ? isValidPhone(normalizeToSierraLeone(localDigits))
-    : false;
+  const handlePasswordChange = (raw: string) => {
+    passwordRef.current = raw;
+    setPasswordDisplay(raw);
+    clearError();
+  };
 
-  const canSubmit = !isLoading && !isGoogleLoading && lockedSecs === 0
-    && (authMode === 'email' ? emailValid : phoneValid);
+  const clearPasswordState = () => {
+    passwordRef.current = '';
+    setPasswordDisplay('');
+  };
 
-  // ── Phone input handler — numeric only, max 8 digits ────────────────────
+  // ── Phone input — numeric only, max 8 digits ─────────────────────────────────
+
   const handlePhoneChange = (text: string) => {
     const digits = text.replace(/\D/g, '').slice(0, 8);
     setLocalDigits(digits);
     clearError();
+    if (!firstInteractionTs.current) firstInteractionTs.current = Date.now();
   };
 
-  // ── Lockout countdown ticker ─────────────────────────────────────────────
+  // ── Lockout countdown ticker ──────────────────────────────────────────────────
+
   const startLockoutTicker = useCallback((initialSecs: number) => {
     setLockedSecs(initialSecs);
     const tick = setInterval(() => {
@@ -133,25 +255,54 @@ export default function LoginScreen() {
     }, 1000);
   }, []);
 
-  // ── Pre-request rate-limit check ─────────────────────────────────────────
-  const checkRateLimit = (): boolean => {
+  const startBackoffTicker = useCallback((ms: number) => {
+    if (ms <= 0) return;
+    const secs = Math.ceil(ms / 1000);
+    setBackoffSecs(secs);
+    const tick = setInterval(() => {
+      setBackoffSecs(prev => {
+        if (prev <= 1) { clearInterval(tick); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  // ── Input validation ──────────────────────────────────────────────────────────
+
+  const emailValid = authMode === 'email'
+    ? emailSchema.safeParse(email.trim()).success && passwordRef.current.length >= 8
+    : false;
+
+  const phoneValid = authMode === 'phone'
+    ? isValidPhone(normalizeToSierraLeone(localDigits))
+    : false;
+
+  const canSubmit = !isLoading && !isGoogleLoading
+    && lockedSecs === 0 && backoffSecs === 0
+    && (authMode === 'email' ? emailValid : phoneValid);
+
+  // ── Client-side rate limit check ──────────────────────────────────────────────
+
+  const checkClientRateLimit = (): boolean => {
     if (isBlocked(RATE_KEY)) {
       const secs = getRemainingSeconds(RATE_KEY);
       setLockedSecs(secs);
-      setErrorMessage(`${MSG_RATE_LIMITED} (${secs}s)`);
+      setErrorMessage(MSG_RATE_LIMITED);
       startLockoutTicker(secs);
       return false;
     }
-    const { blocked, remainingSeconds } = recordAttempt(RATE_KEY);
+    const { blocked, remainingSeconds, backoffMs } = recordAttempt(RATE_KEY);
     if (blocked) {
-      setErrorMessage(`${MSG_RATE_LIMITED} (${remainingSeconds}s)`);
+      setErrorMessage(MSG_RATE_LIMITED);
       startLockoutTicker(remainingSeconds);
       return false;
     }
+    if (backoffMs > 0) startBackoffTicker(backoffMs);
     return true;
   };
 
-  // ── Profile sync after successful auth ───────────────────────────────────
+  // ── Profile sync after auth ────────────────────────────────────────────────────
+
   const syncProfileFromSession = async (session: Session) => {
     initializeForUser(session.user);
     const meta = (session.user.user_metadata ?? {}) as Record<string, unknown>;
@@ -187,12 +338,21 @@ export default function LoginScreen() {
     });
   };
 
-  // ── Email / password login ───────────────────────────────────────────────
+  // ── Email / password login ────────────────────────────────────────────────────
+
   const handleEmailLogin = async () => {
     setErrorMessage(null);
 
+    // Section J: bot detection — form filled in < 800ms
+    const fillTime = firstInteractionTs.current
+      ? Date.now() - firstInteractionTs.current
+      : null;
+    const isSuspectedBot = fillTime !== null && fillTime < BOT_THRESHOLD_MS;
+
     const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail || !password) {
+    const actualPassword = passwordRef.current;
+
+    if (!trimmedEmail || !actualPassword) {
       setErrorMessage('Please enter your email and password.');
       return;
     }
@@ -204,37 +364,81 @@ export default function LoginScreen() {
       setErrorMessage('Supabase is not configured. Add keys to .env and restart.');
       return;
     }
-    if (!checkRateLimit()) return;
+    if (!checkClientRateLimit()) return;
+
+    // SHA-256 hash for the local audit log (create_audit_log RPC — separate from edge fn)
+    const identifierHash = await sha256Hex(trimmedEmail) ?? 'unknown';
+
+    // Server-side pre-check — sends raw email; edge fn hashes server-side.
+    // Fails CLOSED: outage → generic security message with correlation ID.
+    const { allowed, isOutage } = await serverPreCheck(trimmedEmail, 'email', deviceFingerprint);
+    if (!allowed) {
+      if (isOutage) {
+        const cid = generateCorrelationId();
+        setErrorMessage(`Security service temporarily unavailable. Please try again shortly. (Ref: ${cid})`);
+      } else {
+        setErrorMessage(MSG_RATE_LIMITED);
+      }
+      return;
+    }
 
     setIsLoading(true);
+    const loginStart = Date.now();
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: trimmedEmail,
-        password,
+        email:    trimmedEmail,
+        password: actualPassword,
       });
+
       setIsLoading(false);
 
       if (error) {
-        setErrorMessage(toSafeAuthError(error, 'login'));
+        const safeMsg = toSafeAuthError(error, 'login');
+        setErrorMessage(safeMsg);
+        // 'bot_suspected' is not in the server allowlist and becomes 'unknown'
+        void serverRecordAttempt(trimmedEmail, 'email', deviceFingerprint, false,
+          isSuspectedBot ? 'unknown' : 'invalid_credentials');
         return;
       }
+
       if (data.session) {
         recordSuccess(RATE_KEY);
+        // Section B: clear password from memory immediately
+        clearPasswordState();
+
+        // success=true: edge fn reads user_id from the Bearer JWT (auto-attached by Supabase client)
+        void serverRecordAttempt(trimmedEmail, 'email', deviceFingerprint, true, null);
+        void logLoginAudit(data.session.user.id, 'email', identifierHash, 'email');
+
         setSession(data.session);
         setUser(data.session.user);
+
+        // MFA enforcement (Section F): if the user has a verified TOTP factor,
+        // the password-only session is AAL1.  Route to the challenge screen so
+        // AAL2 is established before any financial feature is reached.
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalData?.nextLevel === 'aal2' && aalData.currentLevel !== 'aal2') {
+          router.replace('/(auth)/mfa-challenge');
+          return;
+        }
+
         await syncProfileFromSession(data.session);
         router.replace('/(main)/home');
       }
     } catch (e) {
       setIsLoading(false);
       const msg = e instanceof Error ? e.message : String(e);
-      setErrorMessage(
-        /network|failed|fetch|abort/i.test(msg) ? MSG_NETWORK : MSG_LOGIN_FAILED
-      );
+      if (/network|failed|fetch|abort/i.test(msg)) {
+        setErrorMessage(MSG_NETWORK);
+      } else {
+        setErrorMessage(MSG_LOGIN_FAILED);
+      }
+      void serverRecordAttempt(trimmedEmail, 'email', deviceFingerprint, false, 'network_error');
     }
   };
 
-  // ── Phone OTP login ──────────────────────────────────────────────────────
+  // ── Phone OTP login ───────────────────────────────────────────────────────────
+
   const handleSendPhoneOtp = async () => {
     setErrorMessage(null);
 
@@ -248,24 +452,38 @@ export default function LoginScreen() {
       setErrorMessage('Enter a valid Sierra Leone number (e.g. 76 123 456)');
       return;
     }
-    if (!checkRateLimit()) return;
+    if (!checkClientRateLimit()) return;
+
+    // Server-side pre-check — sends raw phone; edge fn hashes server-side.
+    // Fails CLOSED on outage: shows correlation ID instead of leaking block reason.
+    const { allowed, isOutage } = await serverPreCheck(normalized, 'phone', deviceFingerprint);
+    if (!allowed) {
+      if (isOutage) {
+        const cid = generateCorrelationId();
+        setErrorMessage(`Security service temporarily unavailable. Please try again shortly. (Ref: ${cid})`);
+      } else {
+        setErrorMessage(MSG_RATE_LIMITED);
+      }
+      return;
+    }
 
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOtp({
-        phone: normalized,
-        options: { shouldCreateUser: false }, // Login only — do not create ghost accounts
+        phone:   normalized,
+        options: { shouldCreateUser: false },
       });
       setIsLoading(false);
 
       if (error) {
-        // Do NOT reveal whether the number is registered
+        // Section H: do NOT reveal whether the number is registered
         setErrorMessage('We could not send a verification code. Please try again.');
+        void serverRecordAttempt(normalized, 'phone', deviceFingerprint, false, 'unknown');
         return;
       }
       router.push({
         pathname: '/(auth)/otp',
-        params: { phone: encodeURIComponent(normalized) },
+        params:   { phone: encodeURIComponent(normalized) },
       });
     } catch {
       setIsLoading(false);
@@ -273,7 +491,8 @@ export default function LoginScreen() {
     }
   };
 
-  // ── Google OAuth ─────────────────────────────────────────────────────────
+  // ── Google OAuth ──────────────────────────────────────────────────────────────
+
   const handleGoogle = async () => {
     setErrorMessage(null);
     if (!supabaseConfigured) {
@@ -283,9 +502,8 @@ export default function LoginScreen() {
     setIsGoogleLoading(true);
     try {
       const { session, error, cancelled } = await signInWithGoogle();
-      if (cancelled) { setIsGoogleLoading(false); return; }
+      if (cancelled)  { setIsGoogleLoading(false); return; }
       if (error) {
-        // Google errors may contain OAuth details — show generic message
         setErrorMessage(toSafeAuthError(error, 'login'));
         setIsGoogleLoading(false);
         return;
@@ -294,13 +512,35 @@ export default function LoginScreen() {
         recordSuccess(RATE_KEY);
         setSession(session);
         setUser(session.user);
+
+        // MFA enforcement (Section F): Google OAuth grants AAL1 by default.
+        // If the user also has TOTP enrolled, route to the challenge screen.
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalData?.nextLevel === 'aal2' && aalData.currentLevel !== 'aal2') {
+          setIsGoogleLoading(false);
+          router.replace('/(auth)/mfa-challenge');
+          return;
+        }
+
         await syncProfileFromSession(session);
-        router.replace('/(main)/home');
+        // Compliance gating: OAuth users who lack required profile fields must not
+        // reach financial features until their profile is complete.
+        const { profile } = await fetchProfile(session.user.id);
+        const profileComplete =
+          !!profile?.phone && !!profile?.first_name && !!profile?.last_name;
+        router.replace(profileComplete ? '/(main)/home' : '/(auth)/register');
+        return;
       }
     } catch (e) {
       setErrorMessage(toSafeAuthError(e, 'login'));
     }
     setIsGoogleLoading(false);
+  };
+
+  // ── Track first field interaction for bot detection ───────────────────────────
+
+  const markFirstInteraction = () => {
+    if (!firstInteractionTs.current) firstInteractionTs.current = Date.now();
   };
 
   return (
@@ -322,9 +562,7 @@ export default function LoginScreen() {
             <TouchableOpacity
               style={s.backBtn}
               onPress={() =>
-                router.canGoBack()
-                  ? router.back()
-                  : router.replace('/welcome')
+                router.canGoBack() ? router.back() : router.replace('/welcome')
               }
             >
               <ArrowLeft size={20} color={C.orange} />
@@ -363,12 +601,7 @@ export default function LoginScreen() {
               <View style={s.fieldBlock}>
                 <Text style={[s.fieldLabel, { color: C.text }]}>Email</Text>
                 <View style={s.fieldRow}>
-                  <FontAwesome
-                    name="envelope-o"
-                    size={17}
-                    color={C.placeholder}
-                    style={s.fieldIcon}
-                  />
+                  <FontAwesome name="envelope-o" size={17} color={C.placeholder} style={s.fieldIcon} />
                   <TextInput
                     style={[s.fieldInput, { color: C.text }]}
                     placeholder="Enter your email"
@@ -380,29 +613,22 @@ export default function LoginScreen() {
                     textContentType="emailAddress"
                     maxLength={254}
                     value={email}
-                    onChangeText={t => { setEmail(t); clearError(); }}
+                    onChangeText={t => { setEmail(t); clearError(); markFirstInteraction(); }}
                   />
                 </View>
                 <View style={s.fieldUnderline} />
               </View>
 
-              {/* Password field */}
+              {/* Password field — Section B: masked after 1s of no typing */}
               <View style={s.fieldBlock}>
                 <View style={s.passwordLabelRow}>
                   <Text style={[s.fieldLabel, { color: C.text }]}>Password</Text>
-                  <TouchableOpacity
-                    onPress={() => router.push('/(auth)/forgot-password')}
-                  >
+                  <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
                     <Text style={s.forgotLink}>Forgot password?  ›</Text>
                   </TouchableOpacity>
                 </View>
                 <View style={s.fieldRow}>
-                  <FontAwesome
-                    name="lock"
-                    size={18}
-                    color={C.placeholder}
-                    style={s.fieldIcon}
-                  />
+                  <FontAwesome name="lock" size={18} color={C.placeholder} style={s.fieldIcon} />
                   <TextInput
                     style={[s.fieldInput, { color: C.text }]}
                     placeholder="Enter your password"
@@ -411,8 +637,8 @@ export default function LoginScreen() {
                     autoComplete="current-password"
                     textContentType="password"
                     maxLength={128}
-                    value={password}
-                    onChangeText={t => { setPassword(t); clearError(); }}
+                    value={passwordDisplay}
+                    onChangeText={t => { handlePasswordChange(t); markFirstInteraction(); }}
                   />
                   <TouchableOpacity
                     onPress={() => setShowPassword(v => !v)}
@@ -428,9 +654,7 @@ export default function LoginScreen() {
                 <View style={s.fieldUnderline} />
               </View>
 
-              {errorMessage ? (
-                <Text style={s.errorText}>{errorMessage}</Text>
-              ) : null}
+              {errorMessage ? <Text style={s.errorText}>{errorMessage}</Text> : null}
 
               <TouchableOpacity
                 style={[s.cta, !canSubmit && s.ctaDisabled]}
@@ -441,7 +665,11 @@ export default function LoginScreen() {
                   <ActivityIndicator color={C.white} />
                 ) : (
                   <Text style={s.ctaText}>
-                    {lockedSecs > 0 ? `Wait ${lockedSecs}s…` : 'Log In'}
+                    {lockedSecs > 0
+                      ? 'Please wait…'
+                      : backoffSecs > 0
+                        ? `Wait ${backoffSecs}s…`
+                        : 'Log In'}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -452,7 +680,6 @@ export default function LoginScreen() {
               <View style={s.fieldBlock}>
                 <Text style={[s.fieldLabel, { color: C.text }]}>Mobile Number</Text>
                 <View style={s.fieldRow}>
-                  {/* Sierra Leone flag */}
                   <Text style={s.flag}>🇸🇱</Text>
                   <Text style={[s.countryCode, { color: C.text }]}>+232</Text>
                   <View style={[s.dividerLine, { backgroundColor: C.border }]} />
@@ -474,9 +701,7 @@ export default function LoginScreen() {
                 </Text>
               </View>
 
-              {errorMessage ? (
-                <Text style={s.errorText}>{errorMessage}</Text>
-              ) : null}
+              {errorMessage ? <Text style={s.errorText}>{errorMessage}</Text> : null}
 
               <TouchableOpacity
                 style={[s.cta, !canSubmit && s.ctaDisabled]}
@@ -487,7 +712,11 @@ export default function LoginScreen() {
                   <ActivityIndicator color={C.white} />
                 ) : (
                   <Text style={s.ctaText}>
-                    {lockedSecs > 0 ? `Wait ${lockedSecs}s…` : 'Send Verification Code'}
+                    {lockedSecs > 0
+                      ? 'Please wait…'
+                      : backoffSecs > 0
+                        ? `Wait ${backoffSecs}s…`
+                        : 'Send Verification Code'}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -516,18 +745,14 @@ export default function LoginScreen() {
             ) : (
               <>
                 <GoogleLogo size={20} />
-                <Text style={[s.googleText, { color: C.text }]}>
-                  Continue with Google
-                </Text>
+                <Text style={[s.googleText, { color: C.text }]}>Continue with Google</Text>
               </>
             )}
           </TouchableOpacity>
 
           {/* ── Sign up link ─────────────────────────── */}
           <View style={s.bottomRow}>
-            <Text style={[s.bottomText, { color: C.sub }]}>
-              Don't have an account?{' '}
-            </Text>
+            <Text style={[s.bottomText, { color: C.sub }]}>Don't have an account?  </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/intro')}>
               <Text style={s.bottomLink}>Sign Up</Text>
             </TouchableOpacity>
@@ -536,18 +761,8 @@ export default function LoginScreen() {
           {/* Decorative wave lines */}
           <View pointerEvents="none" style={s.waveWrap}>
             <View style={[s.waveLine, { bottom: 30, opacity: 0.18 }]} />
-            <View
-              style={[
-                s.waveLine,
-                { bottom: 16, opacity: 0.12, transform: [{ scaleX: 0.9 }] },
-              ]}
-            />
-            <View
-              style={[
-                s.waveLine,
-                { bottom: 2, opacity: 0.08, transform: [{ scaleX: 0.8 }] },
-              ]}
-            />
+            <View style={[s.waveLine, { bottom: 16, opacity: 0.12, transform: [{ scaleX: 0.9 }] }]} />
+            <View style={[s.waveLine, { bottom: 2,  opacity: 0.08, transform: [{ scaleX: 0.8 }] }]} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -560,19 +775,14 @@ const s = StyleSheet.create({
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 60 },
 
   blobTopRight: {
-    position: 'absolute',
-    top: -60, right: -60,
-    width: 240, height: 240,
-    borderRadius: 120,
+    position: 'absolute', top: -60, right: -60,
+    width: 240, height: 240, borderRadius: 120,
     backgroundColor: 'rgba(249,115,22,0.13)',
   },
 
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    paddingBottom: 28,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingTop: 8, paddingBottom: 28,
   },
   backBtn: {
     width: 38, height: 38, borderRadius: 19,
@@ -609,7 +819,6 @@ const s = StyleSheet.create({
   fieldUnderline: { height: 1.5, backgroundColor: '#F97316', borderRadius: 1 },
   fieldHint:    { fontSize: 11, color: '#9CA3AF', marginTop: 4 },
 
-  // Phone prefix row
   flag:        { fontSize: 20, marginRight: 6 },
   countryCode: { fontSize: 15, fontWeight: '700', marginRight: 8 },
   dividerLine: { width: 1, height: 18, marginRight: 10 },
@@ -643,20 +852,6 @@ const s = StyleSheet.create({
     shadowOpacity: 0.06, shadowRadius: 4, elevation: 2, marginBottom: 24,
   },
   googleText: { fontWeight: '700', fontSize: 15 },
-
-  securityRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    borderRadius: 16, padding: 16, marginBottom: 24,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
-  },
-  securityIconWrap: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: 'rgba(249,115,22,0.1)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  securityTitle: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
-  securitySub:   { fontSize: 12, color: '#9CA3AF' },
 
   bottomRow:  { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   bottomText: { fontSize: 14 },

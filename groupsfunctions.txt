@@ -1,0 +1,656 @@
+# Mi Osusu Group Management Feature Specification
+
+## Goal
+
+Modify the Osusu group area so that every group has a clear internal structure similar to a WhatsApp group screen, but designed for a financial savings group.
+
+The main group screen should show the group details, members, ledger, invite settings, group settings, activity, and delete group actions based on the user's role.
+
+The app must maintain Mi Osusu branding:
+
+- Primary color: Orange `#F97316`
+- Dark color: `#0F172A`
+- Background: `#FFFFFF`
+- Currency: `NLe`
+- Style: Clean, mobile-first, no unnecessary borders, no heavy shadows, no AI icons, no emojis.
+
+---
+
+# 1. Group Main Screen
+
+## Purpose
+
+This is the main screen users see after tapping a group from the Osusu group list.
+
+## Main Features
+
+### Display
+
+- Group name
+- Group type
+- Group status
+- Contribution amount
+- Contribution frequency
+- Total members
+- Current collector
+- Next collector
+- Next contribution date
+- Group balance summary
+- User's contribution status
+- Group progress
+- Three-dot menu button
+
+## Navigation
+
+```text
+Group List
+└── Group Main Screen
+    ├── Members
+    │   └── Members Management
+    ├── Ledger
+    │   └── Group Ledger
+    ├── Invite
+    │   └── Invite Settings
+    ├── Settings
+    │   └── Group Settings
+    ├── Activity
+    │   └── Activity Screen
+    ├── Delete Group
+    │   └── Delete Group Screen
+    └── Back
+        └── Group List
+```
+
+## Three-Dot Menu Options
+
+### Normal Member
+
+- Group Info
+- Members
+- Ledger
+- Invite Settings
+- Leave Group
+
+### Admin / Creator
+
+- Group Info
+- Members Management
+- Ledger
+- Activity
+- Invite Settings
+- Group Settings
+- Delete Group
+
+## Access Rules
+
+### Members
+
+Can:
+
+- View group information
+- View members
+- View ledger summaries
+- View their contribution records
+- Leave group (if eligible)
+
+Cannot:
+
+- Manage members
+- Access activity logs
+- Change settings
+- Delete group
+
+### Admins
+
+Can:
+
+- Manage members
+- View ledger
+- Configure invites
+- Change settings
+- View activity logs
+
+Cannot:
+
+- Delete group unless creator
+
+### Creator
+
+Can perform all actions including group deletion.
+
+---
+
+# 2. Group Info Screen
+
+## Purpose
+
+Shows complete group information.
+
+## Fields
+
+- Group name
+- Group description
+- Group image
+- Created by
+- Created date
+- Group type
+- Contribution amount
+- Contribution frequency
+- Collection order type
+- Member count
+- Maximum members
+- Start date
+- End date
+- Next contribution date
+- Current collector
+- Next collector
+- Group status
+- Payout method
+- Rules summary
+- Late payment rule
+- Penalty rule
+- Withdrawal rule
+- Admin list
+
+## Functions
+
+- View group details
+- View rules
+- View admins
+- View schedule
+- View payout summary
+- Navigate to Members
+- Navigate to Ledger
+- Navigate to Invite Settings
+
+## Buttons
+
+- Edit Group Info (Admin only)
+- View Members
+- View Ledger
+- Back
+
+## Validation
+
+- Members must not see edit actions.
+- Closed, inactive, or deleted groups must display their status.
+
+---
+
+# 3. Members Management
+
+## Purpose
+
+Allows viewing and administration of group members.
+
+## Member List Fields
+
+- Profile photo
+- Full name
+- Phone number
+- Role
+- KYC status
+- Contribution status
+- Total contributed
+- Outstanding amount
+- Join date
+- Last active date
+- Late payment status
+- Collector position
+- Member status
+
+## Search & Filters
+
+- Search by name
+- Search by phone
+- Filter by role
+- Filter by contribution status
+- Filter by pending members
+- Filter by suspended members
+- Filter by late payments
+
+## Admin Actions
+
+- View details
+- Promote to admin
+- Remove admin role
+- Suspend member
+- Reactivate member
+- Remove member
+- Change collector position
+- Send payment reminder
+- View member ledger
+- View member activity
+
+## Member Actions
+
+- View member list
+- View limited profiles
+
+Members cannot:
+
+- Promote users
+- Suspend users
+- Remove users
+
+---
+
+# 4. Ledger Screen
+
+## Purpose
+
+Displays financial records for the group.
+
+## Summary Cards
+
+- Total expected contributions
+- Total received contributions
+- Outstanding amount
+- Total payouts
+- Pending payouts
+- Late payment penalties
+- Platform fees
+- Group balance
+
+## Ledger Fields
+
+- Transaction date
+- Member name
+- Transaction type
+- Amount
+- Payment method
+- Status
+- Reference number
+- Contribution cycle
+- Collector
+- Penalty amount
+- Admin note
+
+## Transaction Types
+
+- Contribution
+- Payout
+- Penalty
+- Refund
+- Adjustment
+- Platform fee
+- Failed payment
+- Reversed transaction
+
+## Filters
+
+- All transactions
+- Contributions
+- Payouts
+- Penalties
+- Failed payments
+- Pending payments
+- Member
+- Date range
+- Cycle
+- Status
+
+## Functions
+
+- View records
+- View transaction details
+- Download receipt
+- Share receipt
+- Search transactions
+- Filter transactions
+- Export ledger (Admin)
+- View pending payments
+- View failed payments
+- View completed payments
+
+---
+
+# 5. Activity Screen
+
+## Purpose
+
+Displays operational activities inside the group.
+
+## Access
+
+Admins and creators only.
+
+## Activity Types
+
+- Group created
+- Group updated
+- Member joined
+- Member invited
+- Member removed
+- Member suspended
+- Member reactivated
+- Admin promoted
+- Admin demoted
+- Contribution received
+- Contribution failed
+- Payout made
+- Payout failed
+- Collector changed
+- Settings updated
+- Invite updated
+- Invite disabled
+- Ledger adjustment
+- Group deleted
+- Group closed
+
+## Activity Fields
+
+- Activity type
+- Description
+- Performed by
+- Affected member
+- Date and time
+- Reference ID
+- Previous value
+- New value
+
+---
+
+# 6. Invite Settings
+
+## Purpose
+
+Controls how users join groups.
+
+## Display Fields
+
+- Invite link
+- Invite code
+- QR code
+- Invite status
+- Who can invite
+- Approval requirements
+- Maximum members
+- Pending invitations
+- Expired invitations
+
+## Invite Options
+
+- Anyone with link
+- Admin-only invitations
+- Member invitation with approval
+- Invite expiration
+- Disable invite
+- Regenerate invite
+- Usage limits
+- Require KYC
+- Require admin approval
+
+## Functions
+
+- Copy invite
+- Share invite
+- Generate QR
+- Regenerate invite
+- Enable/disable invite
+- Configure expiration
+- Configure usage limits
+- Approve requests
+- Reject requests
+- View pending requests
+
+---
+
+# 7. Group Settings
+
+## Sections
+
+- Basic Information
+- Contribution Rules
+- Collection Rules
+- Payout Rules
+- Member Rules
+- Notification Rules
+- Admin Permissions
+- Danger Zone
+
+## Danger Zone
+
+- Close Group
+- Archive Group
+- Delete Group
+
+---
+
+# 8. Delete Group
+
+## Purpose
+
+Allows creators to permanently remove a group.
+
+## Access
+
+Creator only.
+
+## Eligibility Requirements
+
+- No pending contributions
+- No pending payouts
+- No disputes
+- No active transactions
+- No unpaid cycles
+- No pending join requests
+- No settlement issues
+
+## Delete Flow
+
+```text
+Delete Group
+└── Eligibility Check
+    ├── Fail
+    │   └── Show blocking reasons
+    └── Pass
+        └── Confirmation
+            ├── Accept warning
+            ├── Type group name
+            ├── PIN/Biometric verification
+            └── Archive group
+```
+
+## Soft Delete Strategy
+
+```text
+group_status = deleted
+deleted_at
+deleted_by
+invite_disabled = true
+members_access_revoked = true
+```
+
+Financial records remain for audit purposes.
+
+---
+
+# 9. Leave Group
+
+## Conditions
+
+Members can leave only if:
+
+- No pending contributions
+- No pending payouts
+- Not current collector
+- No unresolved disputes
+- Group settings allow leaving
+
+## Flow
+
+```text
+Leave Group
+└── Eligibility Check
+    ├── Fail
+    │   └── Show reason
+    └── Pass
+        ├── Confirmation
+        ├── PIN verification
+        ├── Remove member
+        └── Activity log created
+```
+
+---
+
+# 10. Navigation Flow
+
+```text
+Osusu Home
+└── Group List
+    └── Group Main Screen
+        ├── Group Info
+        ├── Members Management
+        ├── Ledger
+        ├── Activity
+        ├── Invite Settings
+        ├── Group Settings
+        ├── Delete Group
+        └── Leave Group
+```
+
+---
+
+# 11. Backend Functions
+
+## Group Info
+
+```text
+get_group_info()
+update_group_info()
+```
+
+## Members
+
+```text
+get_group_members()
+get_group_member_detail()
+promote_group_admin()
+demote_group_admin()
+suspend_group_member()
+reactivate_group_member()
+remove_group_member()
+change_collector_position()
+```
+
+## Ledger
+
+```text
+get_group_ledger()
+get_group_ledger_summary()
+get_transaction_detail()
+export_group_ledger()
+create_ledger_adjustment()
+```
+
+## Activity
+
+```text
+get_group_activity()
+get_activity_detail()
+export_group_activity()
+```
+
+## Invite Settings
+
+```text
+get_invite_settings()
+update_invite_settings()
+generate_invite_link()
+regenerate_invite_link()
+disable_invite_link()
+approve_join_request()
+reject_join_request()
+```
+
+## Group Settings
+
+```text
+get_group_settings()
+update_group_settings()
+```
+
+## Delete Group
+
+```text
+check_group_delete_eligibility()
+delete_group()
+```
+
+## Leave Group
+
+```text
+check_leave_group_eligibility()
+leave_group()
+```
+
+---
+
+# 12. Database Tables
+
+```text
+groups
+group_members
+group_admins
+group_invites
+group_join_requests
+group_ledger
+group_transactions
+group_activity_logs
+group_settings
+group_collection_order
+group_contribution_cycles
+group_payouts
+group_penalties
+group_member_status_history
+group_delete_requests
+audit_logs
+```
+
+---
+
+# 13. Permissions Matrix
+
+| Action | Creator | Admin | Member |
+|----------|----------|--------|---------|
+| View Group | Yes | Yes | Yes |
+| Edit Group | Yes | If Allowed | No |
+| Manage Members | Yes | Yes | No |
+| View Ledger | Yes | Yes | Limited |
+| View Activity | Yes | Yes | No |
+| Invite Users | Yes | Yes | If Allowed |
+| Delete Group | Yes | No | No |
+| Leave Group | No | If Allowed | If Eligible |
+
+---
+
+# 14. Security Requirements
+
+- Use Supabase Edge Functions or secure RPC.
+- Never calculate balances on frontend.
+- Enforce RLS on all group tables.
+- Verify membership before actions.
+- Verify roles before actions.
+- Generate audit logs for all financial and administrative actions.
+- Require confirmations for destructive actions.
+- Require PIN or biometric verification for high-risk actions.
+
+---
+
+# 15. Claude Implementation Prompt
+
+Use this specification to build the complete Mi Osusu Group Management module.
+
+Requirements:
+
+- Maintain Mi Osusu branding.
+- Follow WhatsApp-style navigation.
+- Implement role-based access.
+- Use backend-driven financial calculations.
+- Support audit logging.
+- Implement secure deletion using soft deletes.
+- Include loading, error, empty, and permission-denied states.
+- Create reusable components.
+- Preserve existing Mi Osusu payment, vault, savings, and authentication flows.
+- Clearly mark placeholder backend integrations with TODO comments.

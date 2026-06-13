@@ -14,6 +14,7 @@
  */
 
 import { createServiceClient }   from '../_shared/auth.ts';
+import { readBoundedBody }        from '../_shared/cors.ts';
 import {
   verifyMonimeSignature,
   getPaymentCode,
@@ -26,7 +27,8 @@ import {
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return ok({ status: 'method_not_allowed' });
 
-  const rawBody = await req.text();
+  const { text: rawBody, error: sizeErr } = await readBoundedBody(req, 256 * 1024);
+  if (sizeErr) { console.warn('vault-webhook: oversized body'); return ok({ status: 'too_large' }); }
 
   // ── 1. Parse ───────────────────────────────────────────────────────────────
   let payload: MonimeWebhookPayload;
@@ -45,9 +47,10 @@ Deno.serve(async (req: Request) => {
     return ok({ status: 'missing_fields' });
   }
 
-  // ── 2. Verify signature — ALWAYS return 200, just skip processing on bad sig ──
+  // ── 2. Verify signature + timestamp freshness ─────────────────────────────
   const sig      = req.headers.get('Monime-Signature');
-  const sigValid = await verifyMonimeSignature(rawBody, sig);
+  const ts       = req.headers.get('Monime-Timestamp');
+  const sigValid = await verifyMonimeSignature(rawBody, sig, ts, 'MONIME_VAULT_WEBHOOK_SECRET');
   if (!sigValid) {
     console.warn(`vault-webhook: invalid signature for payment_code ${paymentCodeId} — ignoring`);
     return ok({ status: 'invalid_signature' });
@@ -76,8 +79,10 @@ Deno.serve(async (req: Request) => {
     return ok({ status: 'already_processed' });
   }
   if (dedupErr) {
-    console.error('vault-webhook: dedup insert error:', dedupErr.message);
-    // Do not halt — processing is more important than dedup tracking here
+    // Halt on any non-duplicate error — never risk double-crediting the vault.
+    // Return 200 so Monime does not retry into the same DB error storm.
+    console.error('vault-webhook: dedup insert error — aborting to prevent double-credit:', dedupErr.message);
+    return ok({ status: 'dedup_error' });
   }
 
   // ── 4. Route by event ──────────────────────────────────────────────────────
@@ -117,6 +122,52 @@ async function handleSuccess(
   }
 
   const resolvedOrderNumber = orderNumber ?? verified.processedPaymentData?.orderNumber ?? null;
+
+  const { data: topup, error: topupErr } = await svc
+    .from('vault_topups')
+    .select('id, amount, currency')
+    .or(`monime_payment_code_id.eq.${paymentCodeId},monime_session_id.eq.${paymentCodeId}`)
+    .maybeSingle();
+
+  if (topupErr || !topup) {
+    console.error(`vault-webhook: topup lookup failed for ${paymentCodeId}:`, topupErr?.message ?? 'not found');
+    return ok({ status: 'topup_lookup_failed', payment_code_id: paymentCodeId });
+  }
+
+  const topupRecord = topup as Record<string, unknown>;
+  const expectedAmount = Number(topupRecord.amount);
+  const verifiedAmount = Number(verified.amount) / 100;
+  const expectedCurrency = String(topupRecord.currency);
+
+  if (verified.currency !== 'SLE' || expectedCurrency !== 'NLe' || Math.abs(verifiedAmount - expectedAmount) > 0.001) {
+    await svc.from('vault_topups')
+      .update({
+        status: 'failed',
+        failure_reason: 'provider_amount_or_currency_mismatch',
+        failed_at: new Date().toISOString(),
+      })
+      .eq('id', topupRecord.id as string);
+
+    try {
+      await svc.from('audit_logs').insert({
+        actor_id: null,
+        action: 'suspicious_vault_topup_mismatch',
+        table_name: 'vault_topups',
+        record_id: topupRecord.id as string,
+        new_data: {
+          payment_code_id: paymentCodeId,
+          expected_amount: expectedAmount,
+          verified_amount: verifiedAmount,
+          expected_currency: expectedCurrency,
+          verified_currency: verified.currency,
+        },
+      });
+    } catch {
+      // Do not credit on mismatch even if audit logging is unavailable.
+    }
+
+    return ok({ status: 'amount_or_currency_mismatch', payment_code_id: paymentCodeId });
+  }
 
   const { data: result, error: rpcErr } = await svc.rpc('finalize_vault_topup', {
     p_monime_session_id: paymentCodeId,
@@ -189,8 +240,8 @@ async function dispatchTopupNotification(
         user_id: t.user_id,
         type:    'vault_topup_completed',
         title:   'Vault Funded',
-        body:    `NLe ${Number(t.amount ?? 0).toFixed(2)} has been added to your vault.`,
-        data:    { topup_id: rpcResult.topup_id ?? null },
+        body:    'Your vault top-up has been processed successfully.',
+        data:    { amount: t.amount ?? null, topup_id: rpcResult.topup_id ?? null },
       }),
     }).catch((e) => console.warn('Notification fetch failed:', e));
   } catch (e) {

@@ -88,6 +88,10 @@ export default function GuarantorScreen() {
     setPicking(false);
     if (!result.canceled) {
       const asset = result.assets[0];
+      if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+        Alert.alert('File too large', 'Please choose an image smaller than 5 MB.');
+        return;
+      }
       setGuarantorIdUri(asset.uri);
       setGuarantorIdBase64(asset.base64 ?? '');
       setGuarantorIdMime(asset.mimeType ?? 'image/jpeg');
@@ -119,7 +123,10 @@ export default function GuarantorScreen() {
     setSubmitting(false);
 
     if (error) {
-      Alert.alert('Could not submit', error.message);
+      Alert.alert(
+        'Submission failed',
+        'Could not submit your KYC application. Please check your connection and try again.',
+      );
       return;
     }
 
@@ -294,7 +301,7 @@ export default function GuarantorScreen() {
                 <View style={s.uploadPrompt}>
                   <Upload size={22} color="#9CA3AF" strokeWidth={1.75} />
                   <Text style={[s.uploadLabel, { color: C.text }]}>Upload document</Text>
-                  <Text style={[s.uploadHint, { color: C.textMuted }]}>PDF, JPG or PNG. Max size 5MB</Text>
+                  <Text style={[s.uploadHint, { color: C.textMuted }]}>JPG or PNG. Max size 5MB</Text>
                 </View>
               )}
             </TouchableOpacity>

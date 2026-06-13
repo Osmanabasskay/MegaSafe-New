@@ -1,3 +1,4 @@
+import 'react-native-get-random-values';
 import './global.css';
 import { useEffect, useState } from 'react';
 import * as WebBrowser from 'expo-web-browser';

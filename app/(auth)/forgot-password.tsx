@@ -14,6 +14,15 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Mail, Lock, Eye, EyeOff, Check } from 'lucide-react-native';
 import { supabase, supabaseConfigured } from '../../src/services/supabase';
+import {
+  getPasswordError,
+  getPasswordStrength,
+  PASSWORD_REQUIREMENTS,
+} from '../../src/utils/validation/auth';
+import { checkHaveIBeenPwned } from '../../src/utils/auth/hibp';
+import { MSG_OTP_INVALID, MSG_RATE_LIMITED } from '../../src/utils/auth/authErrors';
+import { generateCorrelationId } from '../../src/utils/auth/loginSecurity';
+import { OTP_LENGTH } from '../../src/utils/auth/securityConfig';
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 const C = {
@@ -32,26 +41,12 @@ const C = {
   success: '#34D399',
 };
 
-const COOLDOWN_SEC = 60;
-const OTP_LENGTH = 6;
-const RESET_SEND_MESSAGE = 'If that email can receive resets, we sent a code.';
-const RESET_ERROR_MESSAGE = 'We could not complete that request right now.';
-
-function getStrength(pw: string): { score: number; label: string; color: string } {
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (/[A-Z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-  const map = [
-    { label: '', color: '#374151' },
-    { label: 'Weak', color: '#EF4444' },
-    { label: 'Fair', color: '#F97316' },
-    { label: 'Good', color: '#FBBF24' },
-    { label: 'Strong', color: '#34D399' },
-  ];
-  return { score, ...map[score]! };
-}
+const COOLDOWN_SEC         = 60;
+const MAX_RESET_OTP_ATTEMPTS = 3;   // frontend guard; server enforces its own limit
+const MAX_RESET_RESENDS    = 3;     // max resend attempts per session
+// Generic messages — never reveal whether email exists or OTP is invalid vs. expired
+const RESET_SEND_MESSAGE   = 'If that email can receive resets, we sent a code.';
+const RESET_ERROR_MESSAGE  = 'We could not complete that request right now.';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -68,6 +63,10 @@ export default function ForgotPasswordScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [cooldown, setCooldown] = useState(0);
+  // OTP brute-force guard (frontend; server enforces its own limit)
+  const otpAttemptsRef  = useRef(0);
+  const resendCountRef  = useRef(0);
+  const [requiresResend, setRequiresResend] = useState(false);
 
   const otpRefs = useRef<(TextInput | null)[]>(Array(OTP_LENGTH).fill(null));
 
@@ -77,15 +76,13 @@ export default function ForgotPasswordScreen() {
     return () => clearInterval(t);
   }, [cooldown]);
 
-  const strength = getStrength(newPassword);
-  const requirements = [
-    { label: 'At least 8 characters', met: newPassword.length >= 8 },
-    { label: 'One uppercase letter', met: /[A-Z]/.test(newPassword) },
-    { label: 'One number', met: /[0-9]/.test(newPassword) },
-    { label: 'One special character', met: /[^A-Za-z0-9]/.test(newPassword) },
-  ];
+  // Use the same strength/requirements as registration — passwordSchema is the authority
+  const strength     = getPasswordStrength(newPassword);
+  const requirements = PASSWORD_REQUIREMENTS;
 
   // ── Step 0: Send recovery code ──────────────────────────────────────────────
+  // Always respond with RESET_SEND_MESSAGE regardless of whether the email is
+  // registered — prevents account enumeration (OWASP A07).
   const handleSendCode = async () => {
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) {
       setError('Please enter a valid email address.');
@@ -95,18 +92,18 @@ export default function ForgotPasswordScreen() {
     setError('');
     try {
       if (supabaseConfigured) {
-        const { error: e } = await supabase.auth.resetPasswordForEmail(
-          email.trim().toLowerCase(),
-        );
-        if (e) {
-          setCooldown(COOLDOWN_SEC);
-          setStep(1);
-          return;
-        }
+        // Error is intentionally ignored — always proceed to OTP step to
+        // prevent leaking whether the email is registered.
+        await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
       }
+      // Reset per-session attempt counters for the new code flow
+      otpAttemptsRef.current = 0;
+      resendCountRef.current = 1; // this send counts as the first
+      setRequiresResend(false);
       setCooldown(COOLDOWN_SEC);
       setStep(1);
-    } catch (e) {
+    } catch {
+      // Never show detailed error — generic message prevents enumeration
       setError(RESET_SEND_MESSAGE);
     } finally {
       setIsLoading(false);
@@ -115,20 +112,21 @@ export default function ForgotPasswordScreen() {
 
   const handleResend = useCallback(async () => {
     if (cooldown > 0 || !email) return;
+    if (resendCountRef.current >= MAX_RESET_RESENDS) {
+      setError('Too many code requests. Please request a new reset link.');
+      return;
+    }
     setIsLoading(true);
     setError('');
     try {
       if (supabaseConfigured) {
-        const { error: e } = await supabase.auth.resetPasswordForEmail(
-          email.trim().toLowerCase(),
-        );
-        if (e) {
-          setCooldown(COOLDOWN_SEC);
-          return;
-        }
+        await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
       }
+      resendCountRef.current++;
+      otpAttemptsRef.current = 0; // fresh code resets attempt counter
+      setRequiresResend(false);
       setCooldown(COOLDOWN_SEC);
-    } catch (e) {
+    } catch {
       setError(RESET_SEND_MESSAGE);
     } finally {
       setIsLoading(false);
@@ -136,10 +134,13 @@ export default function ForgotPasswordScreen() {
   }, [cooldown, email]);
 
   // ── Step 1: Verify OTP ──────────────────────────────────────────────────────
+  // Generic error message regardless of whether code is wrong, expired, or
+  // doesn't match any account — prevents enumeration (OWASP A07).
   const handleVerifyOtp = async () => {
     const token = digits.join('').trim();
-    if (token.length < OTP_LENGTH) { setError('Enter the full 6-digit code.'); return; }
+    if (token.length < OTP_LENGTH) { setError(`Enter the full ${OTP_LENGTH}-digit code.`); return; }
     if (!supabaseConfigured) { setError('Supabase is not configured.'); return; }
+    if (requiresResend) return; // blocked until user requests new code
     setIsLoading(true);
     setError('');
     try {
@@ -148,26 +149,34 @@ export default function ForgotPasswordScreen() {
         token,
         type: 'recovery',
       });
-      if (e) { setError('The code is invalid or expired.'); setIsLoading(false); return; }
-      if (!data?.session) {
-        setError('Verification failed. Please try again.');
+      if (e || !data?.session) {
+        otpAttemptsRef.current++;
+        if (otpAttemptsRef.current >= MAX_RESET_OTP_ATTEMPTS) {
+          setDigits(Array(OTP_LENGTH).fill(''));
+          setRequiresResend(true);
+          setError('Too many incorrect attempts. Please request a new code.');
+          otpAttemptsRef.current = 0;
+        } else {
+          setError(MSG_OTP_INVALID);
+        }
         setIsLoading(false);
         return;
       }
       setStep(2);
-    } catch (e) {
-      setError('The code is invalid or expired.');
+    } catch {
+      setError(MSG_OTP_INVALID);
     } finally {
       setIsLoading(false);
     }
   };
 
   // ── Step 2: Update password ─────────────────────────────────────────────────
+  // Uses the same passwordSchema as registration — no weaker check at reset.
+  // Includes HIBP k-anonymity breach check and global sign-out on success.
   const handleUpdatePassword = async () => {
-    if (!newPassword || newPassword.length < 8) {
-      setError('Password must be at least 8 characters.');
-      return;
-    }
+    // Full policy enforcement via shared passwordSchema
+    const pwErr = getPasswordError(newPassword);
+    if (pwErr) { setError(pwErr); return; }
     if (newPassword !== confirmPassword) {
       setError('Passwords do not match.');
       return;
@@ -176,11 +185,32 @@ export default function ForgotPasswordScreen() {
     setIsLoading(true);
     setError('');
     try {
+      // HIBP breach check — fail open (never block on HIBP API error)
+      try {
+        const { pwned } = await checkHaveIBeenPwned(newPassword);
+        if (pwned) {
+          setError('This password has appeared in a known data breach. Please choose a different password.');
+          setIsLoading(false);
+          return;
+        }
+      } catch {
+        // HIBP check failure must never block the reset
+      }
+
       const { error: e } = await supabase.auth.updateUser({ password: newPassword });
-      if (e) { setError(RESET_ERROR_MESSAGE); setIsLoading(false); return; }
+      if (e) {
+        const cid = generateCorrelationId();
+        setError(`${RESET_ERROR_MESSAGE} (Ref: ${cid})`);
+        setIsLoading(false);
+        return;
+      }
+      // Clear sensitive state before navigating away
+      setNewPassword('');
+      setConfirmPassword('');
+      // Global sign-out: all sessions are invalidated; user must log in with new password
       await supabase.auth.signOut({ scope: 'global' });
       setStep(3);
-    } catch (e) {
+    } catch {
       setError(RESET_ERROR_MESSAGE);
     } finally {
       setIsLoading(false);
@@ -226,7 +256,7 @@ export default function ForgotPasswordScreen() {
 
       <Text style={fs.stepTitle}>Forgot Password?</Text>
       <Text style={fs.stepSubtitle}>
-        Enter your registered email to receive a 6-digit reset code.
+        Enter your registered email to receive an {OTP_LENGTH}-digit reset code.
       </Text>
 
       {/* Glass card */}
@@ -270,7 +300,7 @@ export default function ForgotPasswordScreen() {
     <View style={fs.centeredContent}>
       <Text style={fs.stepTitle}>Check your email</Text>
       <Text style={fs.stepSubtitle}>
-        We sent a 6-digit code to{'\n'}
+        We sent an {OTP_LENGTH}-digit code to{'\n'}
         <Text style={fs.highlight}>{maskedEmail}</Text>
       </Text>
 
@@ -301,17 +331,17 @@ export default function ForgotPasswordScreen() {
       {error ? <Text style={[fs.errorText, { textAlign: 'center' }]}>{error}</Text> : null}
 
       <View style={fs.timerRow}>
-        <TouchableOpacity onPress={handleResend} disabled={cooldown > 0 || isLoading}>
-          <Text style={[fs.resendText, cooldown > 0 && { color: C.muted }]}>
+        <TouchableOpacity onPress={handleResend} disabled={cooldown > 0 || isLoading || resendCountRef.current >= MAX_RESET_RESENDS}>
+          <Text style={[fs.resendText, (cooldown > 0 || resendCountRef.current >= MAX_RESET_RESENDS) && { color: C.muted }]}>
             {cooldown > 0 ? `Resend in ${timerLabel}` : 'Resend code'}
           </Text>
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity
-        style={[fs.primaryBtn, isLoading && fs.primaryBtnDisabled, { width: '100%' }]}
+        style={[fs.primaryBtn, (isLoading || requiresResend) && fs.primaryBtnDisabled, { width: '100%' }]}
         onPress={handleVerifyOtp}
-        disabled={isLoading}
+        disabled={isLoading || requiresResend}
         activeOpacity={0.85}
       >
         {isLoading
@@ -370,24 +400,27 @@ export default function ForgotPasswordScreen() {
               ))}
             </View>
             <View style={fs.reqList}>
-              {requirements.map((req, i) => (
-                <View key={i} style={fs.reqRow}>
-                  <View
-                    style={[
-                      fs.reqDot,
-                      {
-                        backgroundColor: req.met ? C.success : 'transparent',
-                        borderColor: req.met ? C.success : 'rgba(255,255,255,0.2)',
-                      },
-                    ]}
-                  >
-                    {req.met ? <Check size={9} color="#FFFFFF" /> : null}
+              {requirements.map((req, i) => {
+                const met = req.test(newPassword);
+                return (
+                  <View key={i} style={fs.reqRow}>
+                    <View
+                      style={[
+                        fs.reqDot,
+                        {
+                          backgroundColor: met ? C.success : 'transparent',
+                          borderColor: met ? C.success : 'rgba(255,255,255,0.2)',
+                        },
+                      ]}
+                    >
+                      {met ? <Check size={9} color="#FFFFFF" /> : null}
+                    </View>
+                    <Text style={[fs.reqText, { color: met ? C.text : C.muted }]}>
+                      {req.label}
+                    </Text>
                   </View>
-                  <Text style={[fs.reqText, { color: req.met ? C.text : C.muted }]}>
-                    {req.label}
-                  </Text>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </View>
         )}
@@ -552,9 +585,9 @@ const fs = StyleSheet.create({
   linkRow: { marginTop: 4, alignItems: 'center' },
   linkText: { fontSize: 14, color: C.muted, textAlign: 'center' },
   linkAccent: { color: C.orange, fontWeight: '700' },
-  otpRow: { flexDirection: 'row', gap: 10, justifyContent: 'center', marginBottom: 20 },
+  otpRow: { flexDirection: 'row', gap: 5, justifyContent: 'center', marginBottom: 20, width: '100%' },
   digitBox: {
-    width: 48, height: 58, borderRadius: 12, borderWidth: 1.5,
+    flex: 1, maxWidth: 48, height: 58, borderRadius: 12, borderWidth: 1.5,
     backgroundColor: C.inputBg, borderColor: C.inputBorder,
     fontSize: 22, fontWeight: '700', color: C.text,
   },

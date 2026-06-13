@@ -54,6 +54,7 @@ export interface AdminUser {
 // ─── KYC ─────────────────────────────────────────────────────────────────────
 
 export interface KycQueueItem {
+  applicationId: string;
   userId: string;
   userName: string;
   idFrontUrl: string | null;
@@ -61,6 +62,10 @@ export interface KycQueueItem {
   selfieUrl: string | null;
   submittedAt: string;
   kycStatus: string;
+  aiStatus: string;
+  reasonCode: string | null;
+  suspiciousFlags: string[];
+  manualReviewReason: string | null;
 }
 
 export interface KycApplicationRow {
@@ -69,6 +74,9 @@ export interface KycApplicationRow {
   fullName: string;
   phone: string;
   status: string;
+  aiStatus: string;
+  reasonCode: string | null;
+  suspiciousFlags: string[];
   documentType: string;
   nationalIdNumber: string;
   submittedAt: string;
@@ -172,6 +180,39 @@ export interface WebhookEventRow {
   reference: string | null;
   signatureValid: boolean;
   createdAt: string;
+}
+
+export interface SendPaymentIntentRow {
+  id: string;
+  userId: string;
+  targetType: string;
+  targetName: string;
+  amount: number;
+  currency: string;
+  method: string;
+  status: string;
+  reference: string | null;
+  providerReference: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface SendPaymentRiskEventRow {
+  id: string;
+  actorId: string | null;
+  action: string;
+  tableName: string;
+  recordId: string | null;
+  createdAt: string;
+}
+
+export interface SendPaymentMonitorSummary {
+  pendingIntents: number;
+  failedConfirmations: number;
+  duplicateIdempotencyAttempts: number;
+  unauthorizedTargetAttempts: number;
+  providerWebhookFailures: number;
+  suspiciousActivity: number;
 }
 
 // ─── Withdrawals / Payouts ────────────────────────────────────────────────────

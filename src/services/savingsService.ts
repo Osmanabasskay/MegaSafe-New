@@ -298,6 +298,7 @@ export async function processSavingsDeposit(params: {
   amount: number;
   paymentMethod: SupportedPaymentMethod;
   idempotencyKey?: string;
+  transactionPin?: string;
 }): Promise<{ success: boolean; paymentId?: string; error: Error | null }> {
   if (!supabaseConfigured) {
     return { success: true, paymentId: createLocalId('payment'), error: null };
@@ -311,6 +312,7 @@ export async function processSavingsDeposit(params: {
       p_amount:          params.amount,
       p_method:          params.paymentMethod,
       p_idempotency_key: iKey,
+      p_transaction_pin: params.transactionPin ?? null,
     });
 
     if (error) throw error;
@@ -335,6 +337,7 @@ export async function processSavingsWithdrawal(params: {
   goalId: string;
   amount: number;
   note?: string;
+  transactionPin?: string;
 }): Promise<{ success: boolean; newBalance?: number; error: Error | null }> {
   if (!supabaseConfigured) return { success: true, error: null };
 
@@ -344,6 +347,7 @@ export async function processSavingsWithdrawal(params: {
       p_amount:          params.amount,
       p_type:            'withdrawal',
       p_note:            params.note ?? null,
+      p_transaction_pin: params.transactionPin ?? null,
     });
 
     if (error) throw error;
